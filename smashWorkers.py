@@ -111,34 +111,83 @@ class HeaderWriter(object):
         return header
 
 class AirTemperature(object):
-    """ For generating MS04301 from LTERLoggers_new"""
+    """ For generating MS04301 from LTERLoggers_new or from STEWARTIA
+    Takes start date and end date as date strings, server is either SHELDON or STEWARTIA
+    If a final argument is passed it is a probe-code which can be used to limit how many data
+    are run through the tool. 
+    No matter what inputs are given, call condense_data on the results to generate row-by-row output. If you pass condense_data an argument of a yaml file, it will use that yaml file to generate the method/probe mapping, otherwise, it will default to the mapping that I give it.
+    To have certain probes on certain dates, use the ProbeBoss to call a LIMITED.yaml file which will map each probe to a special start and end date, and generate a header independently.
+    """
 
 
-    def __init__(self, startdate, enddate):
-        """ uses form_connection to communicate with the database- in this case the back end to gather the data """
+    def __init__(self, startdate, enddate, server, *limited):
+        """ uses form_connection to communicate with the database; queries for a start and end date and possibly a probe code, generates a date-mapped dictionary. """
+
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        # the server is either "SHELDON" or "STEWARTIA"
+        self.cursor = fc.form_connection(server)
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '01'
+        self.server = server
         
-        # query against the database
-        self.querydb()
+        if not limited:
+            # query against the database the normal way
+            self.querydb()
+
+        elif limited:
+            # query against the database, but only for that one probe code
+            probe_code = limited[0]
+            self.querydb_limited(probe_code)
 
         # od is the 'obtained dictionary'. it is blank before the query. 
         self.od = {}
         self.od = self.attack_data()
 
     def querydb(self):
-        """ queries the data base and returns the cursor after population- the date start will include all the day, the date end will NOT include that final day"""
+        """ queries the data base and returns the cursor after population- the date start will include all the day, the date end will NOT include that final day. Can take time as either a python date object or as a date string"""
 
-        startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
-        enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
 
-        query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from LTERLogger_new.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from LTERLogger_new.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+        
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         self.cursor.execute(query)
+
+    def querydb_limited(self, probe_code):
+        """ queries the data base, limited to certain probes, use in special cases. can take date as either a python date object or as a date-string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+            
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from LTERLogger_new.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+        
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+        
+        self.cursor.execute(query)
+
 
     @staticmethod
     def heightcalc(probe_code):
@@ -167,12 +216,25 @@ class AirTemperature(object):
             return height
 
     @staticmethod
-    def whichsite(probe_code):
-        """ match the probe code to the site and method code """
+    def whichsite(probe_code, *args):
+        """ match the probe code to the site and method code 
+        an optional arguement can be passed in which is a different YAML file containing other mappings of probe_codes onto method codes. The appropriate form is
+
+        sitename(lowercase): 
+            PROBE_CODE: METHOD_CODE
+            PROBE_CODE: METHOD_CODE
+
+        this is a yaml standard. Sorry! :(
+        """
         import yaml
 
-        with open('CONFIG.yaml','rb') as readfile:
-            cfg = yaml.load(readfile)
+        if not args: 
+            with open('CONFIG.yaml','rb') as readfile:
+                cfg = yaml.load(readfile)
+
+        elif args:
+            with open(args[0], 'rb') as readfile:
+                cfg = yaml.load(readfile)
 
             if probe_code in cfg['cenmet'].keys():
                 site_code = 'CENMET'
@@ -214,10 +276,10 @@ class AirTemperature(object):
                 site_code = "RS" + probe_code[3:5]
                 method_code = "AIR999"
                 return site_code, method_code
-
+            
 
     def attack_data(self):
-        """ gather the daily air temperature data """
+        """ gather the daily air temperature data from your chosen DB"""
         # obtained dictionary dictionary
         od = {}
 
@@ -244,6 +306,7 @@ class AirTemperature(object):
                     # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
                     od[probe_code][dt]['val'].append(str(row[2]))
                     od[probe_code][dt]['fval'].append(str(row[3]))
+                    # the timekeep attribute holds onto the 5 minute time, so that if it happens to be the max or the min of the day we have it handy
                     od[probe_code][dt]['timekeep'].append(dt_old)
 
                 else:
@@ -252,8 +315,10 @@ class AirTemperature(object):
                 pass
         return od
 
-    def condense_data(self):
-        """ check the date range, do stats and flagging"""
+    def condense_data(self, *args):
+        """ check the date range, do stats and flagging
+        the bulk of the action happens here. If an additional arguement is given, it is a new configuration file which is designed to map other method codes onto the probe codes. We pass it into the static function "which stand" from here, as this is actually the iterator which runs over the date-stamped dictionary. output is stored in a list of lists, each sub-list is a row that can be written to a csv or hopefully into a sql statement later!
+        """
         
         my_new_rows = []
 
@@ -261,24 +326,29 @@ class AirTemperature(object):
         for probe_code in self.od.keys():
 
             # get the site code and the method code from that probe code
-            site_code, method_code = self.whichsite(probe_code)
+            site_code, method_code = self.whichsite(probe_code, args[0])
             height = self.heightcalc(probe_code)
 
             # iterate over each of the dates
             for each_date in sorted(self.od[probe_code].keys()):
 
-                # get the number of valid observations
+                # get the number of valid observations - these are observations which are numbers that aren't none
                 num_valid_obs = len([x for x in self.od[probe_code][each_date]['val'] if x != 'None'])
+                # there may be the case that all the numbers are none, and in this case, we want to know about it, but keep on going through that day
+                if num_valid_obs == 0:
+                    print("there are only null values on %s for %s") %(each_date, probe_code)
+
+                
                 # get the number of obs
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
+                print "the number of total obs is %s" %(num_total_obs)
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if each_date != self.startdate:
-                    if num_total_obs != 288 or num_total_obs != 96: 
-                        print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                        break
-                    else:
-                        pass
+                if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
+
+                    print("the total number of observations on %s is %s") %(each_date, num_total_obs)
+                    break
+
                 else:
                     pass
 
@@ -286,7 +356,6 @@ class AirTemperature(object):
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'E'])
-
             
                 # daily flag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs/num_total_obs >= 0.2:
@@ -301,45 +370,111 @@ class AirTemperature(object):
                     daily_flag = 'Q'
 
                 # take the mean of the daily observations - not including the missing, questionable, or estimated ones
-                mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None'])/num_valid_obs),3)
+                try:
+                    mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None'])/num_valid_obs),3)
+                
+                except ZeroDivisionError:
+                    # if the whole day is missing, then the mean_valid_obs is None
+                    mean_valid_obs = "None"
 
                 # get the max of those observations
-                max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+                try:
+                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+
+                except ValueError:
+                    # check to see if the whole day was missing, if so, set it to none
+                    if mean_valid_obs == "None":
+                        max_valid_obs = "None"
+                    else:
+                        print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
                 try:
-                
                     # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except Exception:
+                except ValueError:
+                    # check to see if the the whole day was missing, if so, set it to none
+                    # *** something I was testing, : for index,j in enumerate(self.od[probe_code][each_date]['val']):
+                    #    print index, j ****
+                    if mean_valid_obs == "None":
+                        max_valid_time = "None"
+                    else: 
+                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                
+                try:
+                    # get the flag of that maximum - which again, is controlled via the max_valid_obs
+                    max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                    for index,j in enumerate(self.od[probe_code][each_date]['val']):
-                        print index, j
-
-                # get the flag of that maximum - which again, is controlled via the max_valid_obs
-                max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
+                except ValueError:
+                    # check to see if the whole day was missing, if so, set to "M"
+                    if mean_valid_obs == "None":
+                        max_flag[0] = "M"
+                    else:
+                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
 
 
                 # get the min of those observations - not including missing, questionable, or estimated ones
-                min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+                try: 
+                    min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+                except ValueError:
+                    if mean_valid_obs == "None":
+                        min_valid_obs = "None"
+                    else:
+                        print("error in min_valid_obs for %s on %s") %(probe_code, each_date)
 
                 # get the time of that minimum - conrolled by the minimum value for flags
-                min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                try:
+                
+                    min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                except ValueError:
+                    if mean_valid_obs == "None":
+                        min_valid_time = "None"
+                    else:
+                        print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
-                # get the time of that minimum
-                min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                # get the flag on the minimum
+                try: 
+                    min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                
+                except ValueError:
+                    if mean_valid_obs == "None":
+                        min_flag = "M"
+                    else:
+                        print("error in minimum flagging for %s on %s") %(probe_code, each_date)
 
-                if min_flag[0] == "": 
-                    min_flag[0] = "A"
+
+                # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
+                try:
+                    if min_flag == "": 
+                        min_flag[0] = "A"
+                    else:
+                        pass
+                except IndexError:
+                    # the minimum flag may not come out if all the values are missing... 
+                    if mean_valid_obs == "None":
+                        min_flag[0] = "M"
+
+                try: 
+                    if max_flag =="":
+                        max_flag[0] = "A"
+                    else:
+                        pass
+                
+                except IndexError:
+                    # the minimum flag may not come out if all the values are missing... 
+                    if mean_valid_obs == "None":
+                        max_flag[0] = "M"
+
+                if mean_valid_obs == "None":
+                    daily_flag == "M"
                 else:
                     pass
 
-                if max_flag[0] =="":
-                    max_flag[0] = "A"
-                else:
-                    pass
-
-                newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "EVENT_CODE"]
+                try:
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "EVENT_CODE"]
+                
+                except IndexError:
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", min_valid_obs,"None", min_flag, "EVENT_CODE"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -348,11 +483,16 @@ class AirTemperature(object):
 
 class RelHum(object):
 
-    def __init__(self, startdate, enddate):
+    def __init__(self, startdate, enddate, *args):
 
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        if not args:
+            self.cursor = fc.form_connection("SHELDON")
+
+        elif args:
+            self.cursor = fc.form_connection(args[0])
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '02'
@@ -577,11 +717,16 @@ class RelHum(object):
 
 class DewPoint(object):
 
-    def __init__(self, startdate, enddate):
+    def __init__(self, startdate, enddate, *args):
 
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        if not args:
+            self.cursor = fc.form_connection("SHELDON")
+
+        elif args:
+            self.cursor = fc.form_connection(args[0])
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '07'
@@ -807,11 +952,16 @@ class DewPoint(object):
 
 class VPD(object):
 
-    def __init__(self, startdate, enddate):
+    def __init__(self, startdate, enddate, *args):
 
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        if not args:
+            self.cursor = fc.form_connection("SHELDON")
+
+        elif args:
+            self.cursor = fc.form_connection(args[0])
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '02'
@@ -1037,11 +1187,16 @@ class VPD(object):
 
 class SoilTemperature(object):
 
-    def __init__(self, startdate, enddate):
+    def __init__(self, startdate, enddate, *args):
 
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        if not args:
+            self.cursor = fc.form_connection("SHELDON")
+
+        elif args:
+            self.cursor = fc.form_connection(args[0])
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '21'
@@ -1200,8 +1355,9 @@ class SoilTemperature(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
                 # if it's not a total of observations on that day that we would expect, then print this
-                if num_total_obs != 288 or num_total_obs != 24 or num_total_obs != 96: 
+                if num_total_obs not in [288, 96, 24] and each_date != self.startdate: 
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
+                    break
                 else:
                     pass
 
@@ -1271,11 +1427,16 @@ class SoilTemperature(object):
 
 class SoilWaterContent(object):
 
-    def __init__(self, startdate, enddate):
+    def __init__(self, startdate, enddate, *args):
 
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        if not args:
+            self.cursor = fc.form_connection("SHELDON")
+
+        elif args:
+            self.cursor = fc.form_connection(args[0])
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '23'
@@ -1510,11 +1671,16 @@ class SoilWaterContent(object):
 
 class Precipitation(object):
 
-    def __init__(self, startdate, enddate):
+    def __init__(self, startdate, enddate, *args):
 
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        if not args:
+            self.cursor = fc.form_connection("SHELDON")
+
+        elif args:
+            self.cursor = fc.form_connection(args[0])
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '13'
@@ -1706,11 +1872,16 @@ class Precipitation(object):
 
 class Solar(object):
 
-    def __init__(self, startdate, enddate):
+    def __init__(self, startdate, enddate, *args):
 
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        if not args:
+            self.cursor = fc.form_connection("SHELDON")
+
+        elif args:
+            self.cursor = fc.form_connection(args[0])
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '05'
@@ -1934,11 +2105,16 @@ class Solar(object):
 
 class Wind(object):
 
-    def __init__(self, startdate, enddate):
+    def __init__(self, startdate, enddate, *args):
 
         import form_connection as fc
 
-        self.cursor = fc.form_connection("SHELDON")
+        if not args:
+            self.cursor = fc.form_connection("SHELDON")
+
+        elif args:
+            self.cursor = fc.form_connection(args[0])
+
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '04'
@@ -2237,8 +2413,8 @@ if __name__ == "__main__":
     ##### HERE IS HOW WE DO AIRTEMP #######
 
     A = HeaderWriter('AIRTEMP')
-    AT = AirTemperature('2015-04-01 00:00:00', '2015-04-05 00:00:00')
-    my_new_rows = AT.condense_data()
+    AT = AirTemperature('2015-04-01 00:00:00', '2015-04-05 00:00:00', 'STEWARTIA')
+    my_new_rows = AT.condense_data('CONFIG2.yaml')
 
     # open a test file for writing
     with open(A.filename,'wb') as writefile:
