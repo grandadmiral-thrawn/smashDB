@@ -26,6 +26,9 @@ class Worker(object):
             self.Worker = smashWorkers.AirTemperature(startdate, enddate, server, *args)
             # args is the probe code
 
+        elif self.attribute == "LYS":
+            self.Worker = smashWorkers.SnowLysimeter(startdate, enddate, server, *args)
+
         elif self.attribute == "RELHUM":
             self.Worker = smashWorkers.RelHum(startdate, enddate, server, *args)
 
@@ -34,6 +37,9 @@ class Worker(object):
 
         elif self.attribute == "VPD":
             self.Worker = smashWorkers.VPD(startdate, enddate, server, *args)
+
+        elif self.attribute == "PAR":
+            self.Worker = smashWorkers.PhotosyntheticRad(startdate, enddate, server, *args)
 
         elif self.attribute == "SOILTEMP":
             self.Worker = smashWorkers.SoilTemperature(startdate, enddate, server, *args)
@@ -52,3 +58,24 @@ class Worker(object):
 
         else:
             pass
+
+class VaporControl(object):
+
+    def __init__(self, attribute, startdate, enddate, server, *args):
+
+        # create air temperature and relative humidity
+        self.A = smashWorkers.AirTemperature(startdate, enddate, server, *args)
+        self.R = smashWorkers.RelHum(startdate, enddate, server, *args)
+
+    def compute_shared_probes(self):
+        """ determine if two of the probes share names/times so we can compute a vapor pressure deficit or dewpoint"""
+
+        # get the 3rd to end of each, which is the shared probe code sans the front part of name
+        overlaps = [x[3:] for x in self.R.od.keys() if x[3:] in [y[3:] for y in self.A.od.keys()]]
+
+        # these will come back in the same order so we can index on them
+        Over_Rel = ['REL'+ x for x in overlaps]
+        Over_Air = ['AIR'+ x for x in overlaps]
+
+
+
