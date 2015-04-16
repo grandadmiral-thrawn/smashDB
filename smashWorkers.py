@@ -339,13 +339,14 @@ class AirTemperature(object):
                     print("there are only null values on %s for %s") %(each_date, probe_code)
 
                 
-                # get the number of obs
+                # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 print "the number of total obs is %s" %(num_total_obs)
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
 
+                    # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
                     break
 
@@ -364,6 +365,8 @@ class AirTemperature(object):
                     daily_flag = 'Q'
                 elif (num_estimated_obs)/num_total_obs >= 0.05:
                     daily_flag = 'E'
+
+                # because we are counting things which are not A, we don't need to deal with the case of "F". 
                 elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
                     daily_flag = 'A'
                 else:
@@ -470,11 +473,13 @@ class AirTemperature(object):
                 else:
                     pass
 
+                # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "EVENT_CODE"]
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "NA"]
                 
+                # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", min_valid_obs,"None", min_flag, "EVENT_CODE"]
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", min_valid_obs,"None", min_flag, "NA"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -482,23 +487,37 @@ class AirTemperature(object):
         return my_new_rows
 
 class RelHum(object):
+    """ For generating MS04302 from LTERLoggers_new or from STEWARTIA
+    Takes start date and end date as date strings, server is either SHELDON or STEWARTIA
+    
+    If a final argument is passed it is a probe-code which can be used to limit how many data
+    are run through the tool. 
+    No matter what inputs are given, call condense_data on the results to generate row-by-row output. If you pass condense_data an argument of a yaml file, it will use that yaml file to generate the method/probe mapping, otherwise, it will default to the mapping that I give it.
+    To have certain probes on certain dates, use the ProbeBoss to call a LIMITED.yaml file which will map each probe to a special start and end date, and generate a header independently.
+    """
 
-    def __init__(self, startdate, enddate, *args):
+
+    def __init__(self, startdate, enddate, server, *limited):
+        """ uses form_connection to communicate with the database; queries for a start and end date and possibly a probe code, generates a date-mapped dictionary. """
 
         import form_connection as fc
 
-        if not args:
-            self.cursor = fc.form_connection("SHELDON")
-
-        elif args:
-            self.cursor = fc.form_connection(args[0])
+        # the server is either "SHELDON" or "STEWARTIA"
+        self.cursor = fc.form_connection(server)
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '02'
+        self.server = server
+        
+        if not limited:
+            # query against the database the normal way
+            self.querydb()
 
-        # queries against the database
-        self.querydb()
+        elif limited:
+            # query against the database, but only for that one probe code
+            probe_code = limited[0]
+            self.querydb_limited(probe_code)
 
         # od is the 'obtained dictionary'. it is blank before the query. 
         self.od = {}

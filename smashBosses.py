@@ -7,13 +7,12 @@ import yaml
 import numpy as np
 import itertools
 import smashControls
-
-
+import argparse
 
 class ProbeBoss(object):
+    """ The smashBosses are responsible for conducting specific data queries, such as generating probe-specific outputs """
 
     def __init__(self, attribute, server):
-        
         """ initialize the boss with a configuration file and an attribute"""
 
         # limits is the config
@@ -60,7 +59,7 @@ class ProbeBoss(object):
 
 
     def iterate_over_many_config(self, *args):
-        """ walks over the limits file and creates worker, who then goes and gets the data for each and writes it, args is the possible config 2 file"""
+        """ walks over the limits file and creates for each a worker, who then goes and gets the data for each and writes it to a single csv output"""
         
         import smashWorkers
 
@@ -89,3 +88,7 @@ class ProbeBoss(object):
                     writer.writerow(row)
 
                 del myWorker
+
+if __name__ == __main__():
+
+    pass

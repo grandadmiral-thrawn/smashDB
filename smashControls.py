@@ -10,8 +10,7 @@ import smashWorkers
 
              
 class Worker(object):
-
-    ''' Workers do the methods specific to each attribute'''
+    ''' The smash controls "Workers" are responsible for using the attribute arguement to get the correct data from the servers. They can also generate a header, if desired. '''
 
     def __init__(self, attribute, startdate, enddate, server, *args):
 
@@ -53,18 +52,3 @@ class Worker(object):
 
         else:
             pass
-
-
-        
-class Boss(Worker):
-    ''' Boss controls which attributes should be computed'''
-
-    def __init__(self):
-        # limits file contains
-        limits = yaml.load(open('LIMITED.yaml','rb'))
-
-        super(Boss, self).__init__(attribute)
-
-class Subscriber(object):
-
-    ''' Subscriber controls how outputs should be processed'''
