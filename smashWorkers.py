@@ -317,7 +317,7 @@ class AirTemperature(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -380,11 +380,16 @@ class AirTemperature(object):
         
         my_new_rows = []
 
-        # iterate over the returns, getting each probe code
+        # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
 
             # get the site code and the method code from that probe code
-            site_code, method_code = self.whichsite(probe_code, args[0])
+
+            if args:
+                site_code, method_code = self.whichsite(probe_code, args[0])
+            else:
+                site_code, method_code = self.whichsite(probe_code)
+
             height = self.heightcalc(probe_code)
 
             # iterate over each of the dates
@@ -425,7 +430,7 @@ class AirTemperature(object):
                     daily_flag = 'E'
 
                 # because we are counting things which are not A, we don't need to deal with the case of "F". 
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
@@ -462,22 +467,26 @@ class AirTemperature(object):
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
                 
-                try:
+                if mean_valid_obs is not "None":
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except ValueError:
+                else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                    if mean_valid_obs is "None":
+                        max_flag = ["M"]
+                    
                     else:
-                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                        print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
 
 
                 # get the min of those observations - not including missing, questionable, or estimated ones
-                try: 
+                try:
+
                     min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
-                except ValueError:
+                
+                except Exception:
+
                     if mean_valid_obs == "None":
                         min_valid_obs = "None"
                     else:
@@ -487,6 +496,7 @@ class AirTemperature(object):
                 try:
                 
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                
                 except ValueError:
                     if mean_valid_obs == "None":
                         min_valid_time = "None"
@@ -494,37 +504,44 @@ class AirTemperature(object):
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
                 # get the flag on the minimum
-                try: 
+                if mean_valid_obs is not "None":
+
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                    
                 
-                except ValueError:
+                else:
+                    print "mean valid obs is none"
+                    
                     if mean_valid_obs == "None":
-                        min_flag = "M"
+                        min_flag = ["M"]
+                    
                     else:
                         print("error in minimum flagging for %s on %s") %(probe_code, each_date)
 
 
                 # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
+                
                 try:
-                    if min_flag == "": 
-                        min_flag[0] = "A"
+                    if min_flag[0].strip() == "": 
+                        min_flag = ["A"]
                     else:
                         pass
+
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        min_flag[0] = "M"
+                        min_flag = "M"
 
                 try: 
-                    if max_flag =="":
-                        max_flag[0] = "A"
+                    if max_flag[0].strip() =="":
+                        max_flag = ["A"]
                     else:
                         pass
                 
                 except IndexError:
-                    # the minimum flag may not come out if all the values are missing... 
+                    # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                        max_flag = ["M"]
 
                 if mean_valid_obs == "None":
                     daily_flag == "M"
@@ -690,7 +707,7 @@ class RelHum(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -746,43 +763,45 @@ class RelHum(object):
         return od
 
     def condense_data(self, *args):
-        """ check the date range, do stats and flagging. It can take 1 extra input, which is a special configuration file to over write the previous probe codes"""
+        """ check the date range, do stats and flagging
+        the bulk of the action happens here. If an additional arguement is given, it is a new configuration file which is designed to map other method codes onto the probe codes. We pass it into the static function "which stand" from here, as this is actually the iterator which runs over the date-stamped dictionary. output is stored in a list of lists, each sub-list is a row that can be written to a csv or hopefully into a sql statement later!
+        """
         
         my_new_rows = []
 
-        # iterate over the returns, getting each probe code
+        # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
 
-            # get the site code and the method code from that probe code - if args are passed inclue them, also!
+            # get the site code and the method code from that probe code
 
             if args:
                 site_code, method_code = self.whichsite(probe_code, args[0])
             else:
                 site_code, method_code = self.whichsite(probe_code)
-                
+
             height = self.heightcalc(probe_code)
 
             # iterate over each of the dates
             for each_date in sorted(self.od[probe_code].keys()):
 
-                # get the number of valid observations
+                # get the number of valid observations - these are observations which are numbers that aren't none
                 num_valid_obs = len([x for x in self.od[probe_code][each_date]['val'] if x != 'None'])
-
                 # there may be the case that all the numbers are none, and in this case, we want to know about it, but keep on going through that day
                 if num_valid_obs == 0:
                     print("there are only null values on %s for %s") %(each_date, probe_code)
 
-
-                  # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
+                
+                # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 print "the number of total obs is %s" %(num_total_obs)
-                
-                # if it's not a total of observations on that day that we would expect, then print this - and also break if that's not the case
-                if num_total_obs not in [288, 96, 24] and each_date != self.startdate: 
-                    
+
+                # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
+                if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
+
+                    # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
                     break
-                
+
                 else:
                     pass
 
@@ -790,7 +809,7 @@ class RelHum(object):
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'E'])
-
+            
                 # daily flag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs/num_total_obs >= 0.2:
                     daily_flag = 'M'
@@ -798,20 +817,21 @@ class RelHum(object):
                     daily_flag = 'Q'
                 elif (num_estimated_obs)/num_total_obs >= 0.05:
                     daily_flag = 'E'
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+
+                # because we are counting things which are not A, we don't need to deal with the case of "F". 
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
 
-
                 # take the mean of the daily observations - not including the missing, questionable, or estimated ones
-                try: 
+                try:
                     mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None'])/num_valid_obs),3)
-
+                
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
                     mean_valid_obs = "None"
-                    
+
                 # get the max of those observations
                 try:
                     max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
@@ -835,80 +855,95 @@ class RelHum(object):
                         max_valid_time = "None"
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
-
-                try: 
+                
+                if mean_valid_obs is not "None":
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except ValueError:
+                else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                    if mean_valid_obs is "None":
+                        max_flag = ["M"]
+                    
                     else:
-                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                        print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
 
+
+                # get the min of those observations - not including missing, questionable, or estimated ones
                 try:
-                    # get the min of those observations - not including missing, questionable, or estimated ones
-                    min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
 
-                except ValueError:
+                    min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+                
+                except Exception:
+
                     if mean_valid_obs == "None":
                         min_valid_obs = "None"
                     else:
                         print("error in min_valid_obs for %s on %s") %(probe_code, each_date)
 
+                # get the time of that minimum - conrolled by the minimum value for flags
                 try:
-                    # get the time of that minimum - conrolled by the minimum value for flags
+                
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                
                 except ValueError:
                     if mean_valid_obs == "None":
                         min_valid_time = "None"
                     else:
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
-                try:
-                    # get the time of that minimum
+                # get the flag on the minimum
+                if mean_valid_obs is not "None":
+
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
-                except ValueError:
+                    
+                
+                else:
+                    print "mean valid obs is none"
+                    
                     if mean_valid_obs == "None":
-                        min_flag = "M"
+                        min_flag = ["M"]
+                    
                     else:
                         print("error in minimum flagging for %s on %s") %(probe_code, each_date)
 
+
+                # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
+                
                 try:
-                    if min_flag == "": 
-                        min_flag[0] = "A"
+                    if min_flag[0].strip() == "": 
+                        min_flag = ["A"]
                     else:
                         pass
 
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        min_flag[0] = "M"
+                        min_flag = "M"
 
                 try: 
-                    if max_flag =="":
-                        max_flag[0] = "A"
+                    if max_flag[0].strip() =="":
+                        max_flag = ["A"]
                     else:
                         pass
-
+                
                 except IndexError:
-                    # the minimum flag may not come out if all the values are missing... 
+                    # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                        max_flag = ["M"]
 
                 if mean_valid_obs == "None":
                     daily_flag == "M"
                 else:
                     pass
 
-                try: 
+                # in the best possible case, we print it out just as it is here: 
+                try:
                     newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "NA"]
-
+                
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", min_valid_obs,"None", min_flag, "NA"]
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, "M", "None", "None","None", "M", "NA"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -1063,7 +1098,7 @@ class DewPoint(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -1119,11 +1154,13 @@ class DewPoint(object):
         return od
 
     def condense_data(self, *args):
-        """ check the date range, do stats and flagging"""
+        """ check the date range, do stats and flagging
+        the bulk of the action happens here. If an additional arguement is given, it is a new configuration file which is designed to map other method codes onto the probe codes. We pass it into the static function "which stand" from here, as this is actually the iterator which runs over the date-stamped dictionary. output is stored in a list of lists, each sub-list is a row that can be written to a csv or hopefully into a sql statement later!
+        """
         
         my_new_rows = []
 
-        # iterate over the returns, getting each probe code
+        # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
 
             # get the site code and the method code from that probe code
@@ -1138,20 +1175,21 @@ class DewPoint(object):
             # iterate over each of the dates
             for each_date in sorted(self.od[probe_code].keys()):
 
-                # get the number of valid observations
+                # get the number of valid observations - these are observations which are numbers that aren't none
                 num_valid_obs = len([x for x in self.od[probe_code][each_date]['val'] if x != 'None'])
-
                 # there may be the case that all the numbers are none, and in this case, we want to know about it, but keep on going through that day
                 if num_valid_obs == 0:
                     print("there are only null values on %s for %s") %(each_date, probe_code)
 
-                # get the number of obs
+                
+                # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 print "the number of total obs is %s" %(num_total_obs)
-                
 
-                # if it's not a total of observations on that day that we would expect, then print this
+                # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
+
+                    # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
                     break
 
@@ -1162,7 +1200,7 @@ class DewPoint(object):
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'E'])
-
+            
                 # daily flag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs/num_total_obs >= 0.2:
                     daily_flag = 'M'
@@ -1170,22 +1208,25 @@ class DewPoint(object):
                     daily_flag = 'Q'
                 elif (num_estimated_obs)/num_total_obs >= 0.05:
                     daily_flag = 'E'
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+
+                # because we are counting things which are not A, we don't need to deal with the case of "F". 
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
 
                 # take the mean of the daily observations - not including the missing, questionable, or estimated ones
-                try: 
+                try:
                     mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None'])/num_valid_obs),3)
-
+                
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
                     mean_valid_obs = "None"
 
                 # get the max of those observations
-                try: 
+                try:
                     max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+
                 except ValueError:
                     # check to see if the whole day was missing, if so, set it to none
                     if mean_valid_obs == "None":
@@ -1194,7 +1235,6 @@ class DewPoint(object):
                         print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
                 try:
-                
                     # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
@@ -1206,22 +1246,27 @@ class DewPoint(object):
                         max_valid_time = "None"
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
-
-                # get the flag of that maximum - which again, is controlled via the max_valid_obs
-                try:
+                
+                if mean_valid_obs is not "None":
+                    # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except ValueError:
+                else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                    if mean_valid_obs is "None":
+                        max_flag = ["M"]
+                    
                     else:
-                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                        print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
+
 
                 # get the min of those observations - not including missing, questionable, or estimated ones
-                try: 
+                try:
+
                     min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
-                except ValueError:
+                
+                except Exception:
+
                     if mean_valid_obs == "None":
                         min_valid_obs = "None"
                     else:
@@ -1231,54 +1276,65 @@ class DewPoint(object):
                 try:
                 
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                
                 except ValueError:
                     if mean_valid_obs == "None":
                         min_valid_time = "None"
                     else:
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
-                # get the time of that minimum
-                try: 
+                # get the flag on the minimum
+                if mean_valid_obs is not "None":
+
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                    
                 
-                except ValueError:
+                else:
+                    print "mean valid obs is none"
+                    
                     if mean_valid_obs == "None":
-                        min_flag = "M"
+                        min_flag = ["M"]
+                    
                     else:
                         print("error in minimum flagging for %s on %s") %(probe_code, each_date)
 
+
+                # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
+                
                 try:
-                    if min_flag == "": 
-                        min_flag[0] = "A"
+                    if min_flag[0].strip() == "": 
+                        min_flag = ["A"]
                     else:
                         pass
 
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        min_flag[0] = "M"
+                        min_flag = "M"
 
                 try: 
-                    if max_flag =="":
-                        max_flag[0] = "A"
+                    if max_flag[0].strip() =="":
+                        max_flag = ["A"]
                     else:
                         pass
-
+                
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                        max_flag = ["M"]
 
                 if mean_valid_obs == "None":
                     daily_flag == "M"
                 else:
                     pass
 
+                # in the best possible case, we print it out just as it is here: 
                 try:
                     newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "NA"]
-
+                
+                # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", min_valid_obs,"None", min_flag, "NA"]
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, "None", "M", "None", "None","None", "M", "NA"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -1434,7 +1490,7 @@ class VPD(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code,method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -1493,9 +1549,10 @@ class VPD(object):
         """ check the date range, do stats and flagging
         the bulk of the action happens here. If an additional arguement is given, it is a new configuration file which is designed to map other method codes onto the probe codes. We pass it into the static function "which stand" from here, as this is actually the iterator which runs over the date-stamped dictionary. output is stored in a list of lists, each sub-list is a row that can be written to a csv or hopefully into a sql statement later!
         """
+        
         my_new_rows = []
 
-        # iterate over the returns, getting each probe code
+        # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
 
             # get the site code and the method code from that probe code
@@ -1510,21 +1567,21 @@ class VPD(object):
             # iterate over each of the dates
             for each_date in sorted(self.od[probe_code].keys()):
 
-                # get the number of valid observations
+                # get the number of valid observations - these are observations which are numbers that aren't none
                 num_valid_obs = len([x for x in self.od[probe_code][each_date]['val'] if x != 'None'])
-
                 # there may be the case that all the numbers are none, and in this case, we want to know about it, but keep on going through that day
                 if num_valid_obs == 0:
                     print("there are only null values on %s for %s") %(each_date, probe_code)
 
-
-                # get the number of obs
+                
+                # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 print "the number of total obs is %s" %(num_total_obs)
-               
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
+
+                    # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
                     break
 
@@ -1535,7 +1592,7 @@ class VPD(object):
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'E'])
-
+            
                 # daily flag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs/num_total_obs >= 0.2:
                     daily_flag = 'M'
@@ -1543,7 +1600,9 @@ class VPD(object):
                     daily_flag = 'Q'
                 elif (num_estimated_obs)/num_total_obs >= 0.05:
                     daily_flag = 'E'
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+
+                # because we are counting things which are not A, we don't need to deal with the case of "F". 
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
@@ -1551,6 +1610,7 @@ class VPD(object):
                 # take the mean of the daily observations - not including the missing, questionable, or estimated ones
                 try:
                     mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None'])/num_valid_obs),3)
+                
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
                     mean_valid_obs = "None"
@@ -1558,6 +1618,7 @@ class VPD(object):
                 # get the max of those observations
                 try:
                     max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+
                 except ValueError:
                     # check to see if the whole day was missing, if so, set it to none
                     if mean_valid_obs == "None":
@@ -1566,7 +1627,6 @@ class VPD(object):
                         print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
                 try:
-                
                     # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
@@ -1578,69 +1638,82 @@ class VPD(object):
                         max_valid_time = "None"
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
-
-                try:
+                
+                if mean_valid_obs is not "None":
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except ValueError:
+                else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                    if mean_valid_obs is "None":
+                        max_flag = ["M"]
+                    
                     else:
-                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                        print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
 
 
                 # get the min of those observations - not including missing, questionable, or estimated ones
                 try:
-                    min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
 
-                except ValueError:
+                    min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+                
+                except Exception:
+
                     if mean_valid_obs == "None":
                         min_valid_obs = "None"
                     else:
                         print("error in min_valid_obs for %s on %s") %(probe_code, each_date)
 
                 # get the time of that minimum - conrolled by the minimum value for flags
-                try: 
+                try:
+                
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                
                 except ValueError:
                     if mean_valid_obs == "None":
                         min_valid_time = "None"
                     else:
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
-                # get the time of that minimum
-                try: 
+                # get the flag on the minimum
+                if mean_valid_obs is not "None":
+
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                    
                 
-                except ValueError:
+                else:
+                    print "mean valid obs is none"
+                    
                     if mean_valid_obs == "None":
-                        min_flag = "M"
+                        min_flag = ["M"]
+                    
                     else:
                         print("error in minimum flagging for %s on %s") %(probe_code, each_date)
 
+
                 # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
+                
                 try:
-                    if min_flag == "": 
-                        min_flag[0] = "A"
+                    if min_flag[0].strip() == "": 
+                        min_flag = ["A"]
                     else:
                         pass
+
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        min_flag[0] = "M"
+                        min_flag = "M"
 
                 try: 
-                    if max_flag =="":
-                        max_flag[0] = "A"
+                    if max_flag[0].strip() =="":
+                        max_flag = ["A"]
                     else:
                         pass
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                        max_flag = ["M"]
 
                 if mean_valid_obs == "None":
                     daily_flag == "M"
@@ -1653,7 +1726,7 @@ class VPD(object):
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", min_valid_obs,"None", min_flag, "NA"]
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, "None", "M", "None", "None","None", "M", "NA"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -1796,7 +1869,7 @@ class PhotosyntheticRad(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -1855,9 +1928,10 @@ class PhotosyntheticRad(object):
         """ check the date range, do stats and flagging
         the bulk of the action happens here. If an additional arguement is given, it is a new configuration file which is designed to map other method codes onto the probe codes. We pass it into the static function "which stand" from here, as this is actually the iterator which runs over the date-stamped dictionary. output is stored in a list of lists, each sub-list is a row that can be written to a csv or hopefully into a sql statement later!
         """
+        
         my_new_rows = []
 
-        # iterate over the returns, getting each probe code
+        # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
 
             # get the site code and the method code from that probe code
@@ -1872,21 +1946,21 @@ class PhotosyntheticRad(object):
             # iterate over each of the dates
             for each_date in sorted(self.od[probe_code].keys()):
 
-                # get the number of valid observations
+                # get the number of valid observations - these are observations which are numbers that aren't none
                 num_valid_obs = len([x for x in self.od[probe_code][each_date]['val'] if x != 'None'])
-
                 # there may be the case that all the numbers are none, and in this case, we want to know about it, but keep on going through that day
                 if num_valid_obs == 0:
                     print("there are only null values on %s for %s") %(each_date, probe_code)
 
-
-                # get the number of obs
+                
+                # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 print "the number of total obs is %s" %(num_total_obs)
-               
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
+
+                    # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
                     break
 
@@ -1897,7 +1971,7 @@ class PhotosyntheticRad(object):
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'E'])
-
+            
                 # daily flag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs/num_total_obs >= 0.2:
                     daily_flag = 'M'
@@ -1905,7 +1979,9 @@ class PhotosyntheticRad(object):
                     daily_flag = 'Q'
                 elif (num_estimated_obs)/num_total_obs >= 0.05:
                     daily_flag = 'E'
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+
+                # because we are counting things which are not A, we don't need to deal with the case of "F". 
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
@@ -1913,6 +1989,7 @@ class PhotosyntheticRad(object):
                 # take the mean of the daily observations - not including the missing, questionable, or estimated ones
                 try:
                     mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None'])/num_valid_obs),3)
+                
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
                     mean_valid_obs = "None"
@@ -1920,6 +1997,7 @@ class PhotosyntheticRad(object):
                 # get the max of those observations
                 try:
                     max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+
                 except ValueError:
                     # check to see if the whole day was missing, if so, set it to none
                     if mean_valid_obs == "None":
@@ -1928,7 +2006,6 @@ class PhotosyntheticRad(object):
                         print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
                 try:
-                
                     # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
@@ -1940,29 +2017,30 @@ class PhotosyntheticRad(object):
                         max_valid_time = "None"
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
-
-                try:
+                
+                if mean_valid_obs is not "None":
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except ValueError:
+                else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                    if mean_valid_obs is "None":
+                        max_flag = ["M"]
+                    
                     else:
-                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                        print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
 
 
                 try: 
-                    if max_flag =="":
-                        max_flag[0] = "A"
+                    if max_flag[0].strip() =="":
+                        max_flag = ["A"]
                     else:
                         pass
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                        max_flag = ["M"]
 
                 if mean_valid_obs == "None":
                     daily_flag == "M"
@@ -1975,7 +2053,7 @@ class PhotosyntheticRad(object):
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", "NA"]
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, "None", "M", "None", "NA"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -2035,7 +2113,7 @@ class SoilTemperature(object):
 
         elif self.server == "STEWARTIA":
 
-            query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04331 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
 
         self.cursor.execute(query)
 
@@ -2056,7 +2134,7 @@ class SoilTemperature(object):
             query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from LTERLogger_new.dbo.MS04331 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
-            query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04331 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
         
         self.cursor.execute(query)
 
@@ -2128,7 +2206,7 @@ class SoilTemperature(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -2184,11 +2262,13 @@ class SoilTemperature(object):
         return od
 
     def condense_data(self, *args):
-        """ check the date range, do stats and flagging"""
+        """ check the date range, do stats and flagging
+        the bulk of the action happens here. If an additional arguement is given, it is a new configuration file which is designed to map other method codes onto the probe codes. We pass it into the static function "which stand" from here, as this is actually the iterator which runs over the date-stamped dictionary. output is stored in a list of lists, each sub-list is a row that can be written to a csv or hopefully into a sql statement later!
+        """
         
         my_new_rows = []
 
-        # iterate over the returns, getting each probe code
+        # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
 
             # get the site code and the method code from that probe code
@@ -2203,13 +2283,13 @@ class SoilTemperature(object):
             # iterate over each of the dates
             for each_date in sorted(self.od[probe_code].keys()):
 
-                # get the number of valid observations
+                # get the number of valid observations - these are observations which are numbers that aren't none
                 num_valid_obs = len([x for x in self.od[probe_code][each_date]['val'] if x != 'None'])
-
                 # there may be the case that all the numbers are none, and in this case, we want to know about it, but keep on going through that day
                 if num_valid_obs == 0:
                     print("there are only null values on %s for %s") %(each_date, probe_code)
 
+                
                 # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 print "the number of total obs is %s" %(num_total_obs)
@@ -2228,7 +2308,7 @@ class SoilTemperature(object):
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'E'])
-
+            
                 # daily flag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs/num_total_obs >= 0.2:
                     daily_flag = 'M'
@@ -2236,7 +2316,9 @@ class SoilTemperature(object):
                     daily_flag = 'Q'
                 elif (num_estimated_obs)/num_total_obs >= 0.05:
                     daily_flag = 'E'
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+
+                # because we are counting things which are not A, we don't need to deal with the case of "F". 
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
@@ -2260,9 +2342,7 @@ class SoilTemperature(object):
                     else:
                         print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
-
                 try:
-                
                     # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
@@ -2274,32 +2354,37 @@ class SoilTemperature(object):
                         max_valid_time = "None"
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
-
-                 try:
+                
+                if mean_valid_obs is not "None":
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except ValueError:
+                else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                    if mean_valid_obs is "None":
+                        max_flag = ["M"]
+                    
                     else:
-                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                        print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
+
 
                 # get the min of those observations - not including missing, questionable, or estimated ones
-                try: 
+                try:
+
                     min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
-                except ValueError:
+                
+                except Exception:
+
                     if mean_valid_obs == "None":
                         min_valid_obs = "None"
                     else:
                         print("error in min_valid_obs for %s on %s") %(probe_code, each_date)
 
-
                 # get the time of that minimum - conrolled by the minimum value for flags
                 try:
                 
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                
                 except ValueError:
                     if mean_valid_obs == "None":
                         min_valid_time = "None"
@@ -2307,36 +2392,44 @@ class SoilTemperature(object):
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
                 # get the flag on the minimum
-                try: 
+                if mean_valid_obs is not "None":
+
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                    
                 
-                except ValueError:
+                else:
+                    print "mean valid obs is none"
+                    
                     if mean_valid_obs == "None":
-                        min_flag = "M"
+                        min_flag = ["M"]
+                    
                     else:
                         print("error in minimum flagging for %s on %s") %(probe_code, each_date)
 
-# final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
+
+                # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
+                
                 try:
-                    if min_flag == "": 
-                        min_flag[0] = "A"
+                    if min_flag[0].strip() == "": 
+                        min_flag = ["A"]
                     else:
                         pass
+
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        min_flag[0] = "M"
+                        min_flag = "M"
 
                 try: 
-                    if max_flag =="":
-                        max_flag[0] = "A"
+                    if max_flag[0].strip() =="":
+                        max_flag = ["A"]
                     else:
                         pass
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                        max_flag = ["M"]
 
                 if mean_valid_obs == "None":
                     daily_flag == "M"
@@ -2359,7 +2452,7 @@ class SoilTemperature(object):
 
 class SoilWaterContent(object):
 
-     """ For generating MS04323 from LTERLoggers_new or from STEWARTIA
+    """ For generating MS04323 from LTERLoggers_new or from STEWARTIA
     Takes start date and end date as date strings, server is either SHELDON or STEWARTIA
     If a final argument is passed it is a probe-code which can be used to limit how many data
     are run through the tool. 
@@ -2504,7 +2597,7 @@ class SoilWaterContent(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code,method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -2616,7 +2709,7 @@ class SoilWaterContent(object):
                     daily_flag = 'E'
 
                 # because we are counting things which are not A, we don't need to deal with the case of "F". 
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
@@ -2653,22 +2746,26 @@ class SoilWaterContent(object):
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
                 
-                try:
+                if mean_valid_obs is not "None":
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except ValueError:
+                else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                    if mean_valid_obs is "None":
+                        max_flag = ["M"]
+                    
                     else:
-                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                        print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
 
 
                 # get the min of those observations - not including missing, questionable, or estimated ones
-                try: 
+                try:
+
                     min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
-                except ValueError:
+                
+                except Exception:
+
                     if mean_valid_obs == "None":
                         min_valid_obs = "None"
                     else:
@@ -2678,6 +2775,7 @@ class SoilWaterContent(object):
                 try:
                 
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                
                 except ValueError:
                     if mean_valid_obs == "None":
                         min_valid_time = "None"
@@ -2685,37 +2783,44 @@ class SoilWaterContent(object):
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
                 # get the flag on the minimum
-                try: 
+                if mean_valid_obs is not "None":
+
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                    
                 
-                except ValueError:
+                else:
+                    print "mean valid obs is none"
+                    
                     if mean_valid_obs == "None":
-                        min_flag = "M"
+                        min_flag = ["M"]
+                    
                     else:
                         print("error in minimum flagging for %s on %s") %(probe_code, each_date)
 
 
                 # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
+                
                 try:
-                    if min_flag == "": 
-                        min_flag[0] = "A"
+                    if min_flag[0].strip() == "": 
+                        min_flag = ["A"]
                     else:
                         pass
+
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        min_flag[0] = "M"
+                        min_flag = "M"
 
                 try: 
-                    if max_flag =="":
-                        max_flag[0] = "A"
+                    if max_flag[0].strip() =="":
+                        max_flag = ["A"]
                     else:
                         pass
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == "None":
-                        max_flag[0] = "M"
+                        max_flag = ["M"]
 
                 if mean_valid_obs == "None":
                     daily_flag == "M"
@@ -2723,12 +2828,13 @@ class SoilWaterContent(object):
                     pass
 
                 # in the best possible case, we print it out just as it is here: 
+
                 try:
                     newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "NA"]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", min_valid_obs,"None", min_flag, "NA"]
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, "None", "M", "None", "None","None", "M", "NA"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -2872,7 +2978,7 @@ class Precipitation(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -2927,7 +3033,7 @@ class Precipitation(object):
         
         return od
 
-    def condense_data(self):
+    def condense_data(self, *args):
         """ check the date range, do stats and flagging
         the bulk of the action happens here. If an additional arguement is given, it is a new configuration file which is designed to map other method codes onto the probe codes. We pass it into the static function "which stand" from here, as this is actually the iterator which runs over the date-stamped dictionary. output is stored in a list of lists, each sub-list is a row that can be written to a csv or hopefully into a sql statement later!
         """
@@ -2985,7 +3091,7 @@ class Precipitation(object):
                     daily_flag = 'E'
 
                 # because we are counting things which are not A, we don't need to deal with the case of "F". 
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
@@ -2999,7 +3105,7 @@ class Precipitation(object):
                     daily_flag = "M"
 
                 
-                newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "EVENT_CODE"]
+                newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -3118,7 +3224,7 @@ class SnowLysimeter(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -3173,7 +3279,7 @@ class SnowLysimeter(object):
         
         return od
 
-    def condense_data(self):
+    def condense_data(self, *args):
         """ check the date range, do stats and flagging
         the bulk of the action happens here. If an additional arguement is given, it is a new configuration file which is designed to map other method codes onto the probe codes. We pass it into the static function "which stand" from here, as this is actually the iterator which runs over the date-stamped dictionary. output is stored in a list of lists, each sub-list is a row that can be written to a csv or hopefully into a sql statement later!
         """
@@ -3230,7 +3336,7 @@ class SnowLysimeter(object):
                     daily_flag = 'E'
 
                 # because we are counting things which are not A, we don't need to deal with the case of "F". 
-                elif (num_estimated_obs + num_missing_obs + num_questionable_obs) <= 0.05:
+                elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
                     daily_flag = 'A'
                 else:
                     daily_flag = 'Q'
@@ -3244,7 +3350,7 @@ class SnowLysimeter(object):
                     daily_flag = "M"
 
                 
-                newrow = ['MS043',self.entity, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "EVENT_CODE"]
+                newrow = ['MS043',self.entity, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -3252,37 +3358,72 @@ class SnowLysimeter(object):
         return my_new_rows
 
 class Solar(object):
+    """ computes Solar Radiation from Sheldon or Stewartia, NOT the net radiometer version!"""
 
-    def __init__(self, startdate, enddate, *args):
+    def __init__(self, startdate, enddate, server, *limited):
 
         import form_connection as fc
 
-        if not args:
-            self.cursor = fc.form_connection("SHELDON")
-
-        elif args:
-            self.cursor = fc.form_connection(args[0])
+        # the server is either "SHELDON" or "STEWARTIA"
+        self.cursor = fc.form_connection(server)
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '05'
+        self.server = server
+        
+        if not limited:
+            # query against the database the normal way
+            self.querydb()
 
-        # queries against the database
-        self.querydb()
+        elif limited:
+            # query against the database, but only for that one probe code
+            probe_code = limited[0]
+            self.querydb_limited(probe_code)
 
         # od is the 'obtained dictionary'. it is blank before the query. 
         self.od = {}
         self.od = self.attack_data()
 
     def querydb(self):
-        """ queries against the database"""
+        """ queries the data base and returns the cursor after population- the date start will include all the day, the date end will NOT include that final day. Can take time as either a python date object or as a date string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from LTERLogger_new.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from FSDBDATA.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+
+        self.cursor.execute(query)
+
+    def querydb_limited(self, probe_code):
+        """ queries the data base, limited to certain probes, use in special cases. can take date as either a python date object or as a date-string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
             
-        startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
-        enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
-
-
-        query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from LTERLogger_new.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
-
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from LTERLogger_new.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+        
+        elif self.server == "STEWARTIA":
+            query = "SELECT ATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from FSDBDATA.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+        
         self.cursor.execute(query)
 
 
@@ -3306,7 +3447,7 @@ class Solar(object):
         return height
 
     @staticmethod
-    def whichsite(probe_code):
+    def whichsite(probe_code, *args):
         """ match the probe code to the site and method code """
 
         import yaml
@@ -3340,7 +3481,7 @@ class Solar(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -3392,7 +3533,7 @@ class Solar(object):
         
         return od
 
-    def condense_data(self):
+    def condense_data(self, *args):
         """ check the date range, do stats and flagging"""
         
         my_new_rows = []
@@ -3401,7 +3542,12 @@ class Solar(object):
         for probe_code in self.od.keys():
 
             # get the site code and the method code from that probe code
-            site_code, method_code = self.whichsite(probe_code)
+
+            if args:
+                site_code, method_code = self.whichsite(probe_code, args[0])
+            else:
+                site_code, method_code = self.whichsite(probe_code)
+
             height = self.heightcalc(probe_code)
 
             # iterate over each of the dates
@@ -3410,14 +3556,23 @@ class Solar(object):
                 # get the number of valid observations
                 num_valid_obs_tot = len([x for x in self.od[probe_code][each_date]['tot_val'] if x != 'None'])
                 num_valid_obs_mean = len([x for x in self.od[probe_code][each_date]['mean_val'] if x != 'None'])
+
+                if num_valid_obs_tot == 0:
+                    print("There are only null values on %s for %s on the SOLAR TOTAL") %(each_date, probe_code)
+
+                if num_valid_obs_mean == 0:
+                    print("There are only null values on %s for %s on the SOLAR MEAN") %(each_date, probe_code)
+
                 # get the number of obs
                 num_total_obs_tot = len(self.od[probe_code][each_date]['tot_val'])
                 num_total_obs_mean = len(self.od[probe_code][each_date]['mean_val'])
                 
 
-                # if it's not a total of observations on that day that we would expect, then print this
-                if num_total_obs_tot != 288 or num_total_obs_tot != 24 or num_total_obs_tot != 96: 
+                # if it's not a total of observations on that day that we would expect, then print this-- we expect that since this is counting up the rows, it shouldn't matter which it gets!
+                if num_total_obs_tot not in [288, 96, 24] and each_date != self.startdate: 
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs_tot)
+                    break
+
                 else:
                     pass
 
@@ -3439,7 +3594,7 @@ class Solar(object):
                     daily_flag_tot = 'Q'
                 elif (num_estimated_obs_tot)/num_total_obs_tot >= 0.05:
                     daily_flag_tot = 'E'
-                elif (num_estimated_obs_tot + num_missing_obs_tot + num_questionable_obs_tot) <= 0.05:
+                elif (num_estimated_obs_tot + num_missing_obs_tot + num_questionable_obs_tot)/num_total_obs <= 0.05:
                     daily_flag_tot = 'A'
                 else:
                     daily_flag_tot = 'Q'
@@ -3451,42 +3606,477 @@ class Solar(object):
                     daily_flag_mean = 'Q'
                 elif (num_estimated_obs_mean)/num_total_obs_mean >= 0.05:
                     daily_flag_mean = 'E'
-                elif (num_estimated_obs_mean + num_missing_obs_mean + num_questionable_obs_mean) <= 0.05:
+                elif (num_estimated_obs_mean + num_missing_obs_mean + num_questionable_obs_mean)/num_total_obs <= 0.05:
                     daily_flag_mean = 'A'
                 else:
                     daily_flag_mean = 'Q'
 
-                # compute the total of the daily observations of total - not including the missing, questionable, or estimated ones
-                total_valid_obs = round(sum([float(x) for x in self.od[probe_code][each_date]['tot_val'] if x != 'None']),3)
+                # compute the mean of the daily observations of mean - not including the missing, questionable, or estimated ones -- do the mean first so you can do it to tag the total if it's bad
+                
+                try:
+
+                    mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['mean_val'] if x != 'None'])/num_valid_obs_mean),3)
+
+                except ZeroDivisionError:
+                    # if the whole day is missing, then the mean_valid_obs is None
+                    mean_valid_obs = "None"
 
 
-                # compute the mean of the daily observations of mean - not including the missing, questionable, or estimated ones
-                mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['mean_val'] if x != 'None'])/num_valid_obs_mean),3)
+                # compute the total of the daily observations of total - not including the missing, questionable, or estimated ones - use the mean to tag if it's bad
 
+                if mean_valid_obs != "None":
+                
+                    total_valid_obs = round(sum([float(x) for x in self.od[probe_code][each_date]['tot_val'] if x != 'None']),3)
 
-                # get the max of those observations (means)
-                max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['mean_val'] if x != 'None']),3)
+                else:
+                    # if there's no mean there's no total, either
+                    total_valid_obs = "None"
+                
+                    
+                # get the max of those observations
+                try:
+                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['mean_val'] if x != 'None']),3)
+
+                except ValueError:
+                    # check to see if the whole day was missing, if so, set it to none
+                    if mean_valid_obs == "None":
+                        max_valid_obs = "None"
+                    else:
+                        print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
                 try:
-                
                     # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['mean_val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
+                except ValueError:
+                    # check to see if the the whole day was missing, if so, set it to none
+                    # *** something I was testing, : for index,j in enumerate(self.od[probe_code][each_date]['val']):
+                    #    print index, j ****
+                    if mean_valid_obs == "None":
+                        max_valid_time = "None"
+                    else: 
+                        print "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                
+                if mean_valid_obs is not "None":
+                    # get the flag of that maximum - which again, is controlled via the max_valid_obs
+                    max_flag = [self.od[probe_code][each_date]['mean_fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['mean_val']) if j != "None" and round(float(j),3) == max_valid_obs]
+
+                else:
+                    # check to see if the whole day was missing, if so, set to "M"
+                    if mean_valid_obs is "None":
+                        max_flag = ["M"]
+                    
+                    else:
+                        print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
+
+                try:
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), "NA"]
+                
                 except Exception:
 
-                    for index,j in enumerate(self.od[probe_code][each_date]['mean_val']):
-                        print index, j
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), "None", "M", "None", "M", "None", "M", "None", "None", "NA"]
 
-                # get the flag of that maximum - which again, is controlled via the max_valid_obs
-                max_flag = [self.od[probe_code][each_date]['mean_fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['mean_val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                # no minimum is computed
-                if max_flag[0] =="":
-                    max_flag[0] = "A"
+                print newrow
+                my_new_rows.append(newrow)
+    
+        return my_new_rows
+
+class NetRadiometer(object):
+
+    """ computes Solar Radiation from Sheldon or Stewartia, THIS IS THE NET RADIOMETER!!"""
+
+    def __init__(self, startdate, enddate, server, *limited):
+
+        import form_connection as fc
+
+        # the server is either "SHELDON" or "STEWARTIA"
+        self.cursor = fc.form_connection(server)
+
+        self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
+        self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
+        self.entity = '25'
+        self.server = server
+        
+        if not limited:
+            # query against the database the normal way
+            self.querydb()
+
+        elif limited:
+            # query against the database, but only for that one probe code
+            probe_code = limited[0]
+            self.querydb_limited(probe_code)
+
+        # od is the 'obtained dictionary'. it is blank before the query. 
+        self.od = {}
+        self.od = self.attack_data()
+
+    def querydb(self):
+        """ queries the data base and returns the cursor after population- the date start will include all the day, the date end will NOT include that final day. Can take time as either a python date object or as a date string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from LTERLogger_new.dbo.MS04335 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+        
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from FSDBDATA.dbo.MS04335 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+
+        self.cursor.execute(query)
+
+    def querydb_limited(self, probe_code):
+        """ queries the data base, limited to certain probes, use in special cases. can take date as either a python date object or as a date-string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+            
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from LTERLogger_new.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+        
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from FSDBDATA.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+        
+        self.cursor.execute(query)
+
+    @staticmethod
+    def heightcalc(probe_code):
+        """ determines the height for the pyranometers!"""
+
+        height = "600"
+
+        return height
+
+    @staticmethod
+    def whichsite(probe_code, *args):
+        """ match the probe code to the site and method code """
+
+        import yaml
+
+        if not args: 
+            with open('CONFIG.yaml','rb') as readfile:
+                cfg = yaml.load(readfile)
+
+        elif args:
+            with open(args[0], 'rb') as readfile:
+                cfg = yaml.load(readfile)
+
+        else:
+            pass
+
+        if probe_code in cfg['cenmet'].keys():
+            site_code = 'CENMET'
+            method_code = cfg['cenmet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['primet'].keys():
+            site_code = "PRIMET"
+            method_code = cfg['primet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['vanmet'].keys():
+            site_code = 'VANMET'
+            method_code = cfg['vanmet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['varmet'].keys():
+            site_code = 'VARMET'
+            method_code = cfg['varmet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['uplmet'].keys():
+            site_code = 'UPLMET'
+            method_code = cfg['uplmet'][probe_code]
+            return site_code, method_code
+    
+        else:
+            # reference stand id
+            site_code = "RS" + probe_code[3:5]
+            method_code = "RAD999"
+            return site_code, method_code
+
+    def attack_data(self):
+        """ gather the daily net radiometer data """
+        
+        # obtained dictionary dictionary
+        od = {}
+
+        for row in self.cursor:
+
+            # get only the day
+            
+            dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+            dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
+            probe_code = str(row[1])
+
+            if probe_code not in od:
+                # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
+                od[probe_code] = {dt:{'swin_val': [str(row[2])], 'swin_fval': [str(row[3])], 'swout_val': [str(row[4])], 'swout_fval': [str(row[5])], 'lwin_val': [str(row[6])], 'lwin_fval': [str(row[7])], 'lwout_val': [str(row[8])], 'lwout_fval': [str(row[8])], 'nr_val': [str(row[9])], 'nr_fval': [str(row[10])], 'temp_val': [str(row[11])], 'temp_fval': [str(row[12])],'timekeep':[dt_old]}}
+
+            elif probe_code in od:
+                
+                if dt not in od[probe_code]:
+                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
+                    od[probe_code][dt] = {'swin_val': [str(row[2])], 'swin_fval': [str(row[3])], 'swout_val': [str(row[4])], 'swout_fval': [str(row[5])], 'lwin_val': [str(row[6])], 'lwin_fval': [str(row[7])], 'lwout_val': [str(row[8])], 'lwout_fval': [str(row[9])], 'nr_val': [str(row[10])], 'nr_fval': [str(row[11])], 'temp_val': [str(row[12])], 'temp_fval': [str(row[13])],'timekeep':[dt_old]}}
+
+                elif dt in od[probe_code]:
+                    # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
+                    od[probe_code][dt]['swin_val'].append(str(row[2]))
+                    od[probe_code][dt]['swin_fval'].append(str(row[3]))
+                    od[probe_code][dt]['swout_val'].append(str(row[4]))
+                    od[probe_code][dt]['swout_fval'].append(str(row[5]))
+                    od[probe_code][dt]['lwin_val'].append(str(row[6]))
+                    od[probe_code][dt]['lwin_fval'].append(str(row[7]))
+                    od[probe_code][dt]['lwout_val'].append(str(row[8]))
+                    od[probe_code][dt]['lwout_fval'].append(str(row[9]))
+                    od[probe_code][dt]['nr_val'].append(str(row[10]))
+                    od[probe_code][dt]['nr_fval'].append(str(row[11]))
+                    od[probe_code][dt]['temp_val'].append(str(row[12]))
+                    od[probe_code][dt]['temp_fval'].append(str(row[13]))
+                    od[probe_code][dt]['timekeep'].append(dt_old)
+
+                else:
+                    pass
+            else:
+                pass
+        
+        return od
+
+    def condense_data(self, *args):
+        """ check the date range, do stats and flagging"""
+        
+        my_new_rows = []
+
+        # iterate over the returns, getting each probe code
+        for probe_code in self.od.keys():
+
+            # get the site code and the method code from that probe code
+
+            if args:
+                site_code, method_code = self.whichsite(probe_code, args[0])
+            else:
+                site_code, method_code = self.whichsite(probe_code)
+
+            height = self.heightcalc(probe_code)
+
+            # iterate over each of the dates
+            for each_date in sorted(self.od[probe_code].keys()):
+
+                # get the number of valid observations
+                num_valid_obs_swin = len([x for x in self.od[probe_code][each_date]['swin_val'] if x != 'None'])
+                num_valid_obs_swout = len([x for x in self.od[probe_code][each_date]['swout_val'] if x != 'None'])
+                num_valid_obs_lwin = len([x for x in self.od[probe_code][each_date]['lwin_val'] if x != 'None'])
+                num_valid_obs_lwout = len([x for x in self.od[probe_code][each_date]['lwout_val'] if x != 'None'])
+                num_valid_obs_nr = len([x for x in self.od[probe_code][each_date]['nr_val'] if x != 'None'])
+                num_valid_obs_temp = len([x for x in self.od[probe_code][each_date]['temp_val'] if x != 'None'])
+
+                if num_valid_obs_swin == 0:
+                    print("There are only null values on %s for %s on the SWIN") %(each_date, probe_code)
+
+                if num_valid_obs_swout == 0:
+                    print("There are only null values on %s for %s on the SWOUT") %(each_date, probe_code)
+
+                if num_valid_obs_lwin == 0:
+                    print("There are only null values on %s for %s on the LWIN") %(each_date, probe_code)
+
+                if num_valid_obs_lwout == 0:
+                    print("There are only null values on %s for %s on the LWOUT") %(each_date, probe_code)
+
+                if num_valid_obs_nr == 0:
+                    print("There are only null values on %s for %s on the NR") %(each_date, probe_code)
+
+                if num_valid_obs_temp == 0:
+                    print("There are only null values on %s for %s on the TEMP") %(each_date, probe_code)
+
+                # get the number of obs - not sure if maybe it won't be the same for all? i think it will but just in case - this is just counting the day, actually, so it doesn't really matter which one we pull
+                num_total_obs = len(self.od[probe_code][each_date]['swin_val'])
+                
+
+                # if it's not a total of observations on that day that we would expect, then print this-- we expect that since this is counting up the rows, it shouldn't matter which it gets!
+                if num_total_obs not in [288, 96, 24] and each_date != self.startdate: 
+                    
+                    print("the total number of observations on %s is %s") %(each_date, num_total_obs)
+                    break
+
                 else:
                     pass
 
-                newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), "EVENT_CODE"]
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily sw in
+                num_missing_obs_swin = len([x for x in self.od[probe_code][each_date]['swin_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_swin = len([x for x in self.od[probe_code][each_date]['swin_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_swin = len([x for x in self.od[probe_code][each_date]['swin_fval'] if x == 'E'])
+
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily sw out
+                num_missing_obs_swout = len([x for x in self.od[probe_code][each_date]['swout_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_swout = len([x for x in self.od[probe_code][each_date]['swout_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_swout = len([x for x in self.od[probe_code][each_date]['swout_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily lw in
+                num_missing_obs_lwin= len([x for x in self.od[probe_code][each_date]['lwin_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_lwin = len([x for x in self.od[probe_code][each_date]['lwin_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_lwin = len([x for x in self.od[probe_code][each_date]['lwin_fval'] if x == 'E'])
+
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily lw out
+                num_missing_obs_lwout = len([x for x in self.od[probe_code][each_date]['lwout_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_lwout = len([x for x in self.od[probe_code][each_date]['lwout_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_lwout = len([x for x in self.od[probe_code][each_date]['lwout_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily net radiometer
+                num_missing_obs_nr = len([x for x in self.od[probe_code][each_date]['nr_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_nr = len([x for x in self.od[probe_code][each_date]['nr_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_nr = len([x for x in self.od[probe_code][each_date]['nr_fval'] if x == 'E'])
+
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily temperature
+                num_missing_obs_temp = len([x for x in self.od[probe_code][each_date]['temp_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_temp = len([x for x in self.od[probe_code][each_date]['temp_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_temp = len([x for x in self.od[probe_code][each_date]['temp_fval'] if x == 'E'])
+
+                # daily flag, total: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_swin/num_total_obs >= 0.2:
+                    daily_flag_swin = 'M'
+                elif (num_missing_obs_swin + num_questionable_obs_swin)/num_total_obs >= 0.05:
+                    daily_flag_swin = 'Q'
+                elif (num_estimated_obs_swin)/num_total_obs >= 0.05:
+                    daily_flag_swin = 'E'
+                elif (num_estimated_obs_swin + num_missing_obs_swin + num_questionable_obs_swin)/num_total_obs <= 0.05:
+                    daily_flag_swin = 'A'
+                else:
+                    daily_flag_swin = 'Q'
+
+                # daily flag, mean: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_swout/num_total_obs >= 0.2:
+                    daily_flag_swout = 'M'
+                elif (num_missing_obs_swout + num_questionable_obs_swout)/num_total_obs > 0.05:
+                    daily_flag_swout = 'Q'
+                elif (num_estimated_obs_swout)/num_total_obs > 0.05:
+                    daily_flag_swout = 'E'
+                elif (num_estimated_obs_swout + num_missing_obs_swout + num_questionable_obs_swout)/num_total_obs <= 0.05:
+                    daily_flag_swout = 'A'
+                else:
+                    daily_flag_swout = 'Q'
+
+                # daily flag, total: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_lwin/num_total_obs >= 0.2:
+                    daily_flag_lwin = 'M'
+                elif (num_missing_obs_lwin + num_questionable_obs_lwin)/num_total_obs > 0.05:
+                    daily_flag_lwin = 'Q'
+                elif (num_estimated_obs_lwin)/num_total_obs > 0.05:
+                    daily_flag_lwin = 'E'
+                elif (num_estimated_obs_lwin + num_missing_obs_lwin + num_questionable_obs_lwin)/num_total_obs <= 0.05:
+                    daily_flag_lwin = 'A'
+                else:
+                    daily_flag_lwin = 'Q'
+
+                # daily flag, mean: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_lwout/num_total_obs >= 0.2:
+                    daily_flag_lwout = 'M'
+                elif (num_missing_obs_lwout + num_questionable_obs_lwout)/num_total_obs > 0.05:
+                    daily_flag_lwout = 'Q'
+                elif (num_estimated_obs_lwout)/num_total_obs > 0.05:
+                    daily_flag_lwout = 'E'
+                elif (num_estimated_obs_lwout + num_missing_obs_lwout + num_questionable_obs_lwout)/num_total_obs <= 0.05:
+                    daily_flag_lwout = 'A'
+                else:
+                    daily_flag_lwout = 'Q'
+
+
+                # daily flag, total: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_nr/num_total_obs >= 0.2:
+                    daily_flag_nr = 'M'
+                elif (num_missing_obs_nr + num_questionable_obs_nr)/num_total_obs > 0.05:
+                    daily_flag_nr = 'Q'
+                elif (num_estimated_obs_nr)/num_total_obs > 0.05:
+                    daily_flag_nr = 'E'
+                elif (num_estimated_obs_nr + num_missing_obs_nr + num_questionable_obs_nr)/num_total_obs <= 0.05:
+                    daily_flag_nr = 'A'
+                else:
+                    daily_flag_nr = 'Q'
+
+                # daily flag, mean: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_temp/num_total_obs >= 0.2:
+                    daily_flag_temp = 'M'
+                elif (num_missing_obs_temp + num_questionable_obs_temp)/num_total_obs > 0.05:
+                    daily_flag_temp = 'Q'
+                elif (num_estimated_obs_temp)/num_total_obs > 0.05:
+                    daily_flag_temp = 'E'
+                elif (num_estimated_obs_temp + num_missing_obs_temp + num_questionable_obs_temp)/num_total_obs <= 0.05:
+                    daily_flag_temp = 'A'
+                else:
+                    daily_flag_temp = 'Q'
+                
+
+                # compute the mean of the daily observations of mean - not including the missing, questionable, or estimated ones -- do the mean first so you can do it to tag the total if it's bad
+                
+                try:
+                    mean_swin = round(float(sum([float(x) for x in self.od[probe_code][each_date]['swin_val'] if x != 'None'])/num_valid_obs_swin),3)
+
+                except ZeroDivisionError:
+                    # if the whole day is missing, then the mean is None
+                    mean_swin = "None"
+
+                try:
+                    mean_swout = round(float(sum([float(x) for x in self.od[probe_code][each_date]['swout_val'] if x != 'None'])/num_valid_obs_swout),3)
+
+                except ZeroDivisionError:
+                    # if the whole day is missing, then the mean is None
+                    mean_swout = "None"
+
+                try:
+                    mean_lwin = round(float(sum([float(x) for x in self.od[probe_code][each_date]['lwin_val'] if x != 'None'])/num_valid_obs_lwin),3)
+
+                except ZeroDivisionError:
+                    # if the whole day is missing, then the mean is None
+                    mean_lwin = "None"
+
+                try:
+                    mean_lwout = round(float(sum([float(x) for x in self.od[probe_code][each_date]['lwout_val'] if x != 'None'])/num_valid_obs_lwout),3)
+
+                except ZeroDivisionError:
+                    # if the whole day is missing, then the mean  is None
+                    mean_lwout = "None"
+
+                try:
+                    mean_nr = round(float(sum([float(x) for x in self.od[probe_code][each_date]['nr_val'] if x != 'None'])/num_valid_obs_nr),3)
+
+                except ZeroDivisionError:
+                    # if the whole day is missing, then the mean  is None
+                    mean_nr = "None"
+
+
+                try:
+                    mean_temp = round(float(sum([float(x) for x in self.od[probe_code][each_date]['temp_val'] if x != 'None'])/num_valid_obs_temp),3)
+
+                except ZeroDivisionError:
+                    # if the whole day is missing, then the mean  is None
+                    mean_temp = "None"
+
+
+
+                try:
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA"]
+                
+                except Exception:
+                    # which might happen if a day is just missing
+
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), "None", "M", "None", "M", "None", "M", "None", "M", "None", "M", "None","M", "NA"]
+
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -3495,42 +4085,77 @@ class Solar(object):
 
 class Wind(object):
 
-    def __init__(self, startdate, enddate, *args):
+    def __init__(self, startdate, enddate, server, *limited):
 
         import form_connection as fc
 
-        if not args:
-            self.cursor = fc.form_connection("SHELDON")
-
-        elif args:
-            self.cursor = fc.form_connection(args[0])
+        # the server is either "SHELDON" or "STEWARTIA"
+        self.cursor = fc.form_connection(server)
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
         self.entity = '04'
+        self.server = server
+        
+        if not limited:
+            # query against the database the normal way
+            self.querydb()
 
-        # queries against the database
-        self.querydb()
+        elif limited:
+            # query against the database, but only for that one probe code
+            probe_code = limited[0]
+            self.querydb_limited(probe_code)
 
         # od is the 'obtained dictionary'. it is blank before the query. 
         self.od = {}
         self.od = self.attack_data()
 
     def querydb(self):
-        """ queries against the database"""
+        """ queries the data base and returns the cursor after population- the date start will include all the day, the date end will NOT include that final day. Can take time as either a python date object or as a date string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG from LTERLogger_new.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG from FSDBDATA.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+
+        self.cursor.execute(query)
+
+
+    def querydb_limited(self, probe_code):
+        """ queries the data base, limited to certain probes, use in special cases. can take date as either a python date object or as a date-string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
             
-        startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
-        enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
-
-
-        query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG from LTERLogger_new.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
-
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG  from LTERLogger_new.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+        
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG  from FSDBDATA.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+        
         self.cursor.execute(query)
 
 
     @staticmethod
     def heightcalc(probe_code):
-        """ determines the height for the pyranometers!"""
+        """ determines the height for the prop anemometers!"""
 
         stat = probe_code[3:6]
 
@@ -3542,7 +4167,7 @@ class Wind(object):
         return height
 
     @staticmethod
-    def whichsite(probe_code):
+    def whichsite(probe_code, *args):
         """ match the probe code to the site and method code """
         import yaml
 
@@ -3575,7 +4200,7 @@ class Wind(object):
         elif probe_code in cfg['varmet'].keys():
             site_code = 'VARMET'
             method_code = cfg['varmet'][probe_code]
-            return method_code
+            return site_code, method_code
 
         elif probe_code in cfg['uplmet'].keys():
             site_code = 'UPLMET'
@@ -3641,7 +4266,7 @@ class Wind(object):
         
         return od
 
-    def condense_data(self):
+    def condense_data(self, *args):
         """ check the date range, do stats and flagging"""
         
         my_new_rows = []
@@ -3650,7 +4275,11 @@ class Wind(object):
         for probe_code in self.od.keys():
 
             # get the site code and the method code from that probe code
-            site_code, method_code = self.whichsite(probe_code)
+            if args:
+                site_code, method_code = self.whichsite(probe_code, args[0])
+            else:
+                site_code, method_code = self.whichsite(probe_code)
+            
             height = self.heightcalc(probe_code)
 
             # iterate over each of the dates
@@ -3671,7 +4300,9 @@ class Wind(object):
                 # if it's not a total of observations on that day that we would expect, then print this
                 if num_total_obs_spd not in [288, 96, 24] and each_date != self.startdate: 
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs_spd)
+                    
                     break
+                
                 else:
                     pass
 
@@ -3696,13 +4327,13 @@ class Wind(object):
                 num_estimated_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'E'])
 
                 # daily flag, wind speed-- if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
-                if num_missing_obs_spd/num_spdal_obs_spd >= 0.2:
+                if num_missing_obs_spd/num_total_obs_spd >= 0.2:
                     daily_flag_spd = 'M'
-                elif (num_missing_obs_spd + num_questionable_obs_spd)/num_spdal_obs_spd >= 0.05:
+                elif (num_missing_obs_spd + num_questionable_obs_spd)/num_total_obs_spd > 0.05:
                     daily_flag_spd = 'Q'
-                elif (num_estimated_obs_spd)/num_spdal_obs_spd >= 0.05:
+                elif (num_estimated_obs_spd)/num_total_obs_spd > 0.05:
                     daily_flag_spd = 'E'
-                elif (num_estimated_obs_spd + num_missing_obs_spd + num_questionable_obs_spd) <= 0.05:
+                elif (num_estimated_obs_spd + num_missing_obs_spd + num_questionable_obs_spd)/num_total_obs_spd<= 0.05:
                     daily_flag_spd = 'A'
                 else:
                     daily_flag_spd = 'Q'
@@ -3710,11 +4341,11 @@ class Wind(object):
                 # daily flag, wind mag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs_mag/num_total_obs_mag >= 0.2:
                     daily_flag_mag = 'M'
-                elif (num_missing_obs_mag + num_questionable_obs_mag)/num_total_obs_mag >= 0.05:
+                elif (num_missing_obs_mag + num_questionable_obs_mag)/num_total_obs_mag > 0.05:
                     daily_flag_mag = 'Q'
-                elif (num_estimated_obs_mag)/num_total_obs_mag >= 0.05:
+                elif (num_estimated_obs_mag)/num_total_obs_mag > 0.05:
                     daily_flag_mag = 'E'
-                elif (num_estimated_obs_mag + num_missing_obs_mag + num_questionable_obs_mag) <= 0.05:
+                elif (num_estimated_obs_mag + num_missing_obs_mag + num_questionable_obs_mag)/num_total_obs_mag <= 0.05:
                     daily_flag_mag = 'A'
                 else:
                     daily_flag_mag = 'Q'
@@ -3723,11 +4354,11 @@ class Wind(object):
                 # daily flag, wind dir: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs_dir/num_total_obs_dir >= 0.2:
                     daily_flag_dir = 'M'
-                elif (num_missing_obs_dir + num_questionable_obs_dir)/num_total_obs_dir >= 0.05:
+                elif (num_missing_obs_dir + num_questionable_obs_dir)/num_total_obs_dir > 0.05:
                     daily_flag_dir = 'Q'
-                elif (num_estimated_obs_dir)/num_total_obs_dir >= 0.05:
+                elif (num_estimated_obs_dir)/num_total_obs_dir > 0.05:
                     daily_flag_dir = 'E'
-                elif (num_estimated_obs_dir + num_missing_obs_dir + num_questionable_obs_dir) <= 0.05:
+                elif (num_estimated_obs_dir + num_missing_obs_dir + num_questionable_obs_dir)/num_total_obs_dir <= 0.05:
                     daily_flag_dir = 'A'
                 else:
                     daily_flag_dir = 'Q'
@@ -3735,18 +4366,28 @@ class Wind(object):
                 # daily flag, wind dir std: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs_dirstd/num_total_obs_dirstd >= 0.2:
                     daily_flag_dirstd = 'M'
-                elif (num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dirstd >= 0.05:
+                elif (num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dirstd > 0.05:
                     daily_flag_dirstd = 'Q'
-                elif (num_estimated_obs_dirstd)/num_total_obs_dirstd >= 0.05:
+                elif (num_estimated_obs_dirstd)/num_total_obs_dirstd > 0.05:
                     daily_flag_dirstd = 'E'
-                elif (num_estimated_obs_dirstd + num_missing_obs_dirstd + num_questionable_obs_dirstd) <= 0.05:
+                elif (num_estimated_obs_dirstd + num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dirstd <= 0.05:
                     daily_flag_dirstd = 'A'
                 else:
                     daily_flag_dirstd = 'Q'
 
-                # compute the mean daily wind speed -- just the mean of what is given...
-                daily_spd_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['spd_val'] if x != 'None'])/num_valid_obs_spd),3)
+                try: 
+                    # compute the mean daily wind speed -- just the mean of what is given...
+                    daily_spd_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['spd_val'] if x != 'None'])/num_valid_obs_spd),3)
 
+                except ZeroDivisionError:
+                    # if the case is that there are no valid observations
+                    daily_spd_valid_obs = "None"
+                    
+                    # magnitude and speed are therefore also M
+                    daily_flag_spd = "M"
+                    
+
+                if num_valid_obs_spd != 0:
                 # compute the daily resultant--- this one is a true joy.
                 
                 ## This is a working example using [2, 2, 2, 4, 4] for speed and [10, 10, 10, 350, 10] for direction:
@@ -3755,43 +4396,52 @@ class Wind(object):
                 # math.sqrt(daily_mag_y_part + daily_mag_x_part)
                 # >> Returns: 2.7653239207215683
 
-                daily_mag_y_part = (sum([speed * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'], self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2  
+                    daily_mag_y_part = (sum([speed * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'], self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2  
 
-                daily_mag_x_part = (sum([speed * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'],self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2 
+                    daily_mag_x_part = (sum([speed * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'],self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2 
 
-                daily_mag_results = sqrt(daily_mag_y_part + daily_mag_x_part)
+                    daily_mag_results = math.sqrt(daily_mag_y_part + daily_mag_x_part)
 
-                # compute the mean of the daily observations of degrees-- must be done with RADIANS - not including the missing, questionable, or estimated ones
-                daily_dir_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+                    # compute the mean of the daily observations of degrees-- must be done with RADIANS - not including the missing, questionable, or estimated ones
+                    daily_dir_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
 
-                # compute the standard deviation of the daily wind directions -- yamartino method:
-                # see this: http://en.wikipedia.org/wiki/Yamartino_method for details
+                    # compute the standard deviation of the daily wind directions -- yamartino method:
+                    # see this: http://en.wikipedia.org/wiki/Yamartino_method for details
 
-                daily_epsilon = math.sqrt(1-((sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2 + (sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2))
+                    daily_epsilon = math.sqrt(1-((sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2 + (sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2))
 
-                daily_sigma_theta = math.asin((1+(2./math.sqrt(3))-1)*daily_epsilon)
+                    daily_sigma_theta = math.asin((1+(2./math.sqrt(3))-1)*daily_epsilon)
 
-                # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+                    # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
 
-                # get the max of those observations (mean speed)
-                max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['spd_val'] if x != 'None']),3)
+                    # get the max of those observations (mean speed)
+                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['spd_val'] if x != 'None']),3)
 
-                try:
+                elif num_valid_obs_spd == 0:
+                    max_valid_obs = "None"
+                    daily_sigma_theta = "None"
+                    daily_dir_valid_obs = "None"
+                    daily_mag_results = "None"
+
+                else:
+                    pass
+
+                if num_valid_obs_spd != 0:
                 
                     # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['spd_val']) if j != "None" and round(float(j),3) == max_valid_obs]
+                    
+                    # get the flag of that maximum - which again, is controlled via the max_valid_obs
+                    max_flag = [self.od[probe_code][each_date]['spd_fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['spd_val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except Exception:
 
-                    for index,j in enumerate(self.od[probe_code][each_date]['mean_val']):
-                        print index, j
+                else: 
+                    max_valid_time = None
+                    max_flag = ["M"]
 
-                # get the flag of that maximum - which again, is controlled via the max_valid_obs
-                max_flag = [self.od[probe_code][each_date]['spd_fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['spd_val']) if j != "None" and round(float(j),3) == max_valid_obs]
-
-                # no minimum is computed
+                # If no flag has been assigned
                 if max_flag[0] =="":
-                    max_flag[0] = "A"
+                    max_flag = ["A"]
                 else:
                     pass
 
@@ -3801,6 +4451,551 @@ class Wind(object):
                 my_new_rows.append(newrow)
     
         return my_new_rows
+
+class Sonic(object):
+
+    def __init__(self, startdate, enddate, server, *limited):
+
+        import form_connection as fc
+
+        # the server is either "SHELDON" or "STEWARTIA"
+        self.cursor = fc.form_connection(server)
+
+        self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
+        self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
+        self.entity = '24'
+        self.server = server
+        
+        if not limited:
+            # query against the database the normal way
+            self.querydb()
+
+        elif limited:
+            # query against the database, but only for that one probe code
+            probe_code = limited[0]
+            self.querydb_limited(probe_code)
+
+        # od is the 'obtained dictionary'. it is blank before the query. 
+        self.od = {}
+        self.od = self.attack_data()
+
+    def querydb(self):
+        """ queries the data base and returns the cursor after population- the date start will include all the day, the date end will NOT include that final day. Can take time as either a python date object or as a date string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG from LTERLogger_new.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+        
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG from FSDBDATA.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+
+        self.cursor.execute(query)
+
+
+    def querydb_limited(self, probe_code):
+        """ queries the data base, limited to certain probes, use in special cases. can take date as either a python date object or as a date-string"""
+
+        if type(self.startdate) is datetime.datetime:
+            startdate = datetime.datetime.strftime(self.startdate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+
+        if type(self.enddate) is datetime.datetime:
+            enddate = datetime.datetime.strftime(self.enddate,'%Y-%m-%d %H:%M:%S')
+        else:
+            pass
+            
+        if self.server == "SHELDON":
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG  from LTERLogger_new.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+        
+        elif self.server == "STEWARTIA":
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG  from FSDBDATA.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+        
+        self.cursor.execute(query)
+
+
+    @staticmethod
+    def heightcalc(probe_code):
+        """ determines the height for the prop anemometers!"""
+
+        height = "1000"
+
+        return height
+
+    @staticmethod
+    def whichsite(probe_code, *args):
+        """ match the probe code to the site and method code """
+        import yaml
+
+        if not args: 
+            with open('CONFIG.yaml','rb') as readfile:
+                cfg = yaml.load(readfile)
+
+        elif args:
+            with open(args[0], 'rb') as readfile:
+                cfg = yaml.load(readfile)
+
+        else:
+            pass
+
+        if probe_code in cfg['cenmet'].keys():
+            site_code = 'CENMET'
+            method_code = cfg['cenmet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['primet'].keys():
+            site_code = "PRIMET"
+            method_code = cfg['primet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['vanmet'].keys():
+            site_code = 'VANMET'
+            method_code = cfg['vanmet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['varmet'].keys():
+            site_code = 'VARMET'
+            method_code = cfg['varmet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['uplmet'].keys():
+            site_code = 'UPLMET'
+            method_code = cfg['uplmet'][probe_code]
+            return site_code, method_code
+
+        elif probe_code in cfg['cs2met'].keys():
+            site_code = 'CS2MET'
+            method_code = cfg['cs2met'][probe_code]
+            return site_code, method_code
+        
+        elif probe_code in cfg['h15met'].keys():
+            site_code = 'H15MET'
+            method_code = cfg['h15met'][probe_code]
+            return site_code, method_code
+        
+        else:
+            # reference stand id
+            site_code = "RS" + probe_code[3:5]
+            method_code = "WND999"
+            return site_code, method_code
+
+    def attack_data(self):
+        """ gather the daily wind (propellor) data """
+        
+        # obtained dictionary dictionary
+        od = {}
+
+        for row in self.cursor:
+
+            # get only the day
+            
+            dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+            dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
+            probe_code = str(row[1])
+
+            if probe_code not in od:
+                # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
+                od[probe_code] = {dt:{'snc_mean_val': [str(row[2])], 'snc_mean_fval': [str(row[3])], 'snc_max_val': [str(row[4])], 'snc_max_fval': [str(row[5])], 'dir_val': [str(row[6])], 'dir_fval': [str(row[7])], 'dirstd_val': [str(row[8])], 'dirstd_fval': [str(row[9])], 'wux_val': [str(row[10])], 'wux_fval': [str(row[11])], 'wux_std_val': [str(row[12])], 'wux_std_fval': [str(row[13])], 'wuy_val': [str(row[14])], 'wuy_fval': [str(row[15])], 'wuy_std_val': [str(row[16])], 'wuy_std_fval': [str(row[17])], 'wair_val': [str(row[18])], 'wair_fval': [str(row[19])], 'wair_std_val': [str(row[20])], 'wair_std_fval': [str(row[21])], 'timekeep':[dt_old]}}
+
+            elif probe_code in od:
+                
+                if dt not in od[probe_code]:
+                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
+                    od[probe_code][dt] = {'snc_mean_val': [str(row[2])], 'snc_mean_fval': [str(row[3])], 'snc_max_val': [str(row[4])], 'snc_max_fval': [str(row[5])], 'dir_val': [str(row[6])], 'dir_fval': [str(row[7])], 'dirstd_val': [str(row[8])], 'dirstd_fval': [str(row[9])], 'wux_val': [str(row[10])], 'wux_fval': [str(row[11])], 'wux_std_val': [str(row[12])], 'wux_std_fval': [str(row[13])], 'wuy_val': [str(row[14])], 'wuy_fval': [str(row[15])], 'wuy_std_val': [str(row[16])], 'wuy_std_fval': [str(row[17])], 'wair_val': [str(row[18])], 'wair_fval': [str(row[19])], 'wair_std_val': [str(row[20])], 'wair_std_fval': [str(row[21])], 'timekeep':[dt_old]}
+
+                elif dt in od[probe_code]:
+                    # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
+                    od[probe_code][dt]['snc_mean_val'].append(str(row[2]))
+                    od[probe_code][dt]['snc_mean_fval'].append(str(row[3]))
+                    od[probe_code][dt]['snc_max_val'].append(str(row[4]))
+                    od[probe_code][dt]['snc_max_fval'].append(str(row[5]))
+                    od[probe_code][dt]['dir_val'].append(str(row[6]))
+                    od[probe_code][dt]['dir_fval'].append(str(row[7]))
+                    od[probe_code][dt]['dirstd_val'].append(str(row[8]))
+                    od[probe_code][dt]['dirstd_fval'].append(str(row[9]))
+                    od[probe_code][dt]['wux_val'].append(str(row[10]))
+                    od[probe_code][dt]['wux_fval'].append(str(row[11]))
+                    od[probe_code][dt]['wux_std_val'].append(str(row[12]))
+                    od[probe_code][dt]['wux_std_fval'].append(str(row[13]))
+                    od[probe_code][dt]['wuy_val'].append(str(row[14]))
+                    od[probe_code][dt]['wuy_fval'].append(str(row[15]))
+                    od[probe_code][dt]['wuy_std_val'].append(str(row[16]))
+                    od[probe_code][dt]['wuy_std_fval'].append(str(row[17]))
+                    od[probe_code][dt]['wair_val'].append(str(row[18]))
+                    od[probe_code][dt]['wair_fval'].append(str(row[19]))
+                    od[probe_code][dt]['wair_std_val'].append(str(row[20]))
+                    od[probe_code][dt]['wair_std_fval'].append(str(row[21]))
+                    od[probe_code][dt]['timekeep'].append(dt_old)
+
+                else:
+                    pass
+            else:
+                pass
+        
+        return od
+
+    def condense_data(self, *args):
+        """ check the date range, do stats and flagging"""
+        
+        my_new_rows = []
+
+        # iterate over the returns, getting each probe code
+        for probe_code in self.od.keys():
+
+            # get the site code and the method code from that probe code
+            if args:
+                site_code, method_code = self.whichsite(probe_code, args[0])
+            else:
+                site_code, method_code = self.whichsite(probe_code)
+            
+            height = self.heightcalc(probe_code)
+
+            # iterate over each of the dates
+            for each_date in sorted(self.od[probe_code].keys()):
+
+                # get the number of valid observations
+                num_valid_obs = len([x for x in self.od[probe_code][each_date]['snc_mean_val'] if x != 'None'])
+                num_valid_obs_max = len([x for x in self.od[probe_code][each_date]['snc_max_val'] if x != 'None'])
+                num_valid_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])
+                num_valid_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_val'] if x != 'None'])
+
+                # wux
+                num_valid_obs_wux = len([x for x in self.od[probe_code][each_date]['wux_val'] if x != 'None'])
+                num_valid_obs_wuxstd = len([x for x in self.od[probe_code][each_date]['wux_std_val'] if x != 'None'])
+                # wuy
+                num_valid_obs_wuy = len([x for x in self.od[probe_code][each_date]['wuy_val'] if x != 'None'])
+                num_valid_obs_wuystd = len([x for x in self.od[probe_code][each_date]['wuy_std_val'] if x != 'None'])
+                # wair
+                num_valid_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_val'] if x != 'None'])
+                num_valid_obs_wairstd = len([x for x in self.od[probe_code][each_date]['wair_std_val'] if x != 'None'])
+
+                # get the number of obs - only need one of these
+                num_total_obs = len(self.od[probe_code][each_date]['snc_mean_val'])
+                
+                # if it's not a total of observations on that day that we would expect, then print this
+                if num_total_obs not in [288, 96, 24] and each_date != self.startdate: 
+                    print("the total number of observations on %s is %s") %(each_date, num_total_obs_spd)
+                    
+                    break
+                
+                else:
+                    pass
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_snc_mean = len([x for x in self.od[probe_code][each_date]['snc_mean_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_snc_mean = len([x for x in self.od[probe_code][each_date]['snc_mean_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_snc_mean = len([x for x in self.od[probe_code][each_date]['snc_mean_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_snc_max = len([x for x in self.od[probe_code][each_date]['snc_max_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_snc_max = len([x for x in self.od[probe_code][each_date]['snc_max_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_snc_max = len([x for x in self.od[probe_code][each_date]['snc_max_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily dirstd
+                num_missing_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wux = len([x for x in self.od[probe_code][each_date]['wux_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wux = len([x for x in self.od[probe_code][each_date]['wux_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wux = len([x for x in self.od[probe_code][each_date]['wux_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wuy = len([x for x in self.od[probe_code][each_date]['wuy_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wuy = len([x for x in self.od[probe_code][each_date]['wuy_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wuy = len([x for x in self.od[probe_code][each_date]['wuy_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_fval'] if x == 'E'])
+
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wux = len([x for x in self.od[probe_code][each_date]['wux_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wux = len([x for x in self.od[probe_code][each_date]['wux_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wux = len([x for x in self.od[probe_code][each_date]['wux_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wuy = len([x for x in self.od[probe_code][each_date]['wuy_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wuy = len([x for x in self.od[probe_code][each_date]['wuy_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wuy = len([x for x in self.od[probe_code][each_date]['wuy_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_fval'] if x == 'E'])
+
+
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wuxstd = len([x for x in self.od[probe_code][each_date]['wux_std_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wuxstd = len([x for x in self.od[probe_code][each_date]['wux_std_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wuxstd = len([x for x in self.od[probe_code][each_date]['wux_std_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wuystd = len([x for x in self.od[probe_code][each_date]['wuy_std_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wuystd = len([x for x in self.od[probe_code][each_date]['wuy_std_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wuystd = len([x for x in self.od[probe_code][each_date]['wuy_std_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_wairstd = len([x for x in self.od[probe_code][each_date]['wair_std_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_wairstd = len([x for x in self.od[probe_code][each_date]['wair_std_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_wairstd = len([x for x in self.od[probe_code][each_date]['wair_std_fval'] if x == 'E'])
+
+                # daily flag, wind speed-- if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_snc_mean/num_total_obs >= 0.2:
+                    daily_flag_snc_mean = 'M'
+                elif (num_missing_obs_snc_mean + num_questionable_obs_snc_mean)/num_total_obs > 0.05:
+                    daily_flag_snc_mean = 'Q'
+                elif (num_estimated_obs_snc_mean)/num_total_obs > 0.05:
+                    daily_flag_snc_mean = 'E'
+                elif (num_estimated_obs_snc_mean + num_missing_obs_snc_mean + num_questionable_obs_snc_mean)/num_total_obs<= 0.05:
+                    daily_flag_snc_mean = 'A'
+                else:
+                    daily_flag_snc_mean = 'Q'
+
+                # daily flag, wind mag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_snc_max/num_total_obs >= 0.2:
+                    daily_flag_snc_max = 'M'
+                elif (num_missing_obs_snc_max + num_questionable_obs_snc_max)/num_total_obs_snc_max > 0.05:
+                    daily_flag_snc_max = 'Q'
+                elif (num_estimated_obs_snc_max)/num_total_obs_snc_max > 0.05:
+                    daily_flag_snc_max = 'E'
+                elif (num_estimated_obs_snc_max + num_missing_obs_snc_max + num_questionable_obs_snc_max)/num_total_obs <= 0.05:
+                    daily_flag_snc_max = 'A'
+                else:
+                    daily_flag_snc_max = 'Q'
+
+
+                # daily flag, wind dir: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_dir/num_total_obs >= 0.2:
+                    daily_flag_dir = 'M'
+                elif (num_missing_obs_dir + num_questionable_obs_dir)/num_total_obs > 0.05:
+                    daily_flag_dir = 'Q'
+                elif (num_estimated_obs_dir)/num_total_obs > 0.05:
+                    daily_flag_dir = 'E'
+                elif (num_estimated_obs_dir + num_missing_obs_dir + num_questionable_obs_dir)/num_total_obs <= 0.05:
+                    daily_flag_dir = 'A'
+                else:
+                    daily_flag_dir = 'Q'
+
+                # daily flag, wind dir std: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_dirstd/num_total_obs >= 0.2:
+                    daily_flag_dirstd = 'M'
+                elif (num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs > 0.05:
+                    daily_flag_dirstd = 'Q'
+                elif (num_estimated_obs_dirstd)/num_total_obs > 0.05:
+                    daily_flag_dirstd = 'E'
+                elif (num_estimated_obs_dirstd + num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs <= 0.05:
+                    daily_flag_dirstd = 'A'
+                else:
+                    daily_flag_dirstd = 'Q'
+
+                # daily flag, wind dir: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_wux/num_total_obs >= 0.2:
+                    daily_flag_wux = 'M'
+                elif (num_missing_obs_wux + num_questionable_obs_wux)/num_total_obs > 0.05:
+                    daily_flag_wux = 'Q'
+                elif (num_estimated_obs_wux)/num_total_obs > 0.05:
+                    daily_flag_wux = 'E'
+                elif (num_estimated_obs_wux + num_missing_obs_wux + num_questionable_obs_wux)/num_total_obs <= 0.05:
+                    daily_flag_wux = 'A'
+                else:
+                    daily_flag_wux = 'Q'
+
+                # daily flag, wind wux std: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_wuxstd/num_total_obs >= 0.2:
+                    daily_flag_wuxstd = 'M'
+                elif (num_missing_obs_wuxstd + num_questionable_obs_wuxstd)/num_total_obs > 0.05:
+                    daily_flag_wuxstd = 'Q'
+                elif (num_estimated_obs_wuxstd)/num_total_obs > 0.05:
+                    daily_flag_wuxstd = 'E'
+                elif (num_estimated_obs_wuxstd + num_missing_obs_wuxstd + num_questionable_obs_wuxstd)/num_total_obs <= 0.05:
+                    daily_flag_wuxstd = 'A'
+                else:
+                    daily_flag_wuxstd = 'Q'
+
+                # daily flag, wind dir: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_wuy/num_total_obs >= 0.2:
+                    daily_flag_wuy = 'M'
+                elif (num_missing_obs_wuy + num_questionable_obs_wuy)/num_total_obs > 0.05:
+                    daily_flag_wuy = 'Q'
+                elif (num_estimated_obs_wuy)/num_total_obs > 0.05:
+                    daily_flag_wuy = 'E'
+                elif (num_estimated_obs_wuy + num_missing_obs_wuy + num_questionable_obs_wuy)/num_total_obs <= 0.05:
+                    daily_flag_wuy = 'A'
+                else:
+                    daily_flag_wuy = 'Q'
+
+                # daily flag, wind wuy std: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_wuystd/num_total_obs >= 0.2:
+                    daily_flag_wuystd = 'M'
+                elif (num_missing_obs_wuystd + num_questionable_obs_wuystd)/num_total_obs > 0.05:
+                    daily_flag_wuystd = 'Q'
+                elif (num_estimated_obs_wuystd)/num_total_obs > 0.05:
+                    daily_flag_wuystd = 'E'
+                elif (num_estimated_obs_wuystd + num_missing_obs_wuystd + num_questionable_obs_wuystd)/num_total_obs <= 0.05:
+                    daily_flag_wuystd = 'A'
+                else:
+                    daily_flag_wuystd = 'Q'
+
+                # daily flag, wind dir: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_wair/num_total_obs >= 0.2:
+                    daily_flag_wair = 'M'
+                elif (num_missing_obs_wair + num_questionable_obs_wair)/num_total_obs > 0.05:
+                    daily_flag_wair = 'Q'
+                elif (num_estimated_obs_wair)/num_total_obs > 0.05:
+                    daily_flag_wair = 'E'
+                elif (num_estimated_obs_wair + num_missing_obs_wair + num_questionable_obs_wair)/num_total_obs <= 0.05:
+                    daily_flag_wair = 'A'
+                else:
+                    daily_flag_wair = 'Q'
+
+                # daily flag, wind wair std: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_wairstd/num_total_obs >= 0.2:
+                    daily_flag_wairstd = 'M'
+                elif (num_missing_obs_wairstd + num_questionable_obs_wairstd)/num_total_obs > 0.05:
+                    daily_flag_wairstd = 'Q'
+                elif (num_estimated_obs_wairstd)/num_total_obs > 0.05:
+                    daily_flag_wairstd = 'E'
+                elif (num_estimated_obs_wairstd + num_missing_obs_wairstd + num_questionable_obs_wairstd)/num_total_obs <= 0.05:
+                    daily_flag_wairstd = 'A'
+                else:
+                    daily_flag_wairstd = 'Q'
+
+                try: 
+                    # compute the mean daily wind speed -- just the mean of what is given...
+                    daily_snc_mean = round(float(sum([float(x) for x in self.od[probe_code][each_date]['snc_mean_val'] if x != 'None'])/num_valid_obs),3)
+
+                except ZeroDivisionError:
+                    # if the case is that there are no valid observations
+                    daily_snc_mean = "None"
+                    # magnitude and speed are therefore also M
+                    daily_flag_snc_mean = "M"
+
+                try: 
+                    # compute the mean daily max sonic speed? -- just the mean of what is given...
+                    daily_snc_max = round(max(float(sum([float(x) for x in self.od[probe_code][each_date]['snc_max_val'] if x != 'None'])/num_valid_obs_max)),3)
+
+                except ZeroDivisionError:
+                    # if the case is that there are no valid observations
+                    daily_snc_max = "None"
+                    # magnitude and speed are therefore also M
+                    daily_flag_snc_max = "M"
+
+
+                try: 
+                    # compute the mean daily max sonic speed? -- just the mean of what is given...
+                    daily_wux = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wux_val'] if x != 'None'])/num_valid_obs),3)
+
+                except ZeroDivisionError:
+                    # if the case is that there are no valid observations
+                    daily_wux = "None"
+                    # magnitude and speed are therefore also M
+                    daily_flag_wux = "M"
+
+                try: 
+                    # compute the mean daily max sonic speed? -- just the mean of what is given...
+                    daily_wuy = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != 'None'])/num_valid_obs),3)
+
+                except ZeroDivisionError:
+                    # if the case is that there are no valid observations
+                    daily_wuy = "None"
+                    # magnitude and speed are therefore also M
+                    daily_flag_wuy = "M"
+
+
+                try: 
+                    # compute the mean daily max sonic speed? -- just the mean of what is given...
+                    daily_wair = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wair_val'] if x != 'None'])/num_valid_obs),3)
+
+                except ZeroDivisionError:
+                    # if the case is that there are no valid observations
+                    daily_wair = "None"
+                    # magnitude and speed are therefore also M
+                    daily_flag_wair = "M"
+                    
+
+                if num_valid_obs != 0:
+                # compute the daily resultant--- this one is a true joy.
+                
+                ## This is a working example using [2, 2, 2, 4, 4] for speed and [10, 10, 10, 350, 10] for direction:
+                # daily_mag_x_part = (sum([speed * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(speedlist,dirlist) if speed != 'None' and x != 'None'])/5.)**2
+                # daily_mag_y_part = (sum([speed * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(speedlist,dirlist) if speed != 'None' and x != 'None'])/5.)**2
+                # math.sqrt(daily_mag_y_part + daily_mag_x_part)
+                # >> Returns: 2.7653239207215683
+
+                    daily_mag_from_wux = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wux_val'] if x != 'None']))**2,3)
+
+                    daily_mag_from_wuy = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != 'None']))**2,3)
+
+                    daily_snc_mag = math.sqrt(daily_mag_from_wux + daily_mag_from_wuy)
+                    
+                    # flag the mag's... if it's from 2 a's, it's A. If a Q is part or an E is part, it's Q. If an "M" is part, it's M, otherwise it's A.
+                    if daily_flag_wux == "A" and daily_flag_wuy == "A":
+                        daily_flag_snc_mag = "A"
+                    elif daily_flag_wux == "Q" or daily_flag_wuy == "Q":
+                        daily_flag_snc_mag = "Q"
+                    elif daily_flag_wux == "E" or daily_flag_wuy == "E":
+                        daily_flag_snc_mag = "Q"
+                    elif daily_flag_wux == "M" or daily_flag_wuy == "M":
+                        daily_flag_snc_mag = "M"
+                    else:
+                        daily_flag_snc_mag = "A"
+
+
+                    # compute the mean of the daily observations of degrees-- must be done with RADIANS - not including the missing, questionable, or estimated ones
+                    daily_dir_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+
+                    # compute the standard deviation of the daily wind directions -- yamartino method:
+                    # see this: http://en.wikipedia.org/wiki/Yamartino_method for details
+
+                    daily_epsilon = math.sqrt(1-((sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2 + (sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2))
+
+                    daily_sigma_theta = math.asin((1+(2./math.sqrt(3))-1)*daily_epsilon)
+
+                    # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+
+                    # get the max of those observations (mean speed)
+                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['spd_val'] if x != 'None']),3)
+
+                elif num_valid_obs_spd == 0:
+                    daily_snc_mag = "None"
+                    daily_sigma_theta = "None"
+                    daily_dir_valid_obs = "None"
+                    
+
+                else:
+                    pass
+
+                newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_mag_results, daily_flag_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, "EVENT_CODE"]
+
+                print newrow
+                my_new_rows.append(newrow)
+    
+        return my_new_rows
+
 
 if __name__ == "__main__":
 
@@ -3827,146 +5022,7 @@ if __name__ == "__main__":
 
     del A, my_new_rows, AT
 
-    #### HERE IS HOW WE DO RELHUM #####
-
-    R = HeaderWriter('RELHUM')
-    REL = RelHum('2014-05-01 00:00:00', '2014-05-15 00:00:00', 'SHELDON')
-
-    my_new_rows2 = REL.condense_data()
-
-    with open(R.filename,'wb') as writefile2:
-        writer2 = csv.writer(writefile2, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-
-        myHeader = R.write_header_template()
-        print myHeader
-        writer2.writerow(myHeader)
-
-        for row in my_new_rows2:
-            writer2.writerow(row)
-
-    del R, my_new_rows2, REL
-
-    #### HERE IS HOW WE DO DEWPOINT #####
-
-    D = HeaderWriter('DEWPT')
-    DW = DewPoint('2015-03-01 00:00:00', '2015-03-15 00:00:00')
-
-    my_new_rows3 = DW.condense_data()
-
-    with open(D.filename,'wb') as writefile3:
-        writer3 = csv.writer(writefile3, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-
-        myHeader = D.write_header_template()
-        print myHeader
-        writer3.writerow(myHeader)
-
-        for row in my_new_rows3:
-            writer3.writerow(row)
-
-    del D, my_new_rows3, DW
-
-    #### HERE IS HOW WE DO VPD #####
-
-    V = HeaderWriter('VPD')
-    VAP = VPD('2015-03-01 00:00:00', '2015-03-15 00:00:00')
-
-    my_new_rows4 = VAP.condense_data()
-
-    with open(V.filename,'wb') as writefile4:
-        writer4 = csv.writer(writefile4, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-
-        myHeader = V.write_header_template()
-        print myHeader
-        writer4.writerow(myHeader)
-
-        for row in my_new_rows4:
-            writer4.writerow(row)
-
-    del V, my_new_rows4, VAP
-
-    #### HERE IS HOW WE DO SOILTEMP #####
-
-    ST = HeaderWriter('SOILTEMP')
-    STEMP = SoilTemperature('2015-03-01 00:00:00', '2015-03-15 00:00:00')
-
-    my_new_rows5 = STEMP.condense_data()
-
-    with open(ST.filename,'wb') as writefile5:
-        writer5 = csv.writer(writefile5, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-
-        myHeader = ST.write_header_template()
-        print myHeader
-        writer5.writerow(myHeader)
-
-        for row in my_new_rows5:
-            writer5.writerow(row)
-
-    del ST, my_new_rows5, STEMP
-
-    #### HERE IS HOW WE DO SOILWC #####
-
-    SW = HeaderWriter('SOILWC')
-    SWC = SoilWaterContent('2015-03-01 00:00:00', '2015-03-15 00:00:00')
-
-    my_new_rows6 = SWC.condense_data()
-
-    with open(SW.filename,'wb') as writefile6:
-        writer6 = csv.writer(writefile6, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-
-        myHeader = SW.write_header_template()
-        print myHeader
-        writer6.writerow(myHeader)
-
-        for row in my_new_rows6:
-            writer6.writerow(row)
-
-    del SW, my_new_rows6, SWC
-
-
-    #### HERE IS HOW WE DO PRECIP #####
-
-    P = HeaderWriter('PRECIP')
-    PRE = Precipitation('2015-03-01 00:00:00', '2015-03-15 00:00:00')
-
-    my_new_rows7 = PRE.condense_data()
-
-    with open(P.filename,'wb') as writefile7:
-        writer7 = csv.writer(writefile7, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-
-        myHeader = P.write_header_template()
-        print myHeader
-        writer7.writerow(myHeader)
-
-        for row in my_new_rows7:
-            writer7.writerow(row)
-
-    del P, my_new_rows7, PRE
-
-    #### HERE IS HOW WE DO SOLAR #####
-
-    SL = HeaderWriter('SOLAR')
-    SOL = Solar('2015-03-01 00:00:00', '2015-03-15 00:00:00')
-
-    my_new_rows8 = SOL.condense_data()
-
-    with open(SL.filename,'wb') as writefile8:
-        writer8 = csv.writer(writefile8, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-
-        myHeader = SL.write_header_template()
-        print myHeader
-        writer8.writerow(myHeader)
-
-        for row in my_new_rows8:
-            writer8.writerow(row)
-
-    del SL, my_new_rows8, SOL
+    
 
     with open('README.md','wb') as otherwritefile:
         otherwritefile.write(" THIS IS OUR NEW TOOL FOR UPDATING FSDBDATA \r \

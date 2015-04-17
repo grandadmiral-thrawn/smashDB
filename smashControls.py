@@ -51,7 +51,7 @@ class Worker(object):
             self.Worker = smashWorkers.Wind(startdate, enddate, server, *args)
 
         elif self.attribute == "PRECIP":
-            self.Worker = smashWorkers.Precip(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.Precipitation(startdate, enddate, server, *args)
 
         elif self.attribute == "SOLAR":
             self.Worker = smashWorkers.Solar(startdate, enddate, server, *args)
