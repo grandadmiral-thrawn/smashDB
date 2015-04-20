@@ -3,6 +3,8 @@ import pymssql
 import math
 import datetime
 import csv
+import itertools
+import numpy as np
 import yaml
 
 class HeaderWriter(object):
@@ -3594,7 +3596,7 @@ class Solar(object):
                     daily_flag_tot = 'Q'
                 elif (num_estimated_obs_tot)/num_total_obs_tot >= 0.05:
                     daily_flag_tot = 'E'
-                elif (num_estimated_obs_tot + num_missing_obs_tot + num_questionable_obs_tot)/num_total_obs <= 0.05:
+                elif (num_estimated_obs_tot + num_missing_obs_tot + num_questionable_obs_tot)/num_total_obs_tot <= 0.05:
                     daily_flag_tot = 'A'
                 else:
                     daily_flag_tot = 'Q'
@@ -3606,7 +3608,7 @@ class Solar(object):
                     daily_flag_mean = 'Q'
                 elif (num_estimated_obs_mean)/num_total_obs_mean >= 0.05:
                     daily_flag_mean = 'E'
-                elif (num_estimated_obs_mean + num_missing_obs_mean + num_questionable_obs_mean)/num_total_obs <= 0.05:
+                elif (num_estimated_obs_mean + num_missing_obs_mean + num_questionable_obs_mean)/num_total_obs_mean <= 0.05:
                     daily_flag_mean = 'A'
                 else:
                     daily_flag_mean = 'Q'
@@ -3831,7 +3833,7 @@ class NetRadiometer(object):
                 
                 if dt not in od[probe_code]:
                     # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
-                    od[probe_code][dt] = {'swin_val': [str(row[2])], 'swin_fval': [str(row[3])], 'swout_val': [str(row[4])], 'swout_fval': [str(row[5])], 'lwin_val': [str(row[6])], 'lwin_fval': [str(row[7])], 'lwout_val': [str(row[8])], 'lwout_fval': [str(row[9])], 'nr_val': [str(row[10])], 'nr_fval': [str(row[11])], 'temp_val': [str(row[12])], 'temp_fval': [str(row[13])],'timekeep':[dt_old]}}
+                    od[probe_code][dt] = {'swin_val': [str(row[2])], 'swin_fval': [str(row[3])], 'swout_val': [str(row[4])], 'swout_fval': [str(row[5])], 'lwin_val': [str(row[6])], 'lwin_fval': [str(row[7])], 'lwout_val': [str(row[8])], 'lwout_fval': [str(row[9])], 'nr_val': [str(row[10])], 'nr_fval': [str(row[11])], 'temp_val': [str(row[12])], 'temp_fval': [str(row[13])],'timekeep':[dt_old]}
 
                 elif dt in od[probe_code]:
                     # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
@@ -4052,20 +4054,23 @@ class NetRadiometer(object):
                     # if the whole day is missing, then the mean  is None
                     mean_lwout = "None"
 
+
+                # we may need to strip some of these numerics, as they are coming in as empties!
                 try:
-                    mean_nr = round(float(sum([float(x) for x in self.od[probe_code][each_date]['nr_val'] if x != 'None'])/num_valid_obs_nr),3)
+                    mean_nr = round(float(sum([float(x) for x in self.od[probe_code][each_date]['nr_val'] if x != 'None' and x.strip() != ''])/num_valid_obs_nr),3)
 
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean  is None
                     mean_nr = "None"
 
-
+                # we may need to strip some of these numerics, as they are coming in as empties!
                 try:
-                    mean_temp = round(float(sum([float(x) for x in self.od[probe_code][each_date]['temp_val'] if x != 'None'])/num_valid_obs_temp),3)
+                    mean_temp = round(float(sum([float(x) for x in self.od[probe_code][each_date]['temp_val'] if x != 'None' and x.strip() != ''])/num_valid_obs_temp),3)
 
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean  is None
                     mean_temp = "None"
+
 
 
 
@@ -4364,13 +4369,13 @@ class Wind(object):
                     daily_flag_dir = 'Q'
 
                 # daily flag, wind dir std: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
-                if num_missing_obs_dirstd/num_total_obs_dirstd >= 0.2:
+                if num_missing_obs_dirstd/num_total_obs_dir >= 0.2:
                     daily_flag_dirstd = 'M'
-                elif (num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dirstd > 0.05:
+                elif (num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dir > 0.05:
                     daily_flag_dirstd = 'Q'
-                elif (num_estimated_obs_dirstd)/num_total_obs_dirstd > 0.05:
+                elif (num_estimated_obs_dirstd)/num_total_obs_dir > 0.05:
                     daily_flag_dirstd = 'E'
-                elif (num_estimated_obs_dirstd + num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dirstd <= 0.05:
+                elif (num_estimated_obs_dirstd + num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dir <= 0.05:
                     daily_flag_dirstd = 'A'
                 else:
                     daily_flag_dirstd = 'Q'
@@ -4396,9 +4401,9 @@ class Wind(object):
                 # math.sqrt(daily_mag_y_part + daily_mag_x_part)
                 # >> Returns: 2.7653239207215683
 
-                    daily_mag_y_part = (sum([speed * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'], self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2  
+                    daily_mag_y_part = (sum([float(speed) * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'], self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2  
 
-                    daily_mag_x_part = (sum([speed * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'],self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2 
+                    daily_mag_x_part = (sum([float(speed) * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'],self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2 
 
                     daily_mag_results = math.sqrt(daily_mag_y_part + daily_mag_x_part)
 
@@ -4410,7 +4415,7 @@ class Wind(object):
 
                     daily_epsilon = math.sqrt(1-((sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2 + (sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2))
 
-                    daily_sigma_theta = math.asin((1+(2./math.sqrt(3))-1)*daily_epsilon)
+                    daily_sigma_theta = math.degrees(math.asin(daily_epsilon)*(1+(2./math.sqrt(3))-1)*daily_epsilon)
 
                     # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
 
@@ -4445,7 +4450,12 @@ class Wind(object):
                 else:
                     pass
 
-                newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_mag_results, daily_flag_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, "EVENT_CODE"]
+                try:
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, "NA"]
+                
+                except TypeError:
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, "M", "None", daily_mag_results,daily_flag_mag, "None", "M", "None", "M", "NA"]
+
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -4746,8 +4756,6 @@ class Sonic(object):
                 num_questionable_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs_wair = len([x for x in self.od[probe_code][each_date]['wair_fval'] if x == 'E'])
 
-
-
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
                 num_missing_obs_wuxstd = len([x for x in self.od[probe_code][each_date]['wux_std_fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs_wuxstd = len([x for x in self.od[probe_code][each_date]['wux_std_fval'] if x == 'Q' or x == 'O'])
@@ -4778,9 +4786,9 @@ class Sonic(object):
                 # daily flag, wind mag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs_snc_max/num_total_obs >= 0.2:
                     daily_flag_snc_max = 'M'
-                elif (num_missing_obs_snc_max + num_questionable_obs_snc_max)/num_total_obs_snc_max > 0.05:
+                elif (num_missing_obs_snc_max + num_questionable_obs_snc_max)/num_total_obs > 0.05:
                     daily_flag_snc_max = 'Q'
-                elif (num_estimated_obs_snc_max)/num_total_obs_snc_max > 0.05:
+                elif (num_estimated_obs_snc_max)/num_total_obs > 0.05:
                     daily_flag_snc_max = 'E'
                 elif (num_estimated_obs_snc_max + num_missing_obs_snc_max + num_questionable_obs_snc_max)/num_total_obs <= 0.05:
                     daily_flag_snc_max = 'A'
@@ -4895,10 +4903,10 @@ class Sonic(object):
                     daily_flag_snc_mean = "M"
 
                 try: 
-                    # compute the mean daily max sonic speed? -- just the mean of what is given...
-                    daily_snc_max = round(max(float(sum([float(x) for x in self.od[probe_code][each_date]['snc_max_val'] if x != 'None'])/num_valid_obs_max)),3)
+                    # compute the  daily max sonic speed? -- max of the max!...
+                    daily_snc_max = round(max([float(x) for x in self.od[probe_code][each_date]['snc_max_val'] if x != 'None']),3)
 
-                except ZeroDivisionError:
+                except ValueError:
                     # if the case is that there are no valid observations
                     daily_snc_max = "None"
                     # magnitude and speed are therefore also M
@@ -4973,23 +4981,43 @@ class Sonic(object):
 
                     daily_epsilon = math.sqrt(1-((sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2 + (sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2))
 
-                    daily_sigma_theta = math.asin((1+(2./math.sqrt(3))-1)*daily_epsilon)
+                    daily_sigma_theta = math.degrees(math.asin(daily_epsilon)*(1+(2./math.sqrt(3))-1)*daily_epsilon)
 
                     # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
 
-                    # get the max of those observations (mean speed)
-                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['spd_val'] if x != 'None']),3)
 
-                elif num_valid_obs_spd == 0:
+                    # the daily standard deviation is the standard deviation of the day's values by component
+                    if daily_wux != "None":
+                        # compute the std of the day
+                        daily_wux_std = np.std([float(x) for x in self.od[probe_code][each_date]['wux_val'] if x != "None"])
+                    else: 
+                        daily_wux_std = "None"
+
+                    if daily_wuy != "None":
+                        # compute the std of the day
+                        daily_wuy_std = np.std([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != "None"])
+                    else: 
+                        daily_wuy_std = "None"
+
+                    if daily_wair != "None":
+                        # compute the std of the day
+                        daily_wair_std = np.std([float(x) for x in self.od[probe_code][each_date]['wair_val'] if x != "None"])
+                    else: 
+                        daily_wair_std = "None"
+
+
+                elif num_valid_obs == 0:
                     daily_snc_mag = "None"
                     daily_sigma_theta = "None"
                     daily_dir_valid_obs = "None"
-                    
+                    daily_wair_std = "None"
+                    daily_wuy_std = "None"
+                    daily_wux_std = "None"
 
                 else:
                     pass
 
-                newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_mag_results, daily_flag_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, "EVENT_CODE"]
+                newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "EVENT_CODE"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -4999,7 +5027,7 @@ class Sonic(object):
 
 if __name__ == "__main__":
 
-    print "you are running a test loop"
+    print "you are running a test loop. If you check the main loop in the data file, you will see this test loop at the bottom. use this construction for querying all the data sets and writing csvs"
 
     # let's get some air temperature
 

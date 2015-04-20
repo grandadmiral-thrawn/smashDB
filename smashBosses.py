@@ -89,24 +89,4 @@ class ProbeBoss(object):
 
                 del myWorker
 
-class SQLBoss(object):
-
-    def __init__(self, attribute, server):
-    
-        import form_connection as fc
-        
-        self.Worker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server, chosen_probe)
-
-        self.rows_of_data = self.Worker.condense_data()
-    def push_db(self):
-        
-        cursor.executemany(
-    "INSERT INTO persons VALUES (%d, %s, %s)",
-    [(1, 'John Smith', 'John Doe'),
-     (2, 'Jane Doe', 'Joe Dog'),
-     (3, 'Mike T.', 'Sarah H.')])
-# you must call commit() to persist your data if you don't set autocommit to True
-conn.commit()
-
-if __name__ == __main__():
-    pass
+        print("Finished writing data to " + templateWorker.filename)
