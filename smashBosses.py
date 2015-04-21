@@ -50,9 +50,11 @@ class ProbeBoss(object):
 
             if args:
                 my_new_rows = myWorker.Worker.condense_data(args[0])
+            
             else:
                 my_new_rows = myWorker.Worker.condense_data()
 
+            
             for row in my_new_rows:
 
                 writer.writerow(row)
@@ -90,3 +92,50 @@ class ProbeBoss(object):
                 del myWorker
 
         print("Finished writing data to " + templateWorker.filename)
+
+class UpdateBoss(object):
+    """ The UpdateBoss updates an attribute based on the times you specify"""
+
+    def __init__(self, attribute, startdate, enddate, server):
+        
+        self.attribute = attribute
+        self.startdate = startdate
+        self.enddate = enddate
+        self.server = server
+        self.myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server)
+        self.new_rows = self.myWorker.Worker.condense_data()
+        # name of the table
+        self.table = 'MS043' + self.myWorker.Worker.entity
+
+    def update_the_db(self):
+        """ Updates LTER Logger Pro-- NOT LTER LOGGER NEW! -- currently as of 04-20-3015 its empty so I can't check it for pre-existing values without an error! """
+        print("This is gonna update the LTERLogger_Pro database")
+
+        # form a new connection (we need this because we need the conn object to commit)
+        import form_connection as fc
+        conn = fc.micro_conn('SHELDON')
+
+        # keep the tuples from the previous analysis
+        new_tuples = [tuple(x) for x in self.new_rows]
+
+        
+        cursor = conn.cursor()
+        # get_the_column_names
+        cursor.execute("select column_name from LTERLogger_Pro.information_schema.columns where table_name like \'" + self.table + "\' and table_schema like 'dbo'")
+
+        # make 'em ' into a list
+        nr = []
+        for row in cursor:
+            nr.append(str(row[0]))
+
+        column_string = " ,".join(nr[:-1])
+
+
+                
+        # for some reason it likes to use "d" which is not the usual "f" formatter for doing floats. Yes, a total mystery. Example of working prototype        
+        # cursor.executemany("insert into LTERLogger_Pro.dbo.Test (CreateTime, DValue) VALUES (%s, %d)", [('2015-01-02 00:00:00', 17.343823), ('2015-01-03 00:00:00', 18.238123), ('2015-01-04 00:00:00', 23.328)])
+
+
+        cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table +" (" + column_string + ")  VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %d, %s, %s, %s, %s)", new_tuples)
+
+        conn.commit()

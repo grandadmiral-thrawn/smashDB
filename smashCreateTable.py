@@ -23,6 +23,7 @@ def create_query(conn, one_or_many, *list_reference):
     # Create a database cursor
     cursor = conn.cursor()
 
+
     #cursor.execute("select column_name, table_name from LTERLogger_Pro.information_schema.columns where table_name like 'Test' and table_schema like 'dbo'")
 
     if one_or_many == "one":

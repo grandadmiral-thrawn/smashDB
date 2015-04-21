@@ -26,7 +26,8 @@ class HeaderWriter(object):
                 'WSPD_PRO': '04',
                 'PRECIP': '03',
                 'RELHUM':'02',
-                'AIRTEMP':'01',}
+                'AIRTEMP':'01',
+                'WSPD_SNC': '24',}
 
         dbcode = 'MS043'
         
@@ -121,50 +122,6 @@ class HeaderWriter(object):
 
         return header
 
-class FSDBDATAchecker(object):
-
-    def __init__(self, attribute):
-
-        import form_connection as fc
-
-        self.attribute = attribute
-        self.cursor = form_connection('STEWARTIA')
-        self.last_update = check_db()
-
-    def check_db(self):
-        """ get the most recent update date_time from fsdbdata for your given attribute """
-        if attribute == "AIRTEMP":
-            query = "Select top 1 date from fsdbdata.dbo.MS04311 where AIRTEMP_MEAN_DAY is not NULL"
-            
-        elif attribute == "RELHUM":
-            query = "Select top 1 date from fsdbdata.dbo.MS04312 where RELHUM_MEAN_DAY is not NULL"
-        
-        elif attribute == "DEWPT":
-            query = "Select top 1 date from fsdbdata.dbo.MS04317 where DEWPT_MEAN_DAY is not NULL"
-
-        elif attribute == "VPD":
-            query = "Select top 1 date from fsdbdata.dbo.MS04308 where VPD_MEAN_DAY is not NULL"
-
-        elif attribute == "SOLAR":
-            query = "Select top 1 date from fsdbdata.dbo.MS04305 where SOLAR_MEAN_DAY is not NULL"
-
-        elif attribute == "WSPD_PRO":
-            query = "Select top 1 date from fsdbdata.dbo.MS04304 where WSPD_PRO_MEAN_DAY is not NULL"
-
-        elif attribute == "PRECIP":
-            query = "Select top 1 date from fsdbdata.dbo.MS04303 where PRECIP_TOT_DAY is not NULL"
-
-        elif attribute == "LYS":
-            query = "Select top 1 date from fsdbdata.dbo.MS04309 where SNOWMELT_TOT_DAY is not NULL"
-
-        else:
-            print "this is not working out for you, is it?"
-
-        self.cursor.execute(query)
-        for row in self.cursor:
-            dt = str(row[0])
-
-        return dt
 
 class AirTemperature(object):
     """ For generating MS04301 from LTERLoggers_new or from STEWARTIA
@@ -443,7 +400,7 @@ class AirTemperature(object):
                 
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
-                    mean_valid_obs = "None"
+                    mean_valid_obs = None
 
                 # get the max of those observations
                 try:
@@ -451,8 +408,8 @@ class AirTemperature(object):
 
                 except ValueError:
                     # check to see if the whole day was missing, if so, set it to none
-                    if mean_valid_obs == "None":
-                        max_valid_obs = "None"
+                    if mean_valid_obs == None:
+                        max_valid_obs = None
                     else:
                         print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
@@ -464,18 +421,18 @@ class AirTemperature(object):
                     # check to see if the the whole day was missing, if so, set it to none
                     # *** something I was testing, : for index,j in enumerate(self.od[probe_code][each_date]['val']):
                     #    print index, j ****
-                    if mean_valid_obs == "None":
-                        max_valid_time = "None"
+                    if mean_valid_obs == None:
+                        max_valid_time = None
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
                 
-                if mean_valid_obs is not "None":
+                if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
                 else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs is "None":
+                    if mean_valid_obs is None:
                         max_flag = ["M"]
                     
                     else:
@@ -489,8 +446,8 @@ class AirTemperature(object):
                 
                 except Exception:
 
-                    if mean_valid_obs == "None":
-                        min_valid_obs = "None"
+                    if mean_valid_obs == None:
+                        min_valid_obs = None
                     else:
                         print("error in min_valid_obs for %s on %s") %(probe_code, each_date)
 
@@ -500,13 +457,13 @@ class AirTemperature(object):
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
                 
                 except ValueError:
-                    if mean_valid_obs == "None":
-                        min_valid_time = "None"
+                    if mean_valid_obs == None:
+                        min_valid_time = None
                     else:
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
                 # get the flag on the minimum
-                if mean_valid_obs is not "None":
+                if mean_valid_obs is not None:
 
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
                     
@@ -514,7 +471,7 @@ class AirTemperature(object):
                 else:
                     print "mean valid obs is none"
                     
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         min_flag = ["M"]
                     
                     else:
@@ -531,7 +488,7 @@ class AirTemperature(object):
 
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         min_flag = "M"
 
                 try: 
@@ -542,21 +499,21 @@ class AirTemperature(object):
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         max_flag = ["M"]
 
-                if mean_valid_obs == "None":
+                if mean_valid_obs == None:
                     daily_flag == "M"
                 else:
                     pass
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "NA"]
+                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", "MS04311"]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, "None", min_valid_obs,"None", min_flag, "NA"]
+                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", "MS04311"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -832,7 +789,7 @@ class RelHum(object):
                 
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
-                    mean_valid_obs = "None"
+                    mean_valid_obs = None
 
                 # get the max of those observations
                 try:
@@ -840,8 +797,8 @@ class RelHum(object):
 
                 except ValueError:
                     # check to see if the whole day was missing, if so, set it to none
-                    if mean_valid_obs == "None":
-                        max_valid_obs = "None"
+                    if mean_valid_obs == None:
+                        max_valid_obs = None
                     else:
                         print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
@@ -853,18 +810,18 @@ class RelHum(object):
                     # check to see if the the whole day was missing, if so, set it to none
                     # *** something I was testing, : for index,j in enumerate(self.od[probe_code][each_date]['val']):
                     #    print index, j ****
-                    if mean_valid_obs == "None":
-                        max_valid_time = "None"
+                    if mean_valid_obs == None:
+                        max_valid_time = None
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
                 
-                if mean_valid_obs is not "None":
+                if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
                 else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs is "None":
+                    if mean_valid_obs is None:
                         max_flag = ["M"]
                     
                     else:
@@ -878,8 +835,8 @@ class RelHum(object):
                 
                 except Exception:
 
-                    if mean_valid_obs == "None":
-                        min_valid_obs = "None"
+                    if mean_valid_obs == None:
+                        min_valid_obs = None
                     else:
                         print("error in min_valid_obs for %s on %s") %(probe_code, each_date)
 
@@ -889,13 +846,13 @@ class RelHum(object):
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
                 
                 except ValueError:
-                    if mean_valid_obs == "None":
-                        min_valid_time = "None"
+                    if mean_valid_obs == None:
+                        min_valid_time = None
                     else:
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
                 # get the flag on the minimum
-                if mean_valid_obs is not "None":
+                if mean_valid_obs is not None:
 
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
                     
@@ -903,7 +860,7 @@ class RelHum(object):
                 else:
                     print "mean valid obs is none"
                     
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         min_flag = ["M"]
                     
                     else:
@@ -920,7 +877,7 @@ class RelHum(object):
 
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         min_flag = "M"
 
                 try: 
@@ -931,21 +888,21 @@ class RelHum(object):
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         max_flag = ["M"]
 
-                if mean_valid_obs == "None":
+                if mean_valid_obs == None:
                     daily_flag == "M"
                 else:
                     pass
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "NA"]
+                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", "MS04312"]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, "M", "None", "None","None", "M", "NA"]
+                    newrow = ['MS043',2, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", "MS04312"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -1223,7 +1180,7 @@ class DewPoint(object):
                 
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
-                    mean_valid_obs = "None"
+                    mean_valid_obs = None
 
                 # get the max of those observations
                 try:
@@ -1231,8 +1188,8 @@ class DewPoint(object):
 
                 except ValueError:
                     # check to see if the whole day was missing, if so, set it to none
-                    if mean_valid_obs == "None":
-                        max_valid_obs = "None"
+                    if mean_valid_obs == None:
+                        max_valid_obs = None
                     else:
                         print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
@@ -1244,18 +1201,18 @@ class DewPoint(object):
                     # check to see if the the whole day was missing, if so, set it to none
                     # *** something I was testing, : for index,j in enumerate(self.od[probe_code][each_date]['val']):
                     #    print index, j ****
-                    if mean_valid_obs == "None":
-                        max_valid_time = "None"
+                    if mean_valid_obs == None:
+                        max_valid_time = None
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
                 
-                if mean_valid_obs is not "None":
+                if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
                 else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs is "None":
+                    if mean_valid_obs is None:
                         max_flag = ["M"]
                     
                     else:
@@ -1269,8 +1226,8 @@ class DewPoint(object):
                 
                 except Exception:
 
-                    if mean_valid_obs == "None":
-                        min_valid_obs = "None"
+                    if mean_valid_obs == None:
+                        min_valid_obs = None
                     else:
                         print("error in min_valid_obs for %s on %s") %(probe_code, each_date)
 
@@ -1280,13 +1237,13 @@ class DewPoint(object):
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
                 
                 except ValueError:
-                    if mean_valid_obs == "None":
-                        min_valid_time = "None"
+                    if mean_valid_obs == None:
+                        min_valid_time = None
                     else:
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
                 # get the flag on the minimum
-                if mean_valid_obs is not "None":
+                if mean_valid_obs is not None:
 
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
                     
@@ -1294,7 +1251,7 @@ class DewPoint(object):
                 else:
                     print "mean valid obs is none"
                     
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         min_flag = ["M"]
                     
                     else:
@@ -1311,7 +1268,7 @@ class DewPoint(object):
 
                 except IndexError:
                     # the minimum flag may not come out if all the values are missing... 
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         min_flag = "M"
 
                 try: 
@@ -1322,21 +1279,21 @@ class DewPoint(object):
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
-                    if mean_valid_obs == "None":
+                    if mean_valid_obs == None:
                         max_flag = ["M"]
 
-                if mean_valid_obs == "None":
+                if mean_valid_obs == None:
                     daily_flag == "M"
                 else:
                     pass
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), min_valid_obs, min_valid_time[0], min_flag[0], "NA"]
+                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H%M'), "NA", "MS04317"]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, "None", "M", "None", "None","None", "M", "NA"]
+                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, None, "M", None, None, "M", None, "NA", "MS04317"]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -1361,7 +1318,7 @@ class VPD(object):
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
-        self.entity = '02'
+        self.entity = 8
         self.server = server
         
         if not limited:
@@ -1615,7 +1572,7 @@ class VPD(object):
                 
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
-                    mean_valid_obs = "None"
+                    mean_valid_obs = None
 
                 # get the max of those observations
                 try:
@@ -1623,8 +1580,8 @@ class VPD(object):
 
                 except ValueError:
                     # check to see if the whole day was missing, if so, set it to none
-                    if mean_valid_obs == "None":
-                        max_valid_obs = "None"
+                    if mean_valid_obs == None:
+                        max_valid_obs = None
                     else:
                         print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
 
@@ -1636,18 +1593,18 @@ class VPD(object):
                     # check to see if the the whole day was missing, if so, set it to none
                     # *** something I was testing, : for index,j in enumerate(self.od[probe_code][each_date]['val']):
                     #    print index, j ****
-                    if mean_valid_obs == "None":
-                        max_valid_time = "None"
+                    if mean_valid_obs == None:
+                        max_valid_time = None
                     else: 
                         print "error in max_valid_time for %s on %s" %(probe_code, each_date)
                 
-                if mean_valid_obs is not "None":
+                if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
 
                 else:
                     # check to see if the whole day was missing, if so, set to "M"
-                    if mean_valid_obs is "None":
+                    if mean_valid_obs is None:
                         max_flag = ["M"]
                     
                     else:
@@ -1661,8 +1618,8 @@ class VPD(object):
                 
                 except Exception:
 
-                    if mean_valid_obs == "None":
-                        min_valid_obs = "None"
+                    if mean_valid_obs == None:
+                        min_valid_obs = None
                     else:
                         print("error in min_valid_obs for %s on %s") %(probe_code, each_date)
 
@@ -1672,8 +1629,8 @@ class VPD(object):
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
                 
                 except ValueError:
-                    if mean_valid_obs == "None":
-                        min_valid_time = "None"
+                    if mean_valid_obs == None:
+                        min_valid_time = None
                     else:
                         print("error in min_valid_time for %s on %s") %(probe_code, each_date)
 
@@ -2051,7 +2008,7 @@ class PhotosyntheticRad(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%Y-%m-%d %H:%M:%S'), "NA"]
+                    newrow = ['MS043',self.entity, site_code, method_code, height, "1D", probe_code, datetime.datetime.strftime(each_date,'%H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H:%M:%S'), "NA"]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:

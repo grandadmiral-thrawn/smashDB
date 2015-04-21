@@ -87,9 +87,15 @@ class DBControl(object):
         self.server = server
         self.cursor = fc.form_connection(server)
         
-        self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324', 'MS04325']
+        # until we switch to LTERLogger_pro use this one:
+
+        self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324']
+
+        self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334']
+
+        #self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324','MS04325']
         
-        self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334', 'MS04335']
+        #self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334','MS04335']
 
         self.lookup = {}
 
@@ -142,7 +148,7 @@ class DBControl(object):
 
                 elif converted_hr <= converted_d:
 
-                    pass
+                    print(daily_table + " is already up to date")
 
         elif self.server == "STEWARTIA":
 
