@@ -34,6 +34,20 @@ class Worker(object):
         elif self.attribute == "DEWPT":
             self.Worker = smashWorkers.DewPoint(startdate, enddate, server, *args)
 
+            self.backupAir = smashWorkers.AirTemperature(startdate, enddate, server, *args)
+            air_rows = self.backupAir.condense_data()
+            self.backupRel = smashWorkers.RelHum(startdate, enddate, server, *args)
+            rel_rows = self.backupRel.condense_data()
+
+            self.bad_dates = []
+            for index, details in air_rows:
+                if details[9] == "M":
+                    bad_dates.append(details[7])
+
+            for index2, details2 in rel_rows:
+                if details[9] == "M" and details[7] not in bad_dates:
+                    bad_dates.append(details[7])
+
         elif self.attribute == "VPD":
             self.Worker = smashWorkers.VPD(startdate, enddate, server, *args)
 
@@ -69,16 +83,180 @@ class VaporControl(object):
         self.A = smashWorkers.AirTemperature(startdate, enddate, server, *args)
         self.R = smashWorkers.RelHum(startdate, enddate, server, *args)
 
+        air_rows = self.A.condense_data()
+        rel_rows = self.R.condense_data()
+
+        # create a list of "bad dates"
+        self.bad_dates = []
+        for index, details in air_rows:
+            if details[9] == "M":
+                bad_dates.append(details[7])
+
+        for index2, details2 in rel_rows:
+            if details[9] == "M" and details[7] not in bad_dates:
+                bad_dates.append(details[7])
+
+        # load a lookup table
+        if not args:
+            with open('CONFIG.yaml','rb') as readfile:
+                self.cfg = yaml.load(readfile)
+
+        elif args:
+            with open(args[0], 'rb') as readfile:
+                self.cfg = yaml.load(readfile)
+
     def compute_shared_probes(self):
         """ determine if two of the probes share names/times so we can compute a vapor pressure deficit or dewpoint"""
+        # happy data is our output!
+        happy_data = []
 
         # get the 3rd to end of each, which is the shared probe code sans the front part of name
         overlaps = [x[3:] for x in self.R.od.keys() if x[3:] in [y[3:] for y in self.A.od.keys()]]
-
+        
         # these will come back in the same order so we can index on them
         Over_Rel = ['REL'+ x for x in overlaps]
         Over_Air = ['AIR'+ x for x in overlaps]
 
+        # zip together the probes you want to look at together
+        iProbes = itertools.izip(Over_Rel, Over_Air)
+
+        # iterate over the zipped list of matching probes
+        for x,y in iProbes:
+
+            # calculate the height
+            height = self.R.heightcalc(x)
+            # write the probe code
+            probe_code = 'VPD' + x[3:]
+            # write the site code
+            site_code = x[3:6].lower() +'met'
+            
+            # write the method code
+            try:
+                method_code = self.cfg[site_code][probe_code]
+            except KeyError:
+                method_code = "VPD999"
+
+            # iterate over the shared days
+            for each_key in sorted(B.od[x].keys()):
+
+                # if either of the days is a "bad day", write a null row, append it to the happy_data, and continue on
+                if each_key in self.bad_dates:
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),None, "M", None, "M", "None", None, "M", "None", "NA", "MS04318"]
+                    happy_data.append(new_row)
+                    continue
+
+                # get all the values which are not none 
+                check_flags1 =  [val for val in A.od[y][each_key]['val'] if val != "None"]
+                check_flags2 =  [val for val in B.od[x][each_key]['val'] if val != "None"]
+
+                # get all the values who have impossible flags
+                check_flags_impossible=  len([val for val in A.od[y][each_key]['fval'] if val == "M" or val == "I"])/len(A.od[y][each_key]['fval'])
+                check_flags_impossible2=  len([val for val in B.od[x][each_key]['fval'] if val == "M" or val == "I"])/len(B.od[x][each_key]['fval'])
+
+                # get all the values who have questionable flags
+                check_flags_questionable=  len([val for val in A.od[y][each_key]['fval'] if val == "Q" or val == "O"])/len(A.od[y][each_key]['fval'])
+                check_flags_questionable2=  len([val for val in B.od[x][each_key]['fval'] if val == "Q" or val == "O"])/len(B.od[x][each_key]['fval'])
+
+                # get all the values who have estimated flags
+                check_flags_estimated=  len([val for val in A.od[y][each_key]['fval'] if val == "E"])/len(A.od[y][each_key]['fval'])
+                check_flags_estimated2=  len([val for val in B.od[x][each_key]['fval'] if val == "E"])/len(B.od[x][each_key]['fval'])
+                
+                # if the number of impossible flags/missing flags / total number of flags > 20 % then the day is missing and all the attributes are nones
+                if len(check_flags1)/len(A.od[y][each_key]['val']) > 0.2 or len(check_flags2)/len(B.od[x][each_key]['val']) > 0.2:
+                    
+                    # new outputs
+                    mean_vpd = None
+                    vpd_flag = "M"
+                    max_vpd = None
+                    max_flag = "M"
+                    max_time = "None"
+                    min_time = "None"
+                    min_flag = "M"
+                    min_vpd = None
+                
+
+                elif check_flags_impossible > 0.2 or check_flags_impossible2 > 0.2:
+
+                    # new outputs
+                    mean_vpd = None
+                    vpd_flag = "M"
+                    max_vpd = None
+                    max_flag = "M"
+                    max_time = "None"
+                    min_time = "None"
+                    min_flag = "M"
+                    min_vpd = None
+
+                # if the proportion of days that are queationable is > 5 % then the day is questionable, but still do the analysis
+                elif check_flags_questionable > 0.05 or check_flags_questionable2 > 0.05:
+
+                    # new outputs
+                    vpd_flag = "Q"
+                    max_flag = "Q"
+                    min_flag = "Q"
+
+                # if the day's estimated values > 5 % then its estimated, but stll do the analysis
+                elif check_flags_estimated > 0.05 or check_flags_estimated2 > 0.05:
+
+                    # new outputs
+                    vpd_flag = "E"
+                    max_flag = "E"
+                    min_flag = "E"
+
+                # if the Q + E + M > 5 % then it's questionable, but still do the analysis
+                elif check_flags_estimated + check_flags_questionable + check_flags_impossible > 0.05 or check_flags_estimated2 + check_flags_questionable2 + check_flags_impossible2 > 0.05:
+
+                    vpd_flag = "Q"
+                    max_flag = "Q"
+                    min_flag = "Q"
+
+                # in all other cases it's ok!
+                else:
+                    # get the daily airtemp values, daily relhum values, and daily times
+                    pre_sample = zip(A.od[y][each_key]['val'], B.od[x][each_key]['val'], A.od[y][each_key]['timekeep'])
+                    
+                    # zip em together in a tuple
+                    good_sample = [tup for tup in pre_sample if 'None' not in tup]
+                    
+                    # break out each part to make teh vpd calculations easier to understand 
+                    sample_at = [float(val) for (val,_,_) in good_sample]
+                    sample_rh = [float(val) for (_,val,_) in good_sample]
+                    sample_dates = [val for (_,_,val) in good_sample]
+                    
+                    # the days satvp - a function of air temp
+                    sample_SatVP = [6.1094*math.exp(17.625*(float(AT))/(243.04+float(AT))) for AT in sample_at]
+
+                    # the days dewpt - a function of rel adn satvp
+                    sample_Td = [237.3*math.log(SatVP*float(RH)/611.)/(7.5*math.log(10)-math.log(SatVP*float(RH)/611.)) for SatVP, RH in itertools.izip(sample_SatVP, sample_rh)]
+
+                    # the days vpd - a function of rel and satvp
+                    sample_vpd = [((100-float(RH))*0.01)*SatVP for SatVP, RH in itertools.izip(sample_SatVP, sample_rh)]
+
+                    # determine the daily vpd -- we've gotten rid of the crappy values 
+                    mean_vpd = sum(sample_vpd)/len(sample_vpd)
+
+                    # determine the max vpd - no crappy values
+                    max_vpd = max(sample_vpd)
+                    index_of_max = sample_vpd.index(max(sample_vpd))
+                    max_time = datetime.datetime.strftime(sample_times[index_of_max], '%H:%M')
+                   
+                    
+                    # determine the min vpd - no crappy values
+                    min_vpd = min(sample_vpd)
+                    index_of_min = sample_vpd.index(min(sample_vpd))
+                    min_time = datetime.datetime.strftime(sample_times[index_of_min], '%H:%M')
+                    
+                    vpdflag = "A"
+                    maxflag = "A"
+                    minflag = "A"
+
+                # the new row should be clean
+                new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),mean_vpd, vpdflag, max_vpd, max_flag, max_time, min_vpd, min_flag, min_time, "NA", "MS04318"]
+
+                happy_data.append(new_row)
+                
+        return happy_data
+                
 
 class DBControl(object):
     """ used to generate a list of attributes that needs updating and the date of last update """

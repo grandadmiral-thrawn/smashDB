@@ -104,6 +104,7 @@ class UpdateBoss(object):
         self.server = server
         self.myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server)
         self.new_rows = self.myWorker.Worker.condense_data()
+        
         # name of the table
         self.table = 'MS043' + self.myWorker.Worker.entity
 

@@ -6,6 +6,7 @@ import datetime
 """SMASHER is the executable for the other parts of the data 'smashing'"""
 
 parser = argparse.ArgumentParser()
+
 # which function you are running
 parser.add_arguement('boss')
 
