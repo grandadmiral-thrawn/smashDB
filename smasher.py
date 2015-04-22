@@ -8,7 +8,7 @@ import datetime
 parser = argparse.ArgumentParser()
 
 # which function you are running
-parser.add_arguement('boss')
+parser.add_argument('boss')
 
 # which server you are using
 parser.add_argument('server')
@@ -17,9 +17,10 @@ parser.add_argument('server')
 # which attribute you are using 
 parser.add_argument('--attribute', '-a', nargs = 1, required = False, help = " the official name of an attribute to be processed in isolation ")
 
-# startdate and enddate
+# startdate 
 parser.add_argument('--startdate', '-sd', nargs = 1, required = False, help = " the first date, as a date-string in form YYYY-MM-DD HH:MM:SS, that you want to process ")
 
+# enddate
 parser.add_argument('--enddate', '-ed', nargs = 1, required = False, help = " the last date, as a date-string in form YYYY-MM-DD HH:MM:SS, that you want to process ")
 
 # specific probe
@@ -28,10 +29,12 @@ parser.add_argument('--probe', '-p', nargs = 1, required = False, help = " a sin
 # new configuration file for mapping specific methods differently
 parser.add_argument('--newcfg', nargs=1, required=False, help = "follow --newcfg with a .yaml file to be used for configuration rather than the default yaml file")
 
+# use this arguement to store a csv files
 parser.add_argument('--csvs', action='store_true', help = '--csvs will also output csv files', required=False)
 
 parser.add_argument('--fsdb', action='store_true', help = 'If --fsdb is called, sql updates to FSDBDATA will be generated ', required=False)
 
+# use this arguement to compute VPD using the VPD special control 
 parser.add_argument('--vpd', action='store_true', help = "If --vpd is on, vpd will be calculated with math rather than taken from MS04318. Default is off", required = False)
 
 parser.add_argument('--flow', action='store_true', help = "If --flow is called, a daily workflow to do all sites and attribtues will be started.", required = False)
@@ -40,7 +43,7 @@ parser.add_argument('--flow', action='store_true', help = "If --flow is called, 
 args = parser.parse_args()
 
 
-if args.boss = 'LIMITED':
+if args.boss == 'LIMITED':
 
     # processes the data only based on the specifics in the LIMITED.yaml file
     print(" The smasher will process your LIMITED.yaml file ... Start and Ending dates will be taken from the file, and only your selected probes will be processed... ")
@@ -60,22 +63,45 @@ if args.boss = 'LIMITED':
         print(" smasher has processed your LIMITED.yaml file based on the standard configuration file ")
 
 
-if args.boss = 'TO-DO':
-    # prints to the screen what needs to be processed
+if args.boss == 'TO-DO':
+    """ TO-DO is a function to print what needs to be processed. It can take an arguement or not"""
+    
     print("First, getting the reasonable date ranges for your server, {}".format(args.server))
     
-    DBController = smashControls.DBControl(args.server).build_queries()
+    # get the controller object
+    DBController = smashControls.DBControl(args.server)
 
-    for attribute in ["AIRTEMP", "RELHUM", "PRECIP", "WSPD_PRO", "SOLAR", "DEWPT", "VPD", "LYS", "SOILTEMP", "PAR", "SOILWC", "WSPD_SNC", "NR"]:
+    # build queries based on this object
+    DBController.build_queries()
+    
+    # if there is not an attribute specified, then try all the attributes
+    if args.attribute == None:
+        for attribute in ["AIRTEMP", "RELHUM", "PRECIP", "WSPD_PRO", "SOLAR", "DEWPT", "VPD", "LYS", "SOILTEMP", "PAR", "SOILWC", "WSPD_SNC", "NR"]:
 
+            # get start and ending dates, if the attribute is up to date, tell us
+            try:
+                sd, ed = DBController.check_out_one_attribute(attribute)
+                print(" the attribute : " + attribute + " needs updates between " + sd + " and " + ed)
+            except AttributeError:
+                print(" the attribute " + attribute + " may already be up to date...")
+            except KeyError:
+                print(" the attribute " + attribute + " may already be up to date... ")
+    
+    # if an attribute IS specified, then just get that attribute
+    else:
+
+        # get start and ending dates, if the attribute is up to date, tell us
         try:
-            sd, ed = DBController.check_out_one_attribute(attribute)
-            print(" the attribute : " + attribute + " needs updates between " + sd + " and " + ed)
+            sd, ed = DBController.check_out_one_attribute(args.attribute[0])
+            print(" the attribute : " + args.attribute[0] + " needs updates between " + sd + " and " + ed)
+        except AttributeError:
+            print(" the attribute " + args.attribute[0] + " may already be up to date, did you see a message? ")
         except KeyError:
-            print(" the attribute " + attribute + " may already be up to date, did you see a message? ")
-            pass
+            print(" the attribute " + args.attribute[0] + " may already be up to date, did you see a message? ")
+                
 
-if args.boss = 'PROVO':
+if args.boss == 'PROVO':
+
     # update LTERLogger_Pro.dbo.attribute
     print("updating the provisional database at LTERLogger_Pro on SHELDON")
 
@@ -107,7 +133,7 @@ if args.boss = 'PROVO':
         elif args.attribute == "None":
 
             print( "You must choose an attribute, type --attribute AIRTEMP for example")
-            break
+            
 
     if args.startdate != None and args.enddate != None:
         sd_in = args.startdate
@@ -115,7 +141,7 @@ if args.boss = 'PROVO':
 
         if datetime.datetime.strptime(sd_in, '%Y-%m-%d %H:%M:%S') < datetime.datetime.strptime(sd,'%Y-%m-%d %H:%M:%S'):
             print(" You cannot perform an insert starting at this time, or you will make duplicate values! ")
-            break
+            
         
         elif datetime.datetime.strptime(ed_in, '%Y-%m-%d %H:%M:%S') > datetime.datetime.strptime(ed, '%Y-%m-%d %H:%M:%S'):
             print(" Your end date is after the end of the data, we can only process until the data has completed ")
@@ -136,10 +162,10 @@ if args.boss = 'PROVO':
 
         if datetime.datetime.strptime(sd_in, '%Y-%m-%d %H:%M:%S') < datetime.datetime.strptime(sd,'%Y-%m-%d %H:%M:%S'):
             print(" You cannot perform an insert starting at this time, or you will make duplicate values! ")
-            break
+            
         else: 
         
-        print(" You didn\'t enter an end-date, so I am using the last one I can process")
+            print(" You didnt enter an end-date, so I am using the last one I can process")
         
         sd = sd_in
         # create an update-boss
@@ -199,7 +225,9 @@ if args.flow:
     
     DBController = smashControls.DBControl(args.server).build_queries()
 
+
     for attribute in ["AIRTEMP", "RELHUM", "PRECIP", "WSPD_PRO", "SOLAR", "DEWPT", "VPD", "LYS", "SOILTEMP", "PAR", "SOILWC", "WSPD_SNC", "NR"]:
+
 
         sd, ed = DBController.check_out_one_attribute(attribute)
         

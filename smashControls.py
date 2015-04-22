@@ -77,7 +77,7 @@ class Worker(object):
 
 class VaporControl(object):
 
-    def __init__(self, attribute, startdate, enddate, server, *args):
+    def __init__(self, startdate, enddate, server, *args):
 
         # create air temperature and relative humidity
         self.A = smashWorkers.AirTemperature(startdate, enddate, server, *args)
@@ -254,7 +254,7 @@ class VaporControl(object):
                 new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),mean_vpd, vpdflag, max_vpd, max_flag, max_time, min_vpd, min_flag, min_time, "NA", "MS04318"]
 
                 happy_data.append(new_row)
-                
+
         return happy_data
                 
 
