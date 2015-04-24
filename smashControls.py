@@ -34,19 +34,6 @@ class Worker(object):
         elif self.attribute == "DEWPT":
             self.Worker = smashWorkers.DewPoint(startdate, enddate, server, *args)
 
-            self.backupAir = smashWorkers.AirTemperature(startdate, enddate, server, *args)
-            air_rows = self.backupAir.condense_data()
-            self.backupRel = smashWorkers.RelHum(startdate, enddate, server, *args)
-            rel_rows = self.backupRel.condense_data()
-
-            self.bad_dates = []
-            for index, details in air_rows:
-                if details[9] == "M":
-                    bad_dates.append(details[7])
-
-            for index2, details2 in rel_rows:
-                if details[9] == "M" and details[7] not in bad_dates:
-                    bad_dates.append(details[7])
 
         elif self.attribute == "VPD":
             self.Worker = smashWorkers.VPD(startdate, enddate, server, *args)
@@ -62,6 +49,10 @@ class Worker(object):
 
         elif self.attribute == "WSPD_PRO":
             self.Worker = smashWorkers.Wind(startdate, enddate, server, *args)
+
+        elif self.attribute == "WSPD_SNC":
+            self.Worker = smashWorkers.Sonic(startdate, enddate, server, *args)
+
 
         elif self.attribute == "PRECIP":
             self.Worker = smashWorkers.Precipitation(startdate, enddate, server, *args)
@@ -88,13 +79,14 @@ class VaporControl(object):
 
         # create a list of "bad dates"
         self.bad_dates = []
-        for index, details in air_rows:
-            if details[9] == "M":
-                bad_dates.append(details[7])
 
-        for index2, details2 in rel_rows:
-            if details[9] == "M" and details[7] not in bad_dates:
-                bad_dates.append(details[7])
+        for index, details in enumerate(air_rows):
+            if details[9] == "M":
+                self.bad_dates.append(details[7])
+
+        for index2, details2 in enumerate(rel_rows):
+            if details[9] == "M" and details[7] not in self.bad_dates:
+                self.bad_dates.append(details[7])
 
         # load a lookup table
         if not args:
@@ -105,7 +97,7 @@ class VaporControl(object):
             with open(args[0], 'rb') as readfile:
                 self.cfg = yaml.load(readfile)
 
-    def compute_shared_probes(self):
+    def condense_data(self):
         """ determine if two of the probes share names/times so we can compute a vapor pressure deficit or dewpoint"""
         # happy data is our output!
         happy_data = []
@@ -128,7 +120,7 @@ class VaporControl(object):
             # write the probe code
             probe_code = 'VPD' + x[3:]
             # write the site code
-            site_code = x[3:6].lower() +'met'
+            site_code = x[3:6].upper() +'MET'
             
             # write the method code
             try:
@@ -137,32 +129,48 @@ class VaporControl(object):
                 method_code = "VPD999"
 
             # iterate over the shared days
-            for each_key in sorted(B.od[x].keys()):
+            for each_key in sorted(self.R.od[x].keys()):
+
+                print "processing..." + datetime.datetime.strftime(each_key, '%Y-%m-%d')
 
                 # if either of the days is a "bad day", write a null row, append it to the happy_data, and continue on
-                if each_key in self.bad_dates:
-                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),None, "M", None, "M", "None", None, "M", "None", "NA", "MS04318"]
+                if datetime.datetime.strftime(each_key, '%Y-%m-%d %H:%M:%S') in self.bad_dates:
+                    print "MEEEEEH"
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),None, "M", None, "M", "None", None, "M", "None", None, None, None, None, None, None, None, None, None, None, None, None, "NA", "STEWARTIA"]
                     happy_data.append(new_row)
                     continue
 
                 # get all the values which are not none 
-                check_flags1 =  [val for val in A.od[y][each_key]['val'] if val != "None"]
-                check_flags2 =  [val for val in B.od[x][each_key]['val'] if val != "None"]
+                try:
+                    check_flags1 =  [val for val in self.A.od[y][each_key]['val'] if val == "None"]
+                except KeyError:
+                    print "MEEEEEH"
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),None, "M", None, "M", "None", None, "M", "None",None, None, None, None, None, None, None, None, None, None, None, None, "NA", "STEWARTIA"]
+                    happy_data.append(new_row)
+                    continue
+                try:
+                    check_flags2 =  [val for val in self.R.od[x][each_key]['val'] if val == "None"]
+                except KeyError:
+                    print "MEEEEEH"
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),None, "M", None, "M", None, None, "M", None, None, None, None, None, None, None, None, None, None, None, None, None, "NA", "STEWARTIA"]
+                    happy_data.append(new_row)
+                    continue
+
 
                 # get all the values who have impossible flags
-                check_flags_impossible=  len([val for val in A.od[y][each_key]['fval'] if val == "M" or val == "I"])/len(A.od[y][each_key]['fval'])
-                check_flags_impossible2=  len([val for val in B.od[x][each_key]['fval'] if val == "M" or val == "I"])/len(B.od[x][each_key]['fval'])
+                check_flags_impossible=  len([val for val in self.A.od[y][each_key]['fval'] if val == "M" or val == "I"])/len(self.A.od[y][each_key]['fval'])
+                check_flags_impossible2=  len([val for val in self.R.od[x][each_key]['fval'] if val == "M" or val == "I"])/len(self.R.od[x][each_key]['fval'])
 
                 # get all the values who have questionable flags
-                check_flags_questionable=  len([val for val in A.od[y][each_key]['fval'] if val == "Q" or val == "O"])/len(A.od[y][each_key]['fval'])
-                check_flags_questionable2=  len([val for val in B.od[x][each_key]['fval'] if val == "Q" or val == "O"])/len(B.od[x][each_key]['fval'])
+                check_flags_questionable=  len([val for val in self.A.od[y][each_key]['fval'] if val == "Q" or val == "O"])/len(self.A.od[y][each_key]['fval'])
+                check_flags_questionable2=  len([val for val in self.R.od[x][each_key]['fval'] if val == "Q" or val == "O"])/len(self.R.od[x][each_key]['fval'])
 
                 # get all the values who have estimated flags
-                check_flags_estimated=  len([val for val in A.od[y][each_key]['fval'] if val == "E"])/len(A.od[y][each_key]['fval'])
-                check_flags_estimated2=  len([val for val in B.od[x][each_key]['fval'] if val == "E"])/len(B.od[x][each_key]['fval'])
+                check_flags_estimated=  len([val for val in self.A.od[y][each_key]['fval'] if val == "E"])/len(self.A.od[y][each_key]['fval'])
+                check_flags_estimated2=  len([val for val in self.R.od[x][each_key]['fval'] if val == "E"])/len(self.R.od[x][each_key]['fval'])
                 
                 # if the number of impossible flags/missing flags / total number of flags > 20 % then the day is missing and all the attributes are nones
-                if len(check_flags1)/len(A.od[y][each_key]['val']) > 0.2 or len(check_flags2)/len(B.od[x][each_key]['val']) > 0.2:
+                if len(check_flags1)/len(self.A.od[y][each_key]['val']) > 0.2 or len(check_flags2)/len(self.R.od[x][each_key]['val']) > 0.2:
                     
                     # new outputs
                     mean_vpd = None
@@ -213,7 +221,7 @@ class VaporControl(object):
                 # in all other cases it's ok!
                 else:
                     # get the daily airtemp values, daily relhum values, and daily times
-                    pre_sample = zip(A.od[y][each_key]['val'], B.od[x][each_key]['val'], A.od[y][each_key]['timekeep'])
+                    pre_sample = zip(self.A.od[y][each_key]['val'], self.R.od[x][each_key]['val'], self.A.od[y][each_key]['timekeep'])
                     
                     # zip em together in a tuple
                     good_sample = [tup for tup in pre_sample if 'None' not in tup]
@@ -232,31 +240,50 @@ class VaporControl(object):
                     # the days vpd - a function of rel and satvp
                     sample_vpd = [((100-float(RH))*0.01)*SatVP for SatVP, RH in itertools.izip(sample_SatVP, sample_rh)]
 
+                    if len(sample_vpd)==0:
+                        print sample_SatVP
+                        print sample_rh
+                    else:
+                        pass
+
                     # determine the daily vpd -- we've gotten rid of the crappy values 
-                    mean_vpd = sum(sample_vpd)/len(sample_vpd)
+                    try:
+                        mean_vpd = round(sum(sample_vpd)/len(sample_vpd),3)
+                    except Exception:
+                        mean_vpd = sum(sample_vpd)/len(sample_vpd)
 
                     # determine the max vpd - no crappy values
-                    max_vpd = max(sample_vpd)
+                    try:
+                        max_vpd = round(max(sample_vpd),3)
+                    except Exception:
+                        max_vpd = max(sample_vpd)
+
                     index_of_max = sample_vpd.index(max(sample_vpd))
-                    max_time = datetime.datetime.strftime(sample_times[index_of_max], '%H:%M')
+                    max_time = datetime.datetime.strftime(sample_dates[index_of_max], '%H%M')
                    
                     
                     # determine the min vpd - no crappy values
-                    min_vpd = min(sample_vpd)
-                    index_of_min = sample_vpd.index(min(sample_vpd))
-                    min_time = datetime.datetime.strftime(sample_times[index_of_min], '%H:%M')
+                    try:
+                        min_vpd = round(min(sample_vpd),3)
+                    except Exception:
+                        min_vpd = min(sample_vpd)
                     
-                    vpdflag = "A"
-                    maxflag = "A"
-                    minflag = "A"
+                    index_of_min = sample_vpd.index(min(sample_vpd))
+                    min_time = datetime.datetime.strftime(sample_dates[index_of_min], '%H%M')
+                    
+                    vpd_flag = "A"
+                    max_flag = "A"
+                    min_flag = "A"
 
                 # the new row should be clean
-                new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),mean_vpd, vpdflag, max_vpd, max_flag, max_time, min_vpd, min_flag, min_time, "NA", "MS04318"]
-
+                new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'), mean_vpd, vpd_flag, max_vpd, max_flag, max_time, min_vpd, min_flag, min_time, None, None, None, None, None, None, None, None, None, None, None, None, "NA", "STEWARTIA"]
+                
                 happy_data.append(new_row)
 
+                print happy_data
+
         return happy_data
-                
+
 
 class DBControl(object):
     """ used to generate a list of attributes that needs updating and the date of last update """
@@ -289,19 +316,26 @@ class DBControl(object):
             # for the two tables, check the last input value
             for daily_table, hr_table in iTables:
 
-                last_daily = self.cursor.execute("select top 1 date from LTERLogger_new.dbo." + daily_table + " order by date desc")
+                last_daily = self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " order by date desc")
+
+                print last_daily
 
                 # get the day of that value
                 for row in self.cursor:
+
+                    print row
+
                     daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
                     
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
 
                 # checking the last on high res, in theory it should be after the daily
-                last_hr = self.cursor.execute("select top 1 date_time from LTERLogger_new.dbo." + hr_table + " order by date_time desc")
+                last_hr = self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " order by date_time desc")
 
 
                 for row in self.cursor:
+
+                    print last_hr
                     high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
 
                     converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)

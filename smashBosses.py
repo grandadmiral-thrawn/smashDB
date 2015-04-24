@@ -62,11 +62,16 @@ class ProbeBoss(object):
             writer.writerow(myHeader)
 
             if args:
-                my_new_rows = myWorker.Worker.condense_data(args[0])
+                try:
+                    my_new_rows = myWorker.Worker.condense_data(args[0])
+                except Exception:
+                    my_new_rows = myWorker.condense_data(args[0])
             
             else:
-                my_new_rows = myWorker.Worker.condense_data()
-
+                try:
+                    my_new_rows = myWorker.Worker.condense_data()
+                except Exception:
+                    my_new_rows = myWorker.condense_data()
             
             for row in my_new_rows:
 
@@ -125,23 +130,41 @@ class UpdateBoss(object):
         # if it is not VPD, then go ahead and make a worker
         if self.attribute != "VPD":
             self.myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server)
+            
             self.new_rows = self.myWorker.Worker.condense_data()
+
+            if self.myWorker.Worker.entity < 10:
+                new_string = "0"+str(self.myWorker.Worker.entity)
+            else:
+                new_string = str(self.myWorker.Worker.entity)
+
+            # name of the table
+            self.table = 'MS043' + new_string
 
         # if it is VPD but we are using the old method, then go ahead and make a worker
         elif self.attribute == "VPD" and self.vpd == "off":
             self.myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server)
             self.new_rows = self.myWorker.Worker.condense_data()
 
+            if self.myWorker.Worker.entity < 10:
+                new_string = "0"+str(self.myWorker.Worker.entity)
+            else:
+                new_string = str(self.myWorker.Worker.entity)
+
+
+            # name of the table
+            self.table = 'MS043' + new_string
+
         # if it is VPD and we are using the new method, then we assign that to the worker
         elif self.attribute == "VPD" and self.vpd == "on":
             self.myWorker = smashControls.VaporControl(self.startdate, self.enddate, self.server)
-            self.new_rows = self.myWorker.Worker.compute_shared_probes()
+            self.new_rows = self.myWorker.condense_data()
+
+            # name of the table
+            self.table = 'MS04308'
         
         else: 
-            pass
-        
-        # name of the table
-        self.table = 'MS043' + self.myWorker.Worker.entity
+            print "this will never get called"
 
     def update_the_db(self):
         """ Updates LTER Logger Pro-- NOT LTER LOGGER NEW! -- currently as of 04-20-3015 its empty so I can't check it for pre-existing values without an error! """
@@ -159,6 +182,9 @@ class UpdateBoss(object):
         # get_the_column_names
         cursor.execute("select column_name from LTERLogger_Pro.information_schema.columns where table_name like \'" + self.table + "\' and table_schema like 'dbo'")
 
+        print( " your execution query was: \n SELECT column_name from LTERLogger_Pro.information_schema.columns where table_name like \'" + self.table + "\' and table_schema like 'dbo'")
+
+
         # make 'em ' into a list
         nr = []
         for row in cursor:
@@ -171,7 +197,56 @@ class UpdateBoss(object):
         # for some reason it likes to use "d" which is not the usual "f" formatter for doing floats. Yes, a total mystery. Example of working prototype        
         # cursor.executemany("insert into LTERLogger_Pro.dbo.Test (CreateTime, DValue) VALUES (%s, %d)", [('2015-01-02 00:00:00', 17.343823), ('2015-01-03 00:00:00', 18.238123), ('2015-01-04 00:00:00', 23.328)])
 
+        if self.attribute in ["AIRTEMP", "RELHUM", "DEWPT", "SOILTEMP", "SOILWC"]:
+        
+            cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table +" (" + column_string + ")  VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %d, %s, %s, %s, %s)", new_tuples)
 
-        cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table +" (" + column_string + ")  VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %d, %s, %s, %s, %s)", new_tuples)
+            conn.commit()
 
-        conn.commit()
+        elif self.attribute in "VPD":
+
+            cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ") VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", new_tuples)
+
+            conn.commit()
+
+        elif self.attribute in "SOLAR":
+
+            cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table +" (" + column_string + ")  VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s)", new_tuples)
+            conn.commit()
+
+        elif self.attribute in "PRECIP":
+
+            cursor.executemany("insert into LTERLogger_Pro.dbo" + self.table + " (" + column_string + ") VALUES( %s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d , %s,  %s, %s)", new_tuples)
+            conn.commit()
+
+        elif self.attribute in "LYS":
+
+           cursor.executemany("insert into LTERLogger_Pro.dbo" + self.table + " (" + column_string + ") VALUES( %s, %d, %s, %s, %s, %s, %s, %d, %s, %d , %s, %s, %s)", new_tuples)
+
+           conn.commit()
+
+        elif self.attribute in "PAR":
+            cursor.executemany("insert into LTERLogger_Pro.dbo" + self.table + " (" + column_string + ") VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %d, %s, %s)", new_tuples)
+            conn.commit()
+
+        elif self.attribute in "BOB":
+            pass
+        else:
+            pass
+
+    def write_a_csv(self):
+        """ writes the rows in self.new_rows to a csv"""
+        import smashWorkers
+        templateWorker = smashWorkers.HeaderWriter(self.attribute)
+        
+        filename = self.table + "_" + self.server + "_temp.csv"
+        with open(filename,'wb') as writefile:
+
+            writer = csv.writer(writefile, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
+
+            myHeader = templateWorker.write_header_template()
+            
+            writer.writerow(myHeader)
+
+            for row in self.new_rows:
+                writer.writerow(row)

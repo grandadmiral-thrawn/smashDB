@@ -173,7 +173,7 @@ class AirTemperature(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from LTERLogger_new.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from LTERLogger_pro.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
@@ -194,7 +194,7 @@ class AirTemperature(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from LTERLogger_new.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from LTERLogger_pro.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -363,14 +363,15 @@ class AirTemperature(object):
                 
                 # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
-                print "the number of total obs is %s" %(num_total_obs)
+                # print "the number of total obs is %s" %(num_total_obs)
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
 
                 else:
                     pass
@@ -383,7 +384,7 @@ class AirTemperature(object):
                 # daily flag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs/num_total_obs >= 0.2:
                     daily_flag = 'M'
-                elif (num_missing_obs + num_questionable_obs)/num_total_obs >= 0.05:
+                elif (num_missing_obs + num_questionable_obs)/num_total_obs > 0.05:
                     daily_flag = 'Q'
                 elif (num_estimated_obs)/num_total_obs >= 0.05:
                     daily_flag = 'E'
@@ -509,13 +510,13 @@ class AirTemperature(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", "MS04311"]
+                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", "MS04311"]
+                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", self.server]
 
-                print newrow
+                #print newrow
                 my_new_rows.append(newrow)
     
         return my_new_rows
@@ -571,7 +572,7 @@ class RelHum(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, RELHUM_MEAN, RELHUM_MEAN_FLAG from LTERLogger_new.dbo.MS04312 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, RELHUM_MEAN, RELHUM_MEAN_FLAG from LTERLogger_pro.dbo.MS04312 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, RELHUM_MEAN, RELHUM_MEAN_FLAG from FSDBDATA.dbo.MS04312 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
@@ -593,7 +594,7 @@ class RelHum(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, RELHUM_MEAN, RELHUM_MEAN_FLAG from LTERLogger_new.dbo.MS04312 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, RELHUM_MEAN, RELHUM_MEAN_FLAG from LTERLogger_pro.dbo.MS04312 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, RELHUM_MEAN, RELHUM_MEAN_FLAG from FSDBDATA.dbo.MS04312 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -759,7 +760,9 @@ class RelHum(object):
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -898,11 +901,11 @@ class RelHum(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", "MS04312"]
+                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", "MS04312"]
+                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -957,7 +960,7 @@ class DewPoint(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG from LTERLogger_new.dbo.MS04317 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG from LTERLogger_pro.dbo.MS04317 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG from FSDBDATA.dbo.MS04317 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
@@ -978,7 +981,7 @@ class DewPoint(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG from LTERLogger_new.dbo.MS04317 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG from LTERLogger_pro.dbo.MS04317 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG from FSDBDATA.dbo.MS04317 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -1150,7 +1153,9 @@ class DewPoint(object):
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -1289,11 +1294,11 @@ class DewPoint(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H%M'), "NA", "MS04317"]
+                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, None, "M", None, None, "M", None, "NA", "MS04317"]
+                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, None, "M", None, None, "M", None, "NA", self.server]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -1350,7 +1355,7 @@ class VPD(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, VPD_MEAN, VPD_MEAN_FLAG from LTERLogger_new.dbo.MS04318 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, VPD_MEAN, VPD_MEAN_FLAG from LTERLogger_pro.dbo.MS04318 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, VPD_MEAN, VPD_MEAN_FLAG from FSDBDATA.dbo.MS04318 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
@@ -1371,7 +1376,7 @@ class VPD(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, VPD_MEAN, VPD_MEAN_FLAG from LTERLogger_new.dbo.MS04318 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, VPD_MEAN, VPD_MEAN_FLAG from LTERLogger_pro.dbo.MS04318 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, VPD_MEAN, VPD_MEAN_FLAG from FSDBDATA.dbo.MS04318 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -1543,7 +1548,9 @@ class VPD(object):
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -1682,11 +1689,11 @@ class VPD(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H:%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H:%M'), "NA", "MS04318"]
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H%M'), None, None, None, None, None, None, None, None, None, None, None, None, "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA","MS04318"]
+                    newrow = ['MS043',self.entity, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, None, "M", None, None, None, None, None, None, None, None, None, None, None, None, None, "NA", self.server]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -1742,7 +1749,7 @@ class PhotosyntheticRad(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from LTERLogger_new.dbo.MS04332 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from LTERLogger_pro.dbo.MS04332 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from FSDBDATA.dbo.MS04332 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
@@ -1763,7 +1770,7 @@ class PhotosyntheticRad(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from LTERLogger_new.dbo.MS04332 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from LTERLogger_pro.dbo.MS04332 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from FSDBDATA.dbo.MS04332 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -1922,7 +1929,9 @@ class PhotosyntheticRad(object):
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -2009,11 +2018,11 @@ class PhotosyntheticRad(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", "MS04332"]
+                    newrow = ['MS043',22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", "NA", "MS04332"]
+                    newrow = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", self.server]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -2069,7 +2078,7 @@ class SoilTemperature(object):
 
         if self.server == "SHELDON":
 
-            query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from LTERLogger_new.dbo.MS04331 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from LTERLogger_pro.dbo.MS04331 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
 
         elif self.server == "STEWARTIA":
 
@@ -2091,7 +2100,7 @@ class SoilTemperature(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from LTERLogger_new.dbo.MS04331 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from LTERLogger_pro.dbo.MS04331 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04331 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -2259,7 +2268,9 @@ class SoilTemperature(object):
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -2398,15 +2409,14 @@ class SoilTemperature(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043', 21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs,  min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", "MS04331"]
+                    newrow = ['MS043', 21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs,  min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", "MS04331"]
+                    newrow = ['MS043', 21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, None, "M", None, "NA", self.server]
 
-                print newrow
                 my_new_rows.append(newrow)
-    
+            print my_new_rows
         return my_new_rows
     
 
@@ -2461,7 +2471,7 @@ class SoilWaterContent(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, SOILWC_MEAN, SOILWC_MEAN_FLAG from LTERLogger_new.dbo.MS04333 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SOILWC_MEAN, SOILWC_MEAN_FLAG from LTERLogger_pro.dbo.MS04333 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, SOILWC_MEAN, SOILWC_MEAN_FLAG from FSDBDATA.dbo.MS04333 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
@@ -2482,7 +2492,7 @@ class SoilWaterContent(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, SOILWC_MEAN, SOILWC_MEAN_FLAG from LTERLogger_new.dbo.MS04333 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SOILWC_MEAN, SOILWC_MEAN_FLAG from LTERLogger_pro.dbo.MS04333 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, SOILWC_MEAN, SOILWC_MEAN_FLAG from FSDBDATA.dbo.MS04333 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -2650,7 +2660,9 @@ class SoilWaterContent(object):
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -2790,13 +2802,13 @@ class SoilWaterContent(object):
                 # in the best possible case, we print it out just as it is here: 
 
                 try:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", "MS04333"]
+                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", "MS04333"]
+                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", self.server]
 
-                print newrow
+                
                 my_new_rows.append(newrow)
     
         return my_new_rows
@@ -2844,7 +2856,7 @@ class Precipitation(object):
 
         if self.server == "SHELDON":
 
-            query = "SELECT DATE_TIME, PROBE_CODE, PRECIP_TOT, PRECIP_TOT_FLAG from LTERLogger_new.dbo.MS04313 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, PRECIP_TOT, PRECIP_TOT_FLAG from LTERLogger_pro.dbo.MS04313 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
 
@@ -2866,7 +2878,7 @@ class Precipitation(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, PRECIP_TOT, PRECIP_TOT_FLAG from LTERLogger_new.dbo.MS04313 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, PRECIP_TOT, PRECIP_TOT_FLAG from LTERLogger_pro.dbo.MS04313 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, PRECIP_TOT, PRECIP_TOT_FLAG from FSDBDATA.dbo.MS04313 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -3032,7 +3044,9 @@ class Precipitation(object):
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -3065,9 +3079,9 @@ class Precipitation(object):
                     daily_flag = "M"
 
                 
-                newrow = ['MS043',3, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", "MS04313"]
+                newrow = ['MS043',3, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", self.server]
 
-                print newrow
+                
                 my_new_rows.append(newrow)
     
         return my_new_rows
@@ -3115,7 +3129,7 @@ class SnowLysimeter(object):
 
         if self.server == "SHELDON":
 
-            query = "SELECT DATE_TIME, PROBE_CODE, SNOWMELT_TOT, SNOWMELT_TOT_FLAG from LTERLogger_new.dbo.MS04319 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SNOWMELT_TOT, SNOWMELT_TOT_FLAG from LTERLogger_pro.dbo.MS04319 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
 
@@ -3137,7 +3151,7 @@ class SnowLysimeter(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, SNOWMELT_TOT, SNOWMELT_TOT_FLAG from LTERLogger_new.dbo.MS04319 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SNOWMELT_TOT, SNOWMELT_TOT_FLAG from LTERLogger_pro.dbo.MS04319 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, SNOWMELT_TOT, SNOWMELT_TOT_FLAG from FSDBDATA.dbo.MS04319 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -3277,7 +3291,9 @@ class SnowLysimeter(object):
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -3359,7 +3375,7 @@ class Solar(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from LTERLogger_new.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from LTERLogger_pro.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from FSDBDATA.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
 
@@ -3379,7 +3395,7 @@ class Solar(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from LTERLogger_new.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from LTERLogger_pro.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT ATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from FSDBDATA.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -3531,7 +3547,9 @@ class Solar(object):
                 # if it's not a total of observations on that day that we would expect, then print this-- we expect that since this is counting up the rows, it shouldn't matter which it gets!
                 if num_total_obs_tot not in [288, 96, 24] and each_date != self.startdate: 
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs_tot)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -3630,14 +3648,14 @@ class Solar(object):
                         print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
 
                 try:
-                    newrow = ['MS043', 5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", "MS04315"]
+                    newrow = ['MS043', 5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", self.server]
                 
                 except Exception:
 
-                    newrow = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", "MS04315"]
+                    newrow = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", self.server]
 
 
-                print newrow
+                
                 my_new_rows.append(newrow)
     
         return my_new_rows
@@ -3685,7 +3703,7 @@ class NetRadiometer(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from LTERLogger_new.dbo.MS04335 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from LTERLogger_pro.dbo.MS04335 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from FSDBDATA.dbo.MS04335 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
@@ -3706,10 +3724,10 @@ class NetRadiometer(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from LTERLogger_new.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from LTERLogger_pro.dbo.MS04335 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
-            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from FSDBDATA.dbo.MS04315 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, SW_IN_MEAN, SW_IN_MEAN_FLAG, SW_OUT_MEAN, SW_OUT_MEAN_FLAG, LW_IN_MEAN, LW_IN_MEAN_FLAG, LW_OUT_MEAN, LW_OUT_MEAN_FLAG, NR_TOT_MEAN, NR_TOT_MEAN_FLAG, SENSOR_TEMP, SENSOR_TEMP_FLAG from FSDBDATA.dbo.MS04335 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
         
         self.cursor.execute(query)
 
@@ -3870,7 +3888,9 @@ class NetRadiometer(object):
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate: 
                     
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
 
                 else:
                     pass
@@ -4033,15 +4053,15 @@ class NetRadiometer(object):
 
 
                 try:
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA", "MS04335"]
+                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA", self.server]
                 
                 except Exception:
                     # which might happen if a day is just missing
 
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None,"M", "NA", "MS04335"]
+                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None,"M", "NA", self.server]
 
 
-                print newrow
+                
                 my_new_rows.append(newrow)
     
         return my_new_rows
@@ -4057,7 +4077,7 @@ class Wind(object):
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
-        self.entity = '04'
+        self.entity = 4
         self.server = server
         
         if not limited:
@@ -4087,7 +4107,7 @@ class Wind(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG from LTERLogger_new.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG from LTERLogger_pro.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG from FSDBDATA.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
 
@@ -4108,7 +4128,7 @@ class Wind(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG  from LTERLogger_new.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG  from LTERLogger_pro.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG  from FSDBDATA.dbo.MS04314 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -4263,8 +4283,9 @@ class Wind(object):
                 # if it's not a total of observations on that day that we would expect, then print this
                 if num_total_obs_spd not in [288, 96, 24] and each_date != self.startdate: 
                     print("the total number of observations on %s is %s") %(each_date, num_total_obs_spd)
-                    
-                    break
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
                 
                 else:
                     pass
@@ -4375,6 +4396,12 @@ class Wind(object):
 
                     daily_sigma_theta = math.degrees(math.asin(daily_epsilon)*(1+(2./math.sqrt(3))-1)*daily_epsilon)
 
+                    # if it gives you back a less than 0 value due to the conversion, abs it. 
+                    if daily_sigma_theta < 0.:
+                        daily_sigma_theta = round(abs(daily_sigma_theta),3)
+                    else:
+                        daily_sigma_theta = round(daily_sigma_theta,3)
+
                     # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
 
                     # get the max of those observations (mean speed)
@@ -4461,7 +4488,7 @@ class Sonic(object):
             pass
 
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG from LTERLogger_new.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG from LTERLogger_pro.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG from FSDBDATA.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
@@ -4483,7 +4510,7 @@ class Sonic(object):
             pass
             
         if self.server == "SHELDON":
-            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG  from LTERLogger_new.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
+            query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG  from LTERLogger_pro.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, WSPD_SNC_MEAN, WSPD_SNC_MEAN_FLAG, WSPD_SNC_MAX, WSPD_SNC_MAX_FLAG, WDIR_SNC_MEAN, WDIR_SNC_MEAN_FLAG, WDIR_SNC_STDDEV, WDIR_SNC_STDDEV_FLAG,  WUX_SNC_MEAN,  WUX_SNC_MEAN_FLAG,  WUX_SNC_STDDEV,  WUX_SNC_STDDEV_FLAG, WUY_SNC_MEAN,  WUY_SNC_MEAN_FLAG,  WUY_SNC_STDDEV,  WUY_SNC_STDDEV_FLAG, WAIR_SNC_MEAN,  WAIR_SNC_MEAN_FLAG,  WAIR_SNC_STDDEV,  WAIR_SNC_STDDEV_FLAG  from FSDBDATA.dbo.MS04334 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
@@ -4651,9 +4678,10 @@ class Sonic(object):
                 
                 # if it's not a total of observations on that day that we would expect, then print this
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate: 
-                    print("the total number of observations on %s is %s") %(each_date, num_total_obs_spd)
-                    
-                    break
+                    print("the total number of observations on %s is %s") %(each_date, num_total_obs)
+                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    continue
+
                 
                 else:
                     pass
@@ -4872,7 +4900,7 @@ class Sonic(object):
 
 
                 try: 
-                    # compute the mean daily max sonic speed? -- just the mean of what is given...
+                    # compute the mean wux
                     daily_wux = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wux_val'] if x != 'None'])/num_valid_obs),3)
 
                 except ZeroDivisionError:
@@ -4882,7 +4910,7 @@ class Sonic(object):
                     daily_flag_wux = "M"
 
                 try: 
-                    # compute the mean daily max sonic speed? -- just the mean of what is given...
+                    # compute the daily wuy
                     daily_wuy = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != 'None'])/num_valid_obs),3)
 
                 except ZeroDivisionError:
@@ -4893,7 +4921,7 @@ class Sonic(object):
 
 
                 try: 
-                    # compute the mean daily max sonic speed? -- just the mean of what is given...
+                    # compute daily air temp
                     daily_wair = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wair_val'] if x != 'None'])/num_valid_obs),3)
 
                 except ZeroDivisionError:
@@ -4916,17 +4944,21 @@ class Sonic(object):
 
                     daily_mag_from_wuy = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != 'None']))**2,3)
 
-                    daily_snc_mag = math.sqrt(daily_mag_from_wux + daily_mag_from_wuy)
+                    daily_snc_mag = round(math.sqrt(daily_mag_from_wux + daily_mag_from_wuy),3)
                     
                     # flag the mag's... if it's from 2 a's, it's A. If a Q is part or an E is part, it's Q. If an "M" is part, it's M, otherwise it's A.
                     if daily_flag_wux == "A" and daily_flag_wuy == "A":
                         daily_flag_snc_mag = "A"
+                    
                     elif daily_flag_wux == "Q" or daily_flag_wuy == "Q":
                         daily_flag_snc_mag = "Q"
+                    
                     elif daily_flag_wux == "E" or daily_flag_wuy == "E":
                         daily_flag_snc_mag = "Q"
+                    
                     elif daily_flag_wux == "M" or daily_flag_wuy == "M":
                         daily_flag_snc_mag = "M"
+                    
                     else:
                         daily_flag_snc_mag = "A"
 
@@ -4937,9 +4969,9 @@ class Sonic(object):
                     # compute the standard deviation of the daily wind directions -- yamartino method:
                     # see this: http://en.wikipedia.org/wiki/Yamartino_method for details
 
-                    daily_epsilon = math.sqrt(1-((sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2 + (sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2))
+                    daily_epsilon = round(math.sqrt(1-((sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2 + (sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2)),3)
 
-                    daily_sigma_theta = math.degrees(math.asin(daily_epsilon)*(1+(2./math.sqrt(3))-1)*daily_epsilon)
+                    daily_sigma_theta = round(math.degrees(math.asin(daily_epsilon)*(1+(2./math.sqrt(3))-1)*daily_epsilon),3)
 
                     # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
 
@@ -4947,19 +4979,40 @@ class Sonic(object):
                     # the daily standard deviation is the standard deviation of the day's values by component
                     if daily_wux != None:
                         # compute the std of the day
-                        daily_wux_std = np.std([float(x) for x in self.od[probe_code][each_date]['wux_val'] if x != "None"])
+                        daily_wux_std = round(np.std([float(x) for x in self.od[probe_code][each_date]['wux_val'] if x != "None"]),3)
+                        
+                        # added a method to check if it's a nan because all values are missing
+                        if np.isnan(daily_wux_std):
+                            daily_wux_std = None
+                        else:
+                            pass
+
                     else: 
                         daily_wux_std = None
 
                     if daily_wuy != None:
                         # compute the std of the day
-                        daily_wuy_std = np.std([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != "None"])
+                        daily_wuy_std = round(np.std([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != "None"]),3)
+
+                        # added a method to check if it's a nan because all values are missing
+                        if np.isnan(daily_wuy_std):
+                            daily_wuy_std = None
+                        else:
+                            pass
+
                     else: 
                         daily_wuy_std = None
 
                     if daily_wair != None:
                         # compute the std of the day
-                        daily_wair_std = np.std([float(x) for x in self.od[probe_code][each_date]['wair_val'] if x != "None"])
+                        daily_wair_std = round(np.std([float(x) for x in self.od[probe_code][each_date]['wair_val'] if x != "None"]),3)
+                    
+                        # added a method to check if it's a nan because all values are missing
+                        if np.isnan(daily_wair_std):
+                            daily_wair_std = None
+                        else:
+                            pass
+
                     else: 
                         daily_wair_std = None
 
@@ -4975,43 +5028,9 @@ class Sonic(object):
                 else:
                     pass
 
-                newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "NA", "MS04334"]
+                newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "NA", self.server]
 
-                print newrow
+                #print newrow
                 my_new_rows.append(newrow)
     
         return my_new_rows
-
-
-if __name__ == "__main__":
-
-    print "you are running a test loop. If you check the main loop in the data file, you will see this test loop at the bottom. use this construction for querying all the data sets and writing csvs"
-
-    # let's get some air temperature
-
-    ##### HERE IS HOW WE DO AIRTEMP #######
-
-    A = HeaderWriter('AIRTEMP')
-    AT = AirTemperature('2015-04-01 00:00:00', '2015-04-05 00:00:00', 'STEWARTIA')
-    my_new_rows = AT.condense_data('CONFIG2.yaml')
-
-    # open a test file for writing
-    with open(A.filename,'wb') as writefile:
-        writer = csv.writer(writefile, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-        myHeader = A.write_header_template()
-        print myHeader
-        writer.writerow(myHeader)
-
-        for row in my_new_rows:
-            writer.writerow(row)
-
-    del A, my_new_rows, AT
-
-    
-
-    with open('README.md','wb') as otherwritefile:
-        otherwritefile.write(" THIS IS OUR NEW TOOL FOR UPDATING FSDBDATA \r \
-    ===========================\n\
-    This tool will ultimately serve to bridge the gap between Hans' program and our database.\r \
-    Current methods are up for Air Temperature, Relative Humidity, Dew Point, VPD, Soil Temp, SoilMoisture, and Precip.\n")
