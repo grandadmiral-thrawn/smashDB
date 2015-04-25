@@ -51,6 +51,52 @@ print("~ Probe Code: {}".format(args.probe))
 print("~ New Configuration File: {}".format(args.newcfg))
 
 
+if args.boss == 'XXDEL'
+
+    print(" Deleting all data from LTERLogger_Pro for your attribute! ")
+
+    if args.attribute == None:
+        print("I cannot process this command without an attribute to delete. Try again :)")
+
+    else:
+        deleteable = args.attribute[0]
+
+        if deleteable == "AIRTEMP":
+            full_name = "LTERLogger_Pro.dbo.MS04301"
+        elif deleteable == "RELHUM":
+            full_name = "LTERLogger_Pro.dbo.MS04302"
+        elif deleteable == "WSPD_PRO":
+            full_name = "LTERLogger_Pro.dbo.MS04304"
+        elif deleteable == "SOLAR"
+            full_name = "LTERLogger_Pro.dbo.MS04305"
+        elif deleteable == "PRECIP":
+            full_name = "LTERLogger_Pro.dbo.MS04303"
+        elif deleteable == "NR":
+            full_name = "LTERLogger_Pro.dbo.MS04325"
+        elif deleteable == "WSPD_SNC":
+            full_name = "LTERLogger_Pro.dbo.MS04324"
+        elif deleteable == "SOILWC":
+            full_name = "LTERLogger_Pro.dbo.MS04323"
+        elif deleteable == "SOILTEMP":
+            full_name = "LTERLogger_Pro.dbo.MS04321"
+        elif deleteable == "PAR":
+            full_name = "LTERLogger_Pro.dbo.MS04322"
+        elif deletable == "LYS":
+            full_name = "LTERLogger_Pro.dbo.MS04309"
+        else:
+            print("need to create a method to delete {}".format(deleteable))
+
+        new_query = ("Delete from " + full_name + " where date > '2014-01-01'")
+
+        import form_connection as fc
+        conn = fc.micro_conn(args.server)
+
+        cursor = conn.cursor()
+
+        cursor.execute(new_query)
+
+        print("Your rows have been deleted. Please try your updates again!")
+
 
 if args.boss == 'LIMITED':
 

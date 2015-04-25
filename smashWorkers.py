@@ -19,7 +19,6 @@ class HeaderWriter(object):
                 'SOILWC':'23',
                 'PAR':'22',
                 'SOILTEMP':'21',
-                'SWE':'10',
                 'VPD':'08',
                 'DEWPT':'07',
                 'SOLAR': '05',
@@ -46,23 +45,16 @@ class HeaderWriter(object):
         self.mintime_method = attribute + "_MINTIME"
         self.min_flag_method = attribute + "_MIN_FLAG"
     
+        # writes a header line for a csv
         self.header = self.write_header_template()
 
-
-        ####
-        # if args.custfile != 0:
-        #   self.filename = args.custfile[0]
-        # else: 
-        #   the following
-        #
-        # the filename is a generated filename
+        # name of the csvfile
         self.filename = dbcode + daily_attr[attribute] + '_test.csv'
 
-        
-
+        # lists the name of codes you can use
         self.help = """The following codes can be used for attribute access:
         'ATM'' for atmospheric pressure, 'NR' for net radiation, 'PAR' for photosynthetic
-        active radiation, 'SOILTEMP' for soil temperature, 'SNOWMELT' for snowmelt, 
+        active radiation, 'SOILTEMP' for soil temperature, 'LYS' for snowmelt, 
         'VPD' for vapor pressure deficit, 'DEWPT' for dewpoint, 'SOLAR' for pyranometer,
         'WSPD_PRO' for propellor anemometer, 'WSPD_SNC' for sonic anemometer,
         'PRECIP' for precipitation (as rain), 'RELHUM' for relative
@@ -71,7 +63,7 @@ class HeaderWriter(object):
     def isdirty(self):
         """ If an attribute has to do with the soil, it will take depth rather than height in the header"""
 
-        if self.attribute == "SOILMP" or self.attribute == "SOILTEMP":
+        if self.attribute == "SOILWC" or self.attribute == "SOILTEMP":
             height_word = "DEPTH"
         else:
             height_word = "HEIGHT"
@@ -81,44 +73,55 @@ class HeaderWriter(object):
     def write_header_template(self):
         """ The following headers are generated based on given attributes"""
 
-        # the "big six" simplest case
-        if self.attribute == "AIRTEMP" or self.attribute == "RELHUM" or self.attribute == "SOILWC" or self.attribute == "DEWPT" or self.attribute == "VPD" or self.attribute == "SOILTEMP":
+        # if the attribute is given in lowercase, make it into an upper case.
+        if self.attribute in ["airtemp", "relhum", "dewpt", "soilwc", "vpd", "soiltemp", "par", "nr", "precip", "lys", "wspd_snc", "wspd_pro"]:
 
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.mintime_method, self.min_flag_method, "EVENT_CODE"]
+            self.attribute = self.attribute.upper()
+        else:
+            pass
+
+        # the "big six" simplest case
+        if self.attribute == "AIRTEMP" or self.attribute == "RELHUM" or self.attribute == "SOILWC" or self.attribute == "DEWPT" or self.attribute == "SOILTEMP":
+
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.min_flag_method, self.mintime_method, "EVENT_CODE", "SOURCE"]
+
+        elif self.attribute == "VPD":
+
+            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.mintime_method, self.min_flag_method, "VAP_MEAN_DAY", "VAP_MEAN_FLAG", "VAP_MAX_DAY", "VAP_MAX_FLAG", "VAP_MIN_DAY", "VAP_MIN_FLAG", "SATVP_MEAN_DAY", "SATVP_MEAN_FLAG", "SATVP_MAX_DAY", "SATVP_MAX_FLAG", "SATVP_MIN_DAY",   "SATVP_MIN_FLAG", "EVENT_CODE", "SOURCE"]
 
         # attributes which need a "total"
         elif self.attribute == "PRECIP":
 
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "PRECIP_TOT_DAY", "PRECIP_TOT_FLAG", "EVENT_CODE"]
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "PRECIP_TOT_DAY", "PRECIP_TOT_FLAG", "EVENT_CODE", "SOURCE"]
 
         # propellor anemometer
         elif self.attribute == "WSPD_PRO":
 
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_PRO_MEAN_DAY", "WMAG_PRO_MEAN_FLAG", "WDIR_PRO_MEAN_DAY", "WDIR_PRO_MEAN_FLAG", "WDIR_PRO_STDDEV_DAY", "WDIR_PRO_STDDEV_FLAG", "EVENT_CODE"]
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_PRO_MEAN_DAY", "WMAG_PRO_MEAN_FLAG", "WDIR_PRO_MEAN_DAY", "WDIR_PRO_MEAN_FLAG", "WDIR_PRO_STDDEV_DAY", "WDIR_PRO_STDDEV_FLAG", "EVENT_CODE", "SOURCE"]
 
         # the sonic anemometer
         elif self.attribute == "WSPD_SNC":
 
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_SNC_MEAN_DAY", "WMAG_SNC_MEAN_FLAG", "WDIR_SNC_MEAN_DAY", "WDIR_SNC_MEAN_FLAG", "WDIR_SNC_STDDEV_DAY", "WDIR_SNC_STDDEV_FLAG", "WUX_SNC_MEAN_DAY", "WUX_SNC_MEAN_FLAG", "WUX_SNC_STDDEV_DAY", "WUX_SNC_STDDEV_DAY_FLAG","WUY_SNC_MEAN_DAY", "WUY_SNC_MEAN_FLAG", "WUY_SNC_STDDEV_DAY", "WUY_SNC_STDDEV_DAY_FLAG", "WAIR_SNC_MEAN_DAY", "WAIR_SNC_MEAN_FLAG", "WAIR_SNC_STDDEV_DAY", "WAIR_SNC_STDDEV_FLAG",  "EVENT_CODE"]
+            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_SNC_MEAN_DAY", "WMAG_SNC_MEAN_FLAG", "WDIR_SNC_MEAN_DAY", "WDIR_SNC_MEAN_FLAG", "WDIR_SNC_STDDEV_DAY", "WDIR_SNC_STDDEV_FLAG", "WUX_SNC_MEAN_DAY", "WUX_SNC_MEAN_FLAG", "WUX_SNC_STDDEV_DAY", "WUX_SNC_STDDEV_DAY_FLAG","WUY_SNC_MEAN_DAY", "WUY_SNC_MEAN_FLAG", "WUY_SNC_STDDEV_DAY", "WUY_SNC_STDDEV_DAY_FLAG", "WAIR_SNC_MEAN_DAY", "WAIR_SNC_MEAN_FLAG", "WAIR_SNC_STDDEV_DAY", "WAIR_SNC_STDDEV_FLAG",  "EVENT_CODE", "SOURCE"]
 
         # net radiometer
         elif self.attribute == "NR":
 
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "SW_IN_MEAN_DAY", "SW_IN_MEAN_FLAG", "SW_OUT_MEAN_DAY", "SW_OUT_MEAN_FLAG", "LW_IN_MEAN_DAY", "LW_IN_MEAN_FLAG", "LW_OUT_MEAN_DAY", "LW_OUT_MEAN_FLAG", "NR_TOT_MEAN_DAY", "NR_TOT_MEAN_FLAG", "SENSOR_TEMP_DAY", "SENSOR_TEMP_FLAG", "EVENT_CODE"]
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "SW_IN_MEAN_DAY", "SW_IN_MEAN_FLAG", "SW_OUT_MEAN_DAY", "SW_OUT_MEAN_FLAG", "LW_IN_MEAN_DAY", "LW_IN_MEAN_FLAG", "LW_OUT_MEAN_DAY", "LW_OUT_MEAN_FLAG", "NR_TOT_MEAN_DAY", "NR_TOT_MEAN_FLAG", "SENSOR_TEMP_DAY", "SENSOR_TEMP_FLAG", "EVENT_CODE"]
 
         # pyranometer (similar method to precip but takes a max and min time as well)
         elif self.attribute == "SOLAR":
             
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "SOLAR_TOT_DAY", "SOLAR_TOT_FLAG", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "EVENT_CODE"]
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "SOLAR_TOT_DAY", "SOLAR_TOT_FLAG", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "EVENT_CODE", "SOURCE"]
 
         # very simple, like the "big six", but no minimums
         elif self.attribute == "PAR":
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "EVENT_CODE"]
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "EVENT_CODE", "SOURCE"]
 
         # still not sure if this is right
-        elif self.attribute == "SNOWMELT":
+        elif self.attribute == "LYS":
 
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "SNOWMELT_TOT_DAY", "SNOWMELT_TOT_FLAG", "EVENT_CODE"]
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "SNOWMELT_TOT_DAY", "SNOWMELT_TOT_FLAG", "EVENT_CODE", "SOURCE"]
 
         return header
 
@@ -508,13 +511,21 @@ class AirTemperature(object):
                 else:
                     pass
 
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04311"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04311"
+                else:
+                    print("no server given")
+
+
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", self.server]
+                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
                 #print newrow
                 my_new_rows.append(newrow)
@@ -899,6 +910,13 @@ class RelHum(object):
                 else:
                     pass
 
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04312"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04312"
+                else:
+                    print("no server given")
+
                 # in the best possible case, we print it out just as it is here: 
                 try:
                     newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
@@ -907,7 +925,7 @@ class RelHum(object):
                 except IndexError:
                     newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
-                print newrow
+                
                 my_new_rows.append(newrow)
     
         return my_new_rows
@@ -1292,15 +1310,23 @@ class DewPoint(object):
                 else:
                     pass
 
+
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04317"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04317"
+                else:
+                    print("no server given")
+
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H%M'), "NA", self.server]
+                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, None, "M", None, None, "M", None, "NA", self.server]
+                    newrow = ['MS043',7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, None, "M", None, None, "M", None, "NA", source]
 
-                print newrow
+               
                 my_new_rows.append(newrow)
     
         return my_new_rows
@@ -1687,15 +1713,22 @@ class VPD(object):
                 else:
                     pass
 
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04318"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04318"
+                else:
+                    print("no server given")
+
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H%M'), None, None, None, None, None, None, None, None, None, None, None, None, "NA", self.server]
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0],'%H%M'), None, None, None, None, None, None, None, None, None, None, None, None, "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',self.entity, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, None, "M", None, None, None, None, None, None, None, None, None, None, None, None, None, "NA", self.server]
+                    newrow = ['MS043',self.entity, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, None, "M", None, None, None, None, None, None, None, None, None, None, None, None, None, "NA", source]
 
-                print newrow
+               
                 my_new_rows.append(newrow)
     
         return my_new_rows
@@ -2016,13 +2049,20 @@ class PhotosyntheticRad(object):
                 else:
                     pass
 
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04332"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04332"
+                else:
+                    print("no server given")
+
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", self.server]
+                    newrow = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", source]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -2047,7 +2087,7 @@ class SoilTemperature(object):
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
-        self.entity = '06'
+        self.entity = 21
         self.server = server
         
         if not limited:
@@ -2407,16 +2447,23 @@ class SoilTemperature(object):
                 else:
                     pass
 
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04331"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04331"
+                else:
+                    print("no server given")
+
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043', 21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs,  min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043', 21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs,  min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, None, "M", None, "NA", self.server]
+                    newrow = ['MS043', 21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, None, "M", None, "NA", source]
 
                 my_new_rows.append(newrow)
-            print my_new_rows
+            
         return my_new_rows
     
 
@@ -2721,6 +2768,7 @@ class SoilWaterContent(object):
                 if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
+                    max_flag = max_flag[0].rstrip()
 
                 else:
                     # check to see if the whole day was missing, if so, set to "M"
@@ -2758,7 +2806,7 @@ class SoilWaterContent(object):
                 if mean_valid_obs is not None:
 
                     min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
-                    
+                    min_flag = min_flag[0].rstrip()
                 
                 else:
                     print "mean valid obs is none"
@@ -2801,12 +2849,19 @@ class SoilWaterContent(object):
 
                 # in the best possible case, we print it out just as it is here: 
 
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04333"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04333"
+                else:
+                    print("no server given")
+
                 try:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", self.server]
+                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, None, "M", None, "NA", source]
 
                 
                 my_new_rows.append(newrow)
@@ -2824,7 +2879,7 @@ class Precipitation(object):
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
-        self.entity = '03'
+        self.entity = 3
         self.server = server
         
         if not limited:
@@ -3078,8 +3133,15 @@ class Precipitation(object):
                     total_valid_obs = None
                     daily_flag = "M"
 
+
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04333"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04333"
+                else:
+                    print("no server given")
                 
-                newrow = ['MS043',3, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", self.server]
+                newrow = ['MS043',3, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
 
                 
                 my_new_rows.append(newrow)
@@ -3325,8 +3387,15 @@ class SnowLysimeter(object):
                     total_valid_obs = None
                     daily_flag = "M"
 
+
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04319"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04319"
+                else:
+                    print("no server given")
                 
-                newrow = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", "MS04309"]
+                newrow = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -3647,6 +3716,14 @@ class Solar(object):
                     else:
                         print "error in max_valid_flag for %s on %s" %(probe_code, each_date)
 
+
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04305"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04305"
+                else:
+                    print("no server given")
+
                 try:
                     newrow = ['MS043', 5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", self.server]
                 
@@ -3803,7 +3880,7 @@ class NetRadiometer(object):
 
             if probe_code not in od:
                 # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
-                od[probe_code] = {dt:{'swin_val': [str(row[2])], 'swin_fval': [str(row[3])], 'swout_val': [str(row[4])], 'swout_fval': [str(row[5])], 'lwin_val': [str(row[6])], 'lwin_fval': [str(row[7])], 'lwout_val': [str(row[8])], 'lwout_fval': [str(row[8])], 'nr_val': [str(row[9])], 'nr_fval': [str(row[10])], 'temp_val': [str(row[11])], 'temp_fval': [str(row[12])],'timekeep':[dt_old]}}
+                od[probe_code] = {dt:{'swin_val': [str(row[2])], 'swin_fval': [str(row[3])], 'swout_val': [str(row[4])], 'swout_fval': [str(row[5])], 'lwin_val': [str(row[6])], 'lwin_fval': [str(row[7])], 'lwout_val': [str(row[8])], 'lwout_fval': [str(row[9])], 'nr_val': [str(row[10])], 'nr_fval': [str(row[11])], 'temp_val': [str(row[12])], 'temp_fval': [str(row[13])],'timekeep':[dt_old]}}
 
             elif probe_code in od:
                 
@@ -4050,15 +4127,22 @@ class NetRadiometer(object):
                     mean_temp = None
 
 
+                if self.server == "STEWARTIA":
+                    source = "STEWARTIA_FSDBDATA_MS04305"
+                elif self.server == "SHELDON":
+                    source = "SHELDON_LTERLogger_PRO_MS04305"
+                else:
+                    print("no server given")
+
 
 
                 try:
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA", self.server]
+                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA"]
                 
                 except Exception:
                     # which might happen if a day is just missing
 
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None,"M", "NA", self.server]
+                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None, "M", "NA"]
 
 
                 
@@ -4386,8 +4470,29 @@ class Wind(object):
 
                     daily_mag_results = math.sqrt(daily_mag_y_part + daily_mag_x_part)
 
+                    if daily_mag_results != None:
+                        daily_mag_results = round(daily_mag_results,3)
+                    else:
+                        pass
+
+                    
                     # compute the mean of the daily observations of degrees-- must be done with RADIANS - not including the missing, questionable, or estimated ones
-                    daily_dir_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+
+                    # campbell uses the frickin weighted resultant aaaaahgh
+
+                    theta_u = math.atan2(sum([float(speed) * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'], self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd, sum([float(speed) * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'],self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)
+
+                    daily_dir_valid_obs = math.degrees(theta_u)
+
+                    # roll over the zero
+                    if daily_dir_valid_obs < 0.:
+                        daily_dir_valid_obs +=360
+                    else:
+                        pass
+
+                   # print "daily dir valid sin: %s, daily dir valid cos: %s, daily dir valid obs: %s" %(sum(daily_dir_valid_sins), sum(daily_dir_valid_cos), daily_dir_valid_obs)
+                   # daily_dir_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+
 
                     # compute the standard deviation of the daily wind directions -- yamartino method:
                     # see this: http://en.wikipedia.org/wiki/Yamartino_method for details
@@ -4435,11 +4540,19 @@ class Wind(object):
                 else:
                     pass
 
+
+                if self.server == "STEWARTIA":
+                    source = self.server + "_FSDBDATA_MS04314"
+                elif self.server == "SHELDON":
+                    source = self.server + "_LTERLogger_Pro_MS04314"
+                else:
+                    pass
+
                 try:
-                    newrow = ['MS043',4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, "NA", "MS04314"]
+                    newrow = ['MS043',4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
                 
                 except TypeError:
-                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%H%M'), None, "M", None, "M", "None", None,"M", None, "M", None, "M", "NA", "MS04314"]
+                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
 
 
                 print newrow
@@ -4963,8 +5076,21 @@ class Sonic(object):
                         daily_flag_snc_mag = "A"
 
 
+
+                    theta_u = math.atan2(sum([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != 'None'])/num_valid_obs, sum([float(x) for x in self.od[probe_code][each_date]['wux_val'] if x != 'None'])/num_valid_obs)
+
+                    daily_dir_valid_obs = math.degrees(theta_u)
+
+                    if daily_dir_valid_obs < 0.:
+                        daily_dir_valid_obs +=360.
+                    elif daily_dir_valid_obs > 360.:
+                        daily_dir_valid_obs -=360.
+                    else:
+                        pass
+
+
                     # compute the mean of the daily observations of degrees-- must be done with RADIANS - not including the missing, questionable, or estimated ones
-                    daily_dir_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+                    # daily_dir_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
 
                     # compute the standard deviation of the daily wind directions -- yamartino method:
                     # see this: http://en.wikipedia.org/wiki/Yamartino_method for details
@@ -5028,9 +5154,16 @@ class Sonic(object):
                 else:
                     pass
 
-                newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "NA", self.server]
+                if self.server == "STEWARTIA":
+                    source = self.server + "_FSDBDATA_MS04334"
+                elif self.server == "SHELDON":
+                    source = self.server + "_LTERLogger_Pro_MS04334"
+                else:
+                    pass
 
-                #print newrow
+                newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "NA", source]
+
+                print newrow
                 my_new_rows.append(newrow)
     
         return my_new_rows

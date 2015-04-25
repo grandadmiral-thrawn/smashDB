@@ -53,6 +53,8 @@ class Worker(object):
         elif self.attribute == "WSPD_SNC":
             self.Worker = smashWorkers.Sonic(startdate, enddate, server, *args)
 
+        elif self.attribute == "LYS":
+            self.Worker = smashWorkers.SnowLysimeter(startdate, enddate, server, *args)
 
         elif self.attribute == "PRECIP":
             self.Worker = smashWorkers.Precipitation(startdate, enddate, server, *args)

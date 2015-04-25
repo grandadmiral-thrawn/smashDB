@@ -190,8 +190,11 @@ class UpdateBoss(object):
         for row in cursor:
             nr.append(str(row[0]))
 
-        column_string = " ,".join(nr[:-1])
 
+        if self.attribute != "NR":
+            column_string = " ,".join(nr[:-1])
+        elif self.attribute == "NR":
+            column_string = " ,".join(nr)
 
                 
         # for some reason it likes to use "d" which is not the usual "f" formatter for doing floats. Yes, a total mystery. Example of working prototype        
@@ -226,14 +229,26 @@ class UpdateBoss(object):
            conn.commit()
 
         elif self.attribute in "PAR":
+            
             cursor.executemany("insert into LTERLogger_Pro.dbo" + self.table + " (" + column_string + ") VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %d, %s, %s)", new_tuples)
             conn.commit()
 
-        elif self.attribute in "BOB":
-            pass
-        else:
-            pass
+        elif self.attribute in "NR":
+            
+            cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", new_tuples)
 
+            conn.commit()
+
+
+        elif self.attribute in "WSPD_PRO":
+            cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES(%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %d,%s ,%s, %d, %s, %d, %s, %d,  %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s)", new_tuples)
+
+            conn.commit()
+        elif self.attribute in "WSPD_SNC":
+            cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES( %s,  %d,  %s, %s,  %d,  %s, %s,  %s,    %d,  %s,  %d,  %s,  %d, %s,  %d, %s,    %d, %s,   %d, %s, %d,   %s,   %d,  %s, %d   %s,  %d, %s,  %s,  %s)",new_tuples)
+
+            conn.commit()
+    
     def write_a_csv(self):
         """ writes the rows in self.new_rows to a csv"""
         import smashWorkers
@@ -250,3 +265,149 @@ class UpdateBoss(object):
 
             for row in self.new_rows:
                 writer.writerow(row)
+
+class MethodBoss(object):
+    """ uses the file from don for updating the LterLogger_Pro"""
+    def __init__(self, attribute):
+
+        self.filename = "method_current_daily.CSV"
+        self.attribute = attribute
+        self.od = self.csv_to_dict()
+
+    def csv_to_dict(self):
+        """ update method list is imported. """
+        od = {}
+
+        with open(self.filename, 'rb') as readfile:
+            reader = csv.reader(readfile)
+
+            for row in reader:
+
+                if str(row[1]) not in od:
+                    # make start, end, and method update-able
+                    od[str(row[1])] = {'startdate': [str(row[2])], 'enddate': [str(row[3])], 'height': str(row[4]), 'method_code':[str(row[6])], 'site_code': str(row[0])}
+                elif str(row[1]) in od:
+                    od[str(row[1])]['startdate'].append(str(row[2]))
+                    od[str(row[1])]['enddate'].append(str(row[3]))
+                    od[str(row[1])]['method_code'].append(str(row[6]))
+                else: 
+                    pass
+
+        return od
+
+    def update_methods(self):
+
+        import form_connection as fc
+        conn = fc.micro_conn('SHELDON')
+
+        cursor = conn.cursor()
+
+        query_d = {'AIRTEMP': 'MS04301',
+                    'RELHUM': 'MS04302',
+                    'PRECIP': 'MS04303',
+                    'WSPD_PRO': 'MS04304',
+                    'SOLAR': 'MS04305',
+                    'DEWPT': 'MS04307',
+                    'VPD': 'MS04308',
+                    'LYS': 'MS04309',
+                    'NR': 'MS04325',
+                    'WSPD_SNC': 'MS04324',
+                    'SOILTEMP': 'MS04321',
+                    'SOILWC': 'MS04323',
+                    'PAR': 'MS04322'}
+
+
+        valid_keys = []
+        if self.attribute == "AIRTEMP":
+
+            for key in self.od.keys():
+
+                if "AIR" in key:
+                    valid_keys.append(key)
+
+        elif self.attribute == "RELHUM":
+
+            for key in self.od.keys():
+
+                if "REL" in key:
+                    valid_keys.append(key)
+
+
+        elif self.attribute == "PRECIP":
+            for key in self.od.keys():
+
+                    if "PPT" in key:
+                        valid_keys.append(key)
+
+        elif self.attribute == "WSPD_SNC":
+
+
+            valid_keys = ["WNDPRI02", "WNDVAN02"]
+
+
+        elif self.attribute == "WSPD_PRO":
+
+            valid_keys = ["WNDPRI01", "WNDVAN01", "WNDUPL01", "WNDCEN01", "WNDH1501"]
+
+
+        elif self.attribute == "DEWPT":
+            for key in self.od.keys():
+
+                if "DEW" in key:
+                    valid_keys.append(key)
+
+        elif self.attribute == "VPD":
+            for key in self.od.keys():
+
+                if "VPD" in key:
+                    valid_keys.append(key)
+
+        elif self.attribtue in "SOLAR":
+
+            valid_keys = ["RADPRI01","RADVAN01","RADUPL01","RADCEN01"]
+
+        elif self.attribute in "NR":
+
+            valid_keys = ["RADPRI02","RADVAN02"]
+
+        elif self.attribute in "SOILWC":
+            for key in self.od.keys():
+
+                if "SWC" in key:
+                    valid_keys.append(key)
+
+        elif self.attribute in "SOILTEMP":
+            for key in self.od.keys():
+
+                if "SOI" in key:
+                    valid_keys.append(key)
+
+
+        elif self.attribute in "LYS":
+
+            for key in self.od.keys():
+                if "LYS" in key:
+                    valid_keys.append(key)
+
+        else:
+            pass
+
+        if valid_keys != []:
+
+            for each_key in valid_keys:
+
+                startdate = self.od[each_key]['startdate'][0]
+                enddate = self.od[each_key]['enddate'][0]
+                new_method_code = self.od[each_key]['method_code'][0]
+            
+                new_query = "update LTERLogger_Pro.dbo." + query_d[self.attribute] + " set " + self.attribute + "_METHOD = \'" +  str(new_method_code) + "\' where probe_code like \'" + each_key + "\' and Date >= \'" + startdate + "\' and Date < \'" + enddate + "\'"
+
+                print new_query
+
+                cursor.execute(new_query)   
+
+            conn.commit() 
+        else:
+            print "nothing to commit!"
+
+
