@@ -34,7 +34,6 @@ class Worker(object):
         elif self.attribute == "DEWPT":
             self.Worker = smashWorkers.DewPoint(startdate, enddate, server, *args)
 
-
         elif self.attribute == "VPD":
             self.Worker = smashWorkers.VPD(startdate, enddate, server, *args)
 

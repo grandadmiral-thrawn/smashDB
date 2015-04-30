@@ -10,7 +10,6 @@ import yaml
 class HeaderWriter(object):
     """ Writes a header given a certain attribute"""
 
-
     def __init__(self, attribute):
     
         daily_attr = {'LYS': '09',
@@ -77,6 +76,7 @@ class HeaderWriter(object):
         if self.attribute in ["airtemp", "relhum", "dewpt", "soilwc", "vpd", "soiltemp", "par", "nr", "precip", "lys", "wspd_snc", "wspd_pro"]:
 
             self.attribute = self.attribute.upper()
+        
         else:
             pass
 
@@ -87,7 +87,7 @@ class HeaderWriter(object):
 
         elif self.attribute == "VPD":
 
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.mintime_method, self.min_flag_method, "VAP_MEAN_DAY", "VAP_MEAN_FLAG", "VAP_MAX_DAY", "VAP_MAX_FLAG", "VAP_MIN_DAY", "VAP_MIN_FLAG", "SATVP_MEAN_DAY", "SATVP_MEAN_FLAG", "SATVP_MAX_DAY", "SATVP_MAX_FLAG", "SATVP_MIN_DAY",   "SATVP_MIN_FLAG", "EVENT_CODE", "SOURCE"]
+            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.min_flag_method, self.mintime_method, "VAP_MEAN_DAY", "VAP_MEAN_FLAG", "VAP_MAX_DAY", "VAP_MAX_FLAG", "VAP_MIN_DAY", "VAP_MIN_FLAG", "SATVP_MEAN_DAY", "SATVP_MEAN_FLAG", "SATVP_MAX_DAY", "SATVP_MAX_FLAG", "SATVP_MIN_DAY", "SATVP_MIN_FLAG", "EVENT_CODE", "SOURCE"]
 
         # attributes which need a "total"
         elif self.attribute == "PRECIP":
@@ -97,17 +97,18 @@ class HeaderWriter(object):
         # propellor anemometer
         elif self.attribute == "WSPD_PRO":
 
-            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_PRO_MEAN_DAY", "WMAG_PRO_MEAN_FLAG", "WDIR_PRO_MEAN_DAY", "WDIR_PRO_MEAN_FLAG", "WDIR_PRO_STDDEV_DAY", "WDIR_PRO_STDDEV_FLAG", "EVENT_CODE", "SOURCE"]
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_PRO_MEAN_DAY", "WMAG_PRO_MEAN_FLAG", "WDIR_PRO_MEAN_DAY", "WDIR_PRO_MEAN_FLAG", "WDIR_PRO_STDDEV_DAY", "WDIR_PRO_STDDEV_FLAG", "WSPD_ROSE1_MEAN_DAY", "WSPD_ROSE1_MEAN_FLAG", "WSPD_ROSE2_MEAN_DAY", "WSPD_ROSE2_MEAN_FLAG", "WSPD_ROSE3_MEAN_DAY", "WSPD_ROSE1_MEAN_FLAG", "WSPD_ROSE4_MEAN_DAY", "WSPD_ROSE4_MEAN_FLAG", "WSPD_ROSE5_MEAN_DAY",  "WSPD_ROSE5_MEAN_FLAG", "WSPD_ROSE6_MEAN_DAY", "WSPD_ROSE6_MEAN_FLAG", "WSPD_ROSE7_MEAN_DAY", "WSPD_ROSE7_MEAN_FLAG", "WSPD_ROSE8_MEAN_DAY", "WSPD_ROSE8_MEAN_FLAG", "EVENT_CODE", "SOURCE"]
 
         # the sonic anemometer
         elif self.attribute == "WSPD_SNC":
 
-            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_SNC_MEAN_DAY", "WMAG_SNC_MEAN_FLAG", "WDIR_SNC_MEAN_DAY", "WDIR_SNC_MEAN_FLAG", "WDIR_SNC_STDDEV_DAY", "WDIR_SNC_STDDEV_FLAG", "WUX_SNC_MEAN_DAY", "WUX_SNC_MEAN_FLAG", "WUX_SNC_STDDEV_DAY", "WUX_SNC_STDDEV_DAY_FLAG","WUY_SNC_MEAN_DAY", "WUY_SNC_MEAN_FLAG", "WUY_SNC_STDDEV_DAY", "WUY_SNC_STDDEV_DAY_FLAG", "WAIR_SNC_MEAN_DAY", "WAIR_SNC_MEAN_FLAG", "WAIR_SNC_STDDEV_DAY", "WAIR_SNC_STDDEV_FLAG",  "EVENT_CODE", "SOURCE"]
+            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, "WDIR_SNC_MEAN_DAY", "WDIR_SNC_MEAN_FLAG", "WDIR_SNC_STDDEV_DAY", "WDIR_SNC_STDDEV_FLAG", "WUX_SNC_MEAN_DAY", "WUX_SNC_MEAN_FLAG", "WUX_SNC_STDDEV_DAY", "WUX_SNC_STDDEV_FLAG","WUY_SNC_MEAN_DAY", "WUY_SNC_MEAN_FLAG", "WUY_SNC_STDDEV_DAY", "WUY_SNC_STDDEV_FLAG", "WAIR_SNC_MEAN_DAY", "WAIR_SNC_MEAN_FLAG", "WAIR_SNC_STDDEV_DAY", "WAIR_SNC_STDDEV_FLAG",  "EVENT_CODE", "SOURCE"]
 
         # net radiometer
         elif self.attribute == "NR":
 
-            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "SW_IN_MEAN_DAY", "SW_IN_MEAN_FLAG", "SW_OUT_MEAN_DAY", "SW_OUT_MEAN_FLAG", "LW_IN_MEAN_DAY", "LW_IN_MEAN_FLAG", "LW_OUT_MEAN_DAY", "LW_OUT_MEAN_FLAG", "NR_TOT_MEAN_DAY", "NR_TOT_MEAN_FLAG", "SENSOR_TEMP_DAY", "SENSOR_TEMP_FLAG", "EVENT_CODE"]
+            # NO SOURCE TABLE HERE!!
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "SW_IN_MEAN_DAY", "SW_IN_MEAN_FLAG", "SW_OUT_MEAN_DAY", "SW_OUT_MEAN_FLAG", "LW_IN_MEAN_DAY", "LW_IN_MEAN_FLAG", "LW_OUT_MEAN_DAY", "LW_OUT_MEAN_FLAG", "NR_TOT_MEAN_DAY", "NR_TOT_MEAN_FLAG", "SENSOR_TEMP_DAY", "SENSOR_TEMP_FLAG", "EVENT_CODE"]
 
         # pyranometer (similar method to precip but takes a max and min time as well)
         elif self.attribute == "SOLAR":
@@ -128,11 +129,12 @@ class HeaderWriter(object):
 
 class AirTemperature(object):
     """ For generating MS04301 from LTERLoggers_new or from STEWARTIA
-    Takes start date and end date as date strings, server is either SHELDON or STEWARTIA
-    If a final argument is passed it is a probe-code which can be used to limit how many data
+    * Takes start date and end date as date strings, server is either SHELDON (LTERLogger_Pro) or STEWARTIA (FSDBDATA)
+    * If a final argument is passed it is a probe-code which can be used to limit the data that are
     are run through the tool. 
-    No matter what inputs are given, call condense_data on the results to generate row-by-row output. If you pass condense_data an argument of a yaml file, it will use that yaml file to generate the method/probe mapping, otherwise, it will default to the mapping that I give it.
-    To have certain probes on certain dates, use the ProbeBoss to call a LIMITED.yaml file which will map each probe to a special start and end date, and generate a header independently.
+    * Station can be specified by using the SMASHER interface
+    * If working in this level of interface, no matter what inputs are given, call condense_data on the results to generate row-by-row output. If you pass condense_data an argument of a .yaml file, it will use that yaml file to generate the method/probe mapping, otherwise, it will default to the mapping that is in CONFIG.yaml
+    * To have certain probes on certain dates, use the ProbeBoss rather than the UpdateBoss to call a LIMITED.yaml file which will map each probe to a special start and end date, and generate a header independently.
     """
 
 
@@ -146,7 +148,7 @@ class AirTemperature(object):
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
-        self.entity = '01'
+        self.entity = 1
         self.server = server
         
         if not limited:
@@ -160,6 +162,7 @@ class AirTemperature(object):
 
         # od is the 'obtained dictionary'. it is blank before the query. 
         self.od = {}
+        # attack data is a method for condensing the data into a structure for processing
         self.od = self.attack_data()
 
     def querydb(self):
@@ -201,8 +204,15 @@ class AirTemperature(object):
         
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+
+
+        #if self.server == "SHELDON":
+        #    query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG, AIRTEMP_MAX, AIRTEMP_MAX_FLAG from LTERLogger_pro.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
-        self.cursor.execute(query)
+        #elif self.server == "STEWARTIA":
+        #    query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG, AIRTEMP_MAX, AIRTEMP_MAX_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
+        
+        #self.cursor.execute(query)
 
 
     @staticmethod
@@ -211,6 +221,10 @@ class AirTemperature(object):
 
         if probe_code == "AIRCS202":
             height = "150"
+            return height
+
+        elif probe_code == "AIRH1501":
+            height = "450"
             return height
 
         elif probe_code == "AIRH1502":
@@ -254,7 +268,6 @@ class AirTemperature(object):
 
         else:
             pass
-
 
         if probe_code in cfg['cenmet'].keys():
             site_code = 'CENMET'
@@ -518,7 +531,6 @@ class AirTemperature(object):
                 else:
                     print("no server given")
 
-
                 # in the best possible case, we print it out just as it is here: 
                 try:
                     newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", source]
@@ -764,7 +776,7 @@ class RelHum(object):
                 
                 # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
-                print "the number of total obs is %s" %(num_total_obs)
+                #print "the number of total obs is %s" %(num_total_obs)
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:

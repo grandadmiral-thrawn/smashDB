@@ -166,6 +166,12 @@ class UpdateBoss(object):
         else: 
             print "this will never get called"
 
+    def only_one_station(self, station):
+
+        h = [self.new_rows[index] for index, row in enumerate(self.new_rows) if self.new_rows[index][2] == station]
+
+        return h
+
     def update_the_db(self):
         """ Updates LTER Logger Pro-- NOT LTER LOGGER NEW! -- currently as of 04-20-3015 its empty so I can't check it for pre-existing values without an error! """
         print("This is gonna update the LTERLogger_Pro database")
@@ -244,6 +250,7 @@ class UpdateBoss(object):
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES(%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %d,%s ,%s, %d, %s, %d, %s, %d,  %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s)", new_tuples)
 
             conn.commit()
+        
         elif self.attribute in "WSPD_SNC":
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES( %s,  %d,  %s, %s,  %d,  %s, %s,  %s,    %d,  %s,  %d,  %s,  %d, %s,  %d, %s,    %d, %s,   %d, %s, %d,   %s,   %d,  %s, %d   %s,  %d, %s,  %s,  %s)",new_tuples)
 
@@ -362,7 +369,7 @@ class MethodBoss(object):
                 if "VPD" in key:
                     valid_keys.append(key)
 
-        elif self.attribtue in "SOLAR":
+        elif self.attribute in "SOLAR":
 
             valid_keys = ["RADPRI01","RADVAN01","RADUPL01","RADCEN01"]
 
@@ -411,3 +418,153 @@ class MethodBoss(object):
             print "nothing to commit!"
 
 
+# class MethodBoss2(object):
+
+#     self.filename = "method_current_hires.csv"
+#     self.d = self.get_highres()
+
+#     def get_highres(self):
+#         d = {}
+#         with open('method_current_hires.csv','rb') as readfile:
+#             reader = csv.reader(readfile)
+#             for row in reader:
+#                 if str(row[1]) not in d:
+#                     d[str(row[1])] = {'startdate': str(row[2]), 'enddate':str(row[3]), 'res': str(row[6]), 'hrmethod': str(row[7])}
+#                 elif str(row[1]) in d:
+#                     print "huh"
+#         return d
+
+#     def update_methods(self):
+
+#         import form_connection as fc
+#         conn = fc.micro_conn('SHELDON')
+
+#         cursor = conn.cursor()
+
+#         query_d = {'AIRTEMP': 'MS04301',
+#                     'RELHUM': 'MS04302',
+#                     'PRECIP': 'MS04303',
+#                     'WSPD_PRO': 'MS04304',
+#                     'SOLAR': 'MS04305',
+#                     'DEWPT': 'MS04307',
+#                     'VPD': 'MS04308',
+#                     'LYS': 'MS04309',
+#                     'NR': 'MS04325',
+#                     'WSPD_SNC': 'MS04324',
+#                     'SOILTEMP': 'MS04321',
+#                     'SOILWC': 'MS04323',
+#                     'PAR': 'MS04322'}
+
+#         valid_keys = []
+        
+#         if self.attribute == "AIRTEMP":
+
+#             for key in self.d.keys():
+
+#                 if "AIR" in key:
+#                     valid_keys.append(key)
+
+#         elif self.attribute == "RELHUM":
+
+#             for key in self.d.keys():
+
+#                 if "REL" in key:
+#                     valid_keys.append(key)
+
+
+#         elif self.attribute == "PRECIP":
+#             for key in self.d.keys():
+
+#                 if "PPT" in key:
+#                     valid_keys.append(key)
+
+#         elif self.attribute == "WSPD_SNC":
+
+
+#             valid_keys = ["WNDPRI02", "WNDVAN02"]
+
+
+#         elif self.attribute == "WSPD_PRO":
+
+#             valid_keys = ["WNDPRI01", "WNDVAN01", "WNDUPL01", "WNDCEN01", "WNDH1501"]
+
+
+#         elif self.attribute == "DEWPT":
+#             for key in self.d.keys():
+
+#                 if "DEW" in key:
+#                     valid_keys.append(key)
+
+#         elif self.attribute == "VPD":
+#             for key in self.d.keys():
+
+#                 if "VPD" in key:
+#                     valid_keys.append(key)
+
+#         elif self.attribute in "SOLAR":
+
+#             valid_keys = ["RADPRI01","RADVAN01","RADUPL01","RADCEN01"]
+
+#         elif self.attribute in "NR":
+
+#             valid_keys = ["RADPRI02","RADVAN02"]
+
+#         elif self.attribute in "SOILWC":
+#             for key in self.d.keys():
+
+#                 if "SWC" in key:
+#                     valid_keys.append(key)
+
+#         elif self.attribute in "SOILTEMP":
+#             for key in self.d.keys():
+
+#                 if "SOI" in key:
+#                     valid_keys.append(key)
+
+
+#         elif self.attribute in "LYS":
+
+#             for key in self.d.keys():
+#                 if "LYS" in key:
+#                     valid_keys.append(key)
+
+#         else:
+#             pass
+
+#         if valid_keys != []:
+
+#             for each_key in valid_keys:
+
+#                 startdate = self.d[each_key]['startdate']
+#                 enddate = self.d[each_key]['enddate']
+#                 res = self.d[each_key]['res']
+
+#                 if res == "15 minutes":
+#                     replace_flag = "F"
+#                 elif res == "60 minutes":
+#                     replace_flag = "H"
+#                 else:
+#                     continue
+                
+#                 # check for max and min sets
+#                 if self.attribute in ["AIRTEMP", "RELHUM", "WSPD_PRO", "SOLAR", "DEWPT", "VPD", "SOILTEMP", "SOILWC", "PAR", "WSPD_SNC"]:
+                    
+#                     ### Update max flag to new replacement
+#                     new_query = "update LTERLogger_Pro.dbo." + query_d[self.attribute] + " set " + self.attribute + "_MAX_FLAG = \'" +  replace_flag + "\' where probe_code like \'" + each_key + "\' and Date >= \'" + startdate + "\' and Date < \'" + enddate + "\'"
+
+#                     cursor.execute(new_query) 
+
+
+#                 if self.attribute in ["AIRTEMP", "DEWPT", "VPD", "SOILTEMP", "SOILWC"]:
+                    
+#                     # update min flag to new replacement
+#                     new_query = "update LTERLogger_Pro.dbo." + query_d[self.attribute] + " set " + self.attribute + "_MIN_FLAG = \'" +  replace_flag + "\' where probe_code like \'" + each_key + "\' and Date >= \'" + startdate + "\' and Date < \'" + enddate + "\'"
+ 
+#                     cursor.execute(new_query)
+
+            
+#             # commit the changes
+#             conn.commit() 
+        
+#         else:
+#             print "nothing to commit!"
