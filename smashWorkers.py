@@ -180,7 +180,7 @@ class AirTemperature(object):
 
         if self.server == "SHELDON":
             query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from LTERLogger_pro.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
-        
+           # query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG, AIRTEMP_MIN, AIRTEMP_MIN_FLAG, AIRTEMP_MAX, AIRTEMP_MAX_FLAG from LTERLogger_new.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         elif self.server == "STEWARTIA":
             query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' ORDER BY DATE_TIME ASC"
         
@@ -206,6 +206,7 @@ class AirTemperature(object):
             query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from FSDBDATA.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code +"\' ORDER BY DATE_TIME ASC"
 
 
+        # these methods can be used in the future after we migrate the structure
         #if self.server == "SHELDON":
         #    query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG, AIRTEMP_MAX, AIRTEMP_MAX_FLAG from LTERLogger_pro.dbo.MS04311 WHERE DATE_TIME >= \'" + startdate + "\' AND DATE_TIME < \'" + enddate + "\' AND PROBE_CODE LIKE \'" + probe_code + "\' ORDER BY DATE_TIME ASC"
         
@@ -385,12 +386,20 @@ class AirTemperature(object):
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
-                    print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    print("Incomplete or overfilled day:  %s, probe %s, total number of observations: %s") %(each_date, probe_code, num_total_obs)
                     continue
 
                 else:
                     pass
+
+                # Daily flag naming for accetable-- if the number of obs is 24, 'H', if it's 96, 'F'
+                df = 'A'
+                if num_total_obs == 24:
+                    df = 'H'
+                elif num_total_obs == 96:
+                    df = 'F'
+                else:
+                    df = 'A'
 
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc.
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
@@ -407,7 +416,7 @@ class AirTemperature(object):
 
                 # because we are counting things which are not A, we don't need to deal with the case of "F". 
                 elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
-                    daily_flag = 'A'
+                    daily_flag = df
                 else:
                     daily_flag = 'Q'
 
@@ -499,7 +508,7 @@ class AirTemperature(object):
                 
                 try:
                     if min_flag[0].strip() == "": 
-                        min_flag = ["A"]
+                        min_flag = [df]
                     else:
                         pass
 
@@ -510,7 +519,7 @@ class AirTemperature(object):
 
                 try: 
                     if max_flag[0].strip() =="":
-                        max_flag = ["A"]
+                        max_flag = [df]
                     else:
                         pass
                 
@@ -527,7 +536,7 @@ class AirTemperature(object):
                 if self.server == "STEWARTIA":
                     source = "STEWARTIA_FSDBDATA_MS04311"
                 elif self.server == "SHELDON":
-                    source = "SHELDON_LTERLogger_PRO_MS04311"
+                    source = "SHELDON_LTERLogger_Pro_MS04311"
                 else:
                     print("no server given")
 
@@ -546,7 +555,7 @@ class AirTemperature(object):
 
 class RelHum(object):
     """ For generating MS04302 from LTERLoggers_new or from STEWARTIA
-    Takes start date and end date as date strings, server is either SHELDON or STEWARTIA
+    * Takes start date and end date as date strings, server is either SHELDON or STEWARTIA
     
     If a final argument is passed it is a probe-code which can be used to limit how many data
     are run through the tool. 
@@ -565,7 +574,7 @@ class RelHum(object):
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
-        self.entity = '02'
+        self.entity = 2
         self.server = server
         
         if not limited:
@@ -782,13 +791,20 @@ class RelHum(object):
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
-                    print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    print("Incompolete or overfilled day:  %s, probe %s, total number of observations: %s") %(each_date, probe_code, num_total_obs, each_date)
                     continue
-
 
                 else:
                     pass
+
+                # Daily flag naming for accetable-- if the number of obs is 24, 'H', if it's 96, 'F'
+                df = 'A'
+                if num_total_obs == 24:
+                    df = 'H'
+                elif num_total_obs == 96:
+                    df = 'F'
+                else:
+                    df = 'A'
 
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc.
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
@@ -805,7 +821,7 @@ class RelHum(object):
 
                 # because we are counting things which are not A, we don't need to deal with the case of "F". 
                 elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
-                    daily_flag = 'A'
+                    daily_flag = df
                 else:
                     daily_flag = 'Q'
 
@@ -897,7 +913,7 @@ class RelHum(object):
                 
                 try:
                     if min_flag[0].strip() == "": 
-                        min_flag = ["A"]
+                        min_flag = [df]
                     else:
                         pass
 
@@ -908,7 +924,7 @@ class RelHum(object):
 
                 try: 
                     if max_flag[0].strip() =="":
-                        max_flag = ["A"]
+                        max_flag = [df]
                     else:
                         pass
                 
@@ -944,10 +960,10 @@ class RelHum(object):
 
 class DewPoint(object):
     """ For generating MS04307 from LTERLoggers_New, LTERLoggers_Pro, or FSDBDATA. Takes either a start datae and end date or a server of SHELDON or STEWARTIA.
-    If a final argument is passed it is a probe-code which can be used to limit how many data
+    * If a final argument is passed it is a probe-code which can be used to limit how many data
     are run through the tool. 
-    No matter what inputs are given, call condense_data on the results to generate row-by-row output. If you pass condense_data an argument of a yaml file, it will use that yaml file to generate the method/probe mapping, otherwise, it will default to the mapping that I give it.
-    To have certain probes on certain dates, use the ProbeBoss to call a LIMITED.yaml file which will map each probe to a special start and end date, and generate a header independently.
+    * No matter what inputs are given, call condense_data on the results to generate row-by-row output. If you pass condense_data an argument of a yaml file, it will use that yaml file to generate the method/probe mapping, otherwise, it will default to the mapping that I give it.
+    * To have certain probes on certain dates, use the ProbeBoss to call a LIMITED.yaml file which will map each probe to a special start and end date, and generate a header independently.
     """
 
     def __init__(self, startdate, enddate, server, *limited):
@@ -960,7 +976,7 @@ class DewPoint(object):
 
         self.startdate = datetime.datetime.strptime(startdate,'%Y-%m-%d %H:%M:%S')
         self.enddate = datetime.datetime.strptime(enddate,'%Y-%m-%d %H:%M:%S')
-        self.entity = '07'
+        self.entity = 7
         self.server = server
 
         if not limited:
@@ -1176,19 +1192,28 @@ class DewPoint(object):
                 
                 # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
-                print "the number of total obs is %s" %(num_total_obs)
+                #print "the number of total obs is %s" %(num_total_obs)
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
-                    print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    print("Incompolete or overfilled day:  %s, probe %s, total number of observations: %s") %(each_date, probe_code, num_total_obs, each_date)
                     continue
+
 
 
                 else:
                     pass
+
+                # Daily flag naming for accetable-- if the number of obs is 24, 'H', if it's 96, 'F'
+                df = 'A'
+                if num_total_obs == 24:
+                    df = 'H'
+                elif num_total_obs == 96:
+                    df = 'F'
+                else:
+                    df = 'A'
 
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc.
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
@@ -1205,7 +1230,7 @@ class DewPoint(object):
 
                 # because we are counting things which are not A, we don't need to deal with the case of "F". 
                 elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
-                    daily_flag = 'A'
+                    daily_flag = df
                 else:
                     daily_flag = 'Q'
 
@@ -1297,7 +1322,7 @@ class DewPoint(object):
                 
                 try:
                     if min_flag[0].strip() == "": 
-                        min_flag = ["A"]
+                        min_flag = [df]
                     else:
                         pass
 
@@ -1308,7 +1333,7 @@ class DewPoint(object):
 
                 try: 
                     if max_flag[0].strip() =="":
-                        max_flag = ["A"]
+                        max_flag = [df]
                     else:
                         pass
                 
@@ -1348,10 +1373,7 @@ class VPD(object):
     """ For generating MS04308 from LTERLoggers_new, LTERLoggers_Pro or from STEWARTIA
     Takes start date and end date as date strings, server is either SHELDON or STEWARTIA
     
-    If a final argument is passed it is a probe-code which can be used to limit how many data
-    are run through the tool. 
-    No matter what inputs are given, call condense_data on the results to generate row-by-row output. If you pass condense_data an argument of a yaml file, it will use that yaml file to generate the method/probe mapping, otherwise, it will default to the mapping that I give it.
-    To have certain probes on certain dates, use the ProbeBoss to call a LIMITED.yaml file which will map each probe to a special start and end date, and generate a header independently.
+    * this attribute can also be run as a function of Airtemp and Relhum from SmashControls
     """
     def __init__(self, startdate, enddate, server, *limited):
 
@@ -1512,7 +1534,7 @@ class VPD(object):
             return site_code, method_code
 
     def attack_data(self):
-        """ gather the daily dewpoint data """
+        """ gather the daily vpd data """
         
         # obtained dictionary dictionary
         od = {}
@@ -1579,19 +1601,27 @@ class VPD(object):
                 
                 # get the number of obs - will print every day as is running so that you can be sure it is behaving as expected.
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
-                print "the number of total obs is %s" %(num_total_obs)
+                #print "the number of total obs is %s" %(num_total_obs)
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 96, 24] and each_date != self.startdate:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
-                    print("the total number of observations on %s is %s") %(each_date, num_total_obs)
-                    print("I will not process the day %s for probe %s as it has not been gap filled") %(each_date, probe_code)
+                    print("Incompolete or overfilled day:  %s, probe %s, total number of observations: %s") %(each_date, probe_code, num_total_obs, each_date)
                     continue
 
 
                 else:
                     pass
+
+                # Daily flag naming for accetable-- if the number of obs is 24, 'H', if it's 96, 'F'
+                df = 'A'
+                if num_total_obs == 24:
+                    df = 'H'
+                elif num_total_obs == 96:
+                    df = 'F'
+                else:
+                    df = 'A'
 
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc.
                 num_missing_obs = len([x for x in self.od[probe_code][each_date]['fval'] if x == 'M' or x == 'I'])
@@ -1608,7 +1638,7 @@ class VPD(object):
 
                 # because we are counting things which are not A, we don't need to deal with the case of "F". 
                 elif (num_estimated_obs + num_missing_obs + num_questionable_obs)/num_total_obs <= 0.05:
-                    daily_flag = 'A'
+                    daily_flag = df
                 else:
                     daily_flag = 'Q'
 

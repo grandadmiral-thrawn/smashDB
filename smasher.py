@@ -7,6 +7,28 @@ import datetime
 
 The SMASHER API is designed to ease the updating of FSDBDATA and LTERLogger_Pro, as well as the import of high resolution data into MS043.
 
+FUNCTIONS:
+
+CREATE - daily data from 5/15 minute data. Default to consolidate or add flags. Default to get methods from the method table.
+
+READ  - Methods that exist in the historical database 
+      - Diagnose missing days/values in LTERLogger_pro or LTERLogger_new
+
+UPDATE - Update daily data or flags in the database
+        - in LTERLogger_pro --> LTERLogger_pro
+        - in LTERLogger_new --> LTERLogger_new
+        - in FSDBDATA --> FSDBDATA
+        - in LTERLogger_new --> FSDBDATA
+      - Update flags and methods based on the table reference
+        - In LTERLogger_pro --> FSDBDATA
+        - IN FSDBDATA --> FSDBDATA
+        - IN LTERLogger_new --> FSDBDATA
+      - Update a single attribute between certain times (spot cleaning )
+
+DELETE - Duplicate rows
+       - A date range that needs to be re-done
+       - All records of a certain method
+
 """
 
 parser = argparse.ArgumentParser(description="SMASHER tool for FSDB summaries. Use the SMASHER bosses within a bash file or on the API to conduct controlled summaries. SMASHER bosses are superclasses with controlled operations and vocabularies. SMASHER controls are switch statements designed to drive SMASHER bosses. SMASHER workers are microprocesses designed to work with high-resolution data in the FSDB structure.")
@@ -306,6 +328,10 @@ if args.boss == 'PROVO':
         else:
             U = smashBosses.UpdateBoss(args.attribute[0], sd, ed, args.server)
         
+        # update the methods
+        print "updating the methods based on method table"
+        U.update_the_db_methods()
+
         # inserts rows into the database- see the UpdateBoss
         print "now we are switching to the SHELDON connection to update LTERLogger_pro"
         U.update_the_db()
@@ -330,6 +356,7 @@ if args.boss == "HANS":
     # take out a connection thread
     import form_connection as fc
     conn = fc.micro_conn('SHELDON')
+    
     # establish a cursor
     cur = conn.cursor()
 
@@ -352,6 +379,8 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('AIRTEMP', sd, ed, args.server)
+    print(" Updating heights and methods ")
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed AIRTEMP for the day!... cleaning myself.")
     del Z
@@ -366,6 +395,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
     
     Z = smashBosses.UpdateBoss('RELHUM', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed RELHUM for the day!... cleaning myself.")
     del Z
@@ -381,6 +411,7 @@ if args.boss == "HANS":
 
     Z = smashBosses.UpdateBoss('VPD', sd, ed, args.server, vpd='on')
     print("Processing VPD-- sorry this one is slow")
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed VPD for the day!... cleaning myself.")
     del Z
@@ -396,6 +427,7 @@ if args.boss == "HANS":
 
 
     Z = smashBosses.UpdateBoss('DEWPT', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed DEWPT for the day!... cleaning myself.")
     del Z
@@ -410,6 +442,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('SOLAR', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed SOLAR for the day!... cleaning myself.")
     del Z
@@ -424,6 +457,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('SOILTEMP', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed SOILTEMP for the day!... cleaning myself.")
     del Z
@@ -438,6 +472,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('WSPD_PRO', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed WINDSPEED PROP for the day!... cleaning myself.")
     del Z
@@ -452,6 +487,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('WSPD_SNC', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed WINDSPEED SONIC for the day!... cleaning myself.")
     del Z
@@ -466,6 +502,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('PRECIP', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed PRECIP for the day!... cleaning myself.")
     del Z
@@ -480,6 +517,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('LYS', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed SNOW LYSIMETER for the day!... cleaning myself.")
     del Z
@@ -494,6 +532,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('NR', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed NET RADIATION for the day!... cleaning myself.")
     del Z
@@ -508,6 +547,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('PAR', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed PHOTOSYNTHETIC RADIATION for the day!... cleaning myself.")
     del Z
@@ -522,6 +562,7 @@ if args.boss == "HANS":
     sd = most_recent_formatted
 
     Z = smashBosses.UpdateBoss('SOILWC', sd, ed, args.server)
+    Z.update_the_db_methods()
     Z.update_the_db()
     print("I have processed SOIL WATER CONTENT for the day!... cleaning myself.")
     del Z

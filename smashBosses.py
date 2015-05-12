@@ -172,6 +172,123 @@ class UpdateBoss(object):
 
         return h
 
+    @staticmethod
+    def f5(seq, idfun=None): 
+        """ a quick, order-preserving way to search a list like the one we will have of the probes"""
+        # order preserving
+        if idfun is None:
+           def idfun(x): return x
+        seen = {}
+        result = []
+        for item in seq:
+            marker = idfun(item)
+            # in old Python versions:
+            # if seen.has_key(marker)
+            # but in new ones:
+            if marker in seen: continue
+            seen[marker] = 1
+            result.append(item)
+        return result
+
+    def update_the_db_methods(self):
+        """ updates the daily db based on the methods in method_history_daily"""
+        
+        print("This is gonna update the LTERLogger_Pro database based on the methods in methods_history_daily")
+
+        shortened_lookup = {}
+
+        # form a new connection (we need this because we need the conn object to commit)
+        import form_connection as fc
+        conn = fc.micro_conn('SHELDON')
+
+        # get all the probecodes we have and dates we have
+        probe_codes_ordered = [x[6] for x in self.new_rows]
+        dates_ordered = [x[7] for x in self.new_rows]
+
+        # get the unique entries of probe codes
+        probe_string = self.f5(probe_codes_ordered)
+
+        # make it into a string that the query can injest
+        query_string = "\', \'".join(probe_string)
+
+        # get the limited info from the lookup table
+        query = "select probe_code, date_bgn, date_end, method_code, height, depth from LTERLogger_new.dbo.method_history_daily where probe_code in (\'" + query_string +"\') and date_end >= \'" + self.startdate + "\' order by date_bgn asc"
+
+        cur = conn.cursor()
+
+        cur.execute(query)
+
+        # gather the methods by populating a dictionary called "shortened lookup"
+        for row in cur:
+            probe_code = str(row[0])
+            date_bgn = str(row[1])
+            date_end = str(row[2])
+            method_code = str(row[3])
+            height = int(row[4])
+            depth = str(row[5])
+
+
+            if probe_code not in shortened_lookup:
+                shortened_lookup[probe_code] = {method_code: {'begin': date_bgn, 'end': date_end, 'height': height, 'depth': depth}}
+            
+            elif probe_code in shortened_lookup:
+                if method_code not in shortened_lookup[probe_code]:
+                    shortened_lookup[probe_code][method_code] = {'begin': date_bgn, 'end': date_end, 'height': height, 'depth': depth}
+                elif method_code in shortened_lookup[probe_code]:
+                    print "the method code %s is already collected for %s between the dates of %s and %s" %(method_code, probe_code, date_bgn, date_end)
+                    pass
+        
+        # iterate over the rows you plan to insert
+        for row in self.new_rows:
+            
+            # extract the date as a dt obj
+            thisdate = datetime.datetime.strptime(row[7],'%Y-%m-%d %H:%M:%S')
+
+            # check the length of the rows in the lookup table that share a key with the probe you are on
+            get_length_of_rows = len(shortened_lookup[row[6]].keys())
+
+            # if there's only one of those, than that's the only method, so accept it as correct
+            if get_length_of_rows == 1:
+                correct_method = shortened_lookup[row[6]].keys()[0]
+                height_valid = shortened_lookup[row[6]][correct_method]['height']
+
+                if row[3] == correct_method and row[4] == height_valid:
+                    continue
+                
+                else:
+                    print "correcting the method to %s from %s" %(correct_method, row[3])
+                    print "correcting the height to %s from %s" %(height_valid, row[4])
+
+                    row[3] = correct_method
+                    row[4] = height_valid
+            
+            elif get_length_of_rows > 1:
+                correct_method = [x for x in shortened_lookup[row[6]].keys() if thisdate >= datetime.datetime.strptime(shortened_lookup[row[6]][x]['begin'], '%Y-%m-%d %H:%M:%S') and thisdate < datetime.datetime.strptime(shortened_lookup[row[6]][x]['end'], '%Y-%m-%d %H:%M:%S')][0]
+                
+                height_valid = shortened_lookup[row[6]][correct_method]['height']
+
+                if row[3] == correct_method and row[4] == height_valid:
+                    continue
+                
+                else:
+                    print "correcting the method to %s from %s" %(correct_method, row[3])
+                    print "correcting the height to %s from %s" %(height_valid, row[4])
+
+                    row[3] = correct_method
+                    row[4] = height_valid
+
+            elif get_length_of_rows < 1:
+                print "the needed probe is not listed: %s" %(row[6])
+                pass
+
+
+            import pdb; pdb.set_trace()
+            print shortened_lookup
+            #print self.new_rows
+
+        return self.new_rows
+
+
     def update_the_db(self):
         """ Updates LTER Logger Pro-- NOT LTER LOGGER NEW! -- currently as of 04-20-3015 its empty so I can't check it for pre-existing values without an error! """
         print("This is gonna update the LTERLogger_Pro database")
@@ -275,39 +392,23 @@ class UpdateBoss(object):
 
 class MethodBoss(object):
     """ uses the file from don for updating the LterLogger_Pro"""
-    def __init__(self, attribute):
-
-        self.filename = "method_current_daily.CSV"
+    def __init__(self, attribute, startdate, enddate, server):
+        self.server = server # depends on where you want to pull the probe codes from 
         self.attribute = attribute
-        self.od = self.csv_to_dict()
+        self.startdate = startdate
+        self.enddate = enddate
 
     def csv_to_dict(self):
         """ update method list is imported. """
-        od = {}
 
-        with open(self.filename, 'rb') as readfile:
-            reader = csv.reader(readfile)
+        print "this method has been depricated, please use the method table"
+        pass
 
-            for row in reader:
-
-                if str(row[1]) not in od:
-                    # make start, end, and method update-able
-                    od[str(row[1])] = {'startdate': [str(row[2])], 'enddate': [str(row[3])], 'height': str(row[4]), 'method_code':[str(row[6])], 'site_code': str(row[0])}
-                elif str(row[1]) in od:
-                    od[str(row[1])]['startdate'].append(str(row[2]))
-                    od[str(row[1])]['enddate'].append(str(row[3]))
-                    od[str(row[1])]['method_code'].append(str(row[6]))
-                else: 
-                    pass
-
-        return od
-
-    def update_methods(self):
+    def gather_methods_from_table(self):
 
         import form_connection as fc
         conn = fc.micro_conn('SHELDON')
-
-        cursor = conn.cursor()
+        old_conn = fc.micro_conn('STEWARTIA')
 
         query_d = {'AIRTEMP': 'MS04301',
                     'RELHUM': 'MS04302',
@@ -324,247 +425,85 @@ class MethodBoss(object):
                     'PAR': 'MS04322'}
 
 
-        valid_keys = []
-        if self.attribute == "AIRTEMP":
+        cursor = conn.cursor()
+        old_cursor = old_conn.cursor()
+        
+        # collect the distinct probes from your server
+        if self.server == "STEWARTIA":
+            query = "select distinct probe_code from fsdbdata.dbo." + query_d[self.attribute] 
+            old_cursor.execute(query)
 
-            for key in self.od.keys():
+            distinct_probes = []
+            for row in old_cursor:
+                distinct_probes.append(str(row[0]))
+                query_string = query_string = "\', \'".join(distinct_probes)
 
-                if "AIR" in key:
-                    valid_keys.append(key)
-
-        elif self.attribute == "RELHUM":
-
-            for key in self.od.keys():
-
-                if "REL" in key:
-                    valid_keys.append(key)
-
-
-        elif self.attribute == "PRECIP":
-            for key in self.od.keys():
-
-                    if "PPT" in key:
-                        valid_keys.append(key)
-
-        elif self.attribute == "WSPD_SNC":
+        elif self.server == "SHELDON":
+            #query = "select distinct probe_code from lterlogger_new.dbo" + query_d[self.attribute]
+            query = "select distinct probe_code from lterlogger_pro.dbo" + query_d[self.attribute]
+            cursor.execute(query)
 
 
-            valid_keys = ["WNDPRI02", "WNDVAN02"]
-
-
-        elif self.attribute == "WSPD_PRO":
-
-            valid_keys = ["WNDPRI01", "WNDVAN01", "WNDUPL01", "WNDCEN01", "WNDH1501"]
-
-
-        elif self.attribute == "DEWPT":
-            for key in self.od.keys():
-
-                if "DEW" in key:
-                    valid_keys.append(key)
-
-        elif self.attribute == "VPD":
-            for key in self.od.keys():
-
-                if "VPD" in key:
-                    valid_keys.append(key)
-
-        elif self.attribute in "SOLAR":
-
-            valid_keys = ["RADPRI01","RADVAN01","RADUPL01","RADCEN01"]
-
-        elif self.attribute in "NR":
-
-            valid_keys = ["RADPRI02","RADVAN02"]
-
-        elif self.attribute in "SOILWC":
-            for key in self.od.keys():
-
-                if "SWC" in key:
-                    valid_keys.append(key)
-
-        elif self.attribute in "SOILTEMP":
-            for key in self.od.keys():
-
-                if "SOI" in key:
-                    valid_keys.append(key)
-
-
-        elif self.attribute in "LYS":
-
-            for key in self.od.keys():
-                if "LYS" in key:
-                    valid_keys.append(key)
-
+            # append distinct probes to a list
+            distinct_probes = []
+            for row in cursor:
+                distinct_probes.append(str(row[0]))
+                query_string = query_string = "\', \'".join(distinct_probes)
         else:
             pass
 
-        if valid_keys != []:
+        
+        # get the limited info from the lookup table
+        query = "select probe_code, date_bgn, date_end, method_code, height, depth from LTERLogger_new.dbo.method_history_daily where probe_code in (\'" + query_string +"\') and date_end >= \'" + self.startdate + "\' order by date_bgn asc"
 
-            for each_key in valid_keys:
+        cursor.execute(query)
 
-                startdate = self.od[each_key]['startdate'][0]
-                enddate = self.od[each_key]['enddate'][0]
-                new_method_code = self.od[each_key]['method_code'][0]
+
+        shortened_lookup = {}
+        # gather the methods by populating a dictionary called "shortened lookup"
+        for row in cursor:
+            probe_code = str(row[0])
+            date_bgn = str(row[1])
+            date_end = str(row[2])
+            method_code = str(row[3])
+            height = int(row[4])
+            depth = str(row[5])
+
+
+            if probe_code not in shortened_lookup:
+                shortened_lookup[probe_code] = {method_code: {'begin': date_bgn, 'end': date_end, 'height': height, 'depth': depth}}
             
-                new_query = "update LTERLogger_Pro.dbo." + query_d[self.attribute] + " set " + self.attribute + "_METHOD = \'" +  str(new_method_code) + "\' where probe_code like \'" + each_key + "\' and Date >= \'" + startdate + "\' and Date < \'" + enddate + "\'"
+            elif probe_code in shortened_lookup:
+                if method_code not in shortened_lookup[probe_code]:
+                    shortened_lookup[probe_code][method_code] = {'begin': date_bgn, 'end': date_end, 'height': height, 'depth': depth}
+                elif method_code in shortened_lookup[probe_code]:
+                    print "the method code %s is already collected for %s between the dates of %s and %s" %(method_code, probe_code, date_bgn, date_end)
+                    pass
 
+
+        # iterate over the distinct probes in our set
+        for each_probe in distinct_probes:
+
+            # and over each of the methods for that probes
+            for each_method in shortened_lookup[each_probe].keys():
+
+                # get that probe method start
+                import pdb; pdb.set_trace()
+                method_startdate = shortened_lookup[each_probe][each_method]['begin']
+                print method_startdate
+
+                # get that method's end
+                method_enddate = shortened_lookup[each_probe][each_method]['end']
+                
+                # new query to update the lter logger pro
+                new_query = "update LTERLogger_Pro.dbo." + query_d[self.attribute] + " set " + self.attribute + "_METHOD = \'" +  str(each_method) + "\' where probe_code like \'" + each_probe + "\' and Date >= \'" + method_startdate + "\' and Date < \'" + method_enddate + "\'"
                 print new_query
 
-                cursor.execute(new_query)   
+                cursor.execute(new_query) 
 
             conn.commit() 
+            return shortened_lookup()
         else:
             print "nothing to commit!"
 
-
-# class MethodBoss2(object):
-
-#     self.filename = "method_current_hires.csv"
-#     self.d = self.get_highres()
-
-#     def get_highres(self):
-#         d = {}
-#         with open('method_current_hires.csv','rb') as readfile:
-#             reader = csv.reader(readfile)
-#             for row in reader:
-#                 if str(row[1]) not in d:
-#                     d[str(row[1])] = {'startdate': str(row[2]), 'enddate':str(row[3]), 'res': str(row[6]), 'hrmethod': str(row[7])}
-#                 elif str(row[1]) in d:
-#                     print "huh"
-#         return d
-
-#     def update_methods(self):
-
-#         import form_connection as fc
-#         conn = fc.micro_conn('SHELDON')
-
-#         cursor = conn.cursor()
-
-#         query_d = {'AIRTEMP': 'MS04301',
-#                     'RELHUM': 'MS04302',
-#                     'PRECIP': 'MS04303',
-#                     'WSPD_PRO': 'MS04304',
-#                     'SOLAR': 'MS04305',
-#                     'DEWPT': 'MS04307',
-#                     'VPD': 'MS04308',
-#                     'LYS': 'MS04309',
-#                     'NR': 'MS04325',
-#                     'WSPD_SNC': 'MS04324',
-#                     'SOILTEMP': 'MS04321',
-#                     'SOILWC': 'MS04323',
-#                     'PAR': 'MS04322'}
-
-#         valid_keys = []
-        
-#         if self.attribute == "AIRTEMP":
-
-#             for key in self.d.keys():
-
-#                 if "AIR" in key:
-#                     valid_keys.append(key)
-
-#         elif self.attribute == "RELHUM":
-
-#             for key in self.d.keys():
-
-#                 if "REL" in key:
-#                     valid_keys.append(key)
-
-
-#         elif self.attribute == "PRECIP":
-#             for key in self.d.keys():
-
-#                 if "PPT" in key:
-#                     valid_keys.append(key)
-
-#         elif self.attribute == "WSPD_SNC":
-
-
-#             valid_keys = ["WNDPRI02", "WNDVAN02"]
-
-
-#         elif self.attribute == "WSPD_PRO":
-
-#             valid_keys = ["WNDPRI01", "WNDVAN01", "WNDUPL01", "WNDCEN01", "WNDH1501"]
-
-
-#         elif self.attribute == "DEWPT":
-#             for key in self.d.keys():
-
-#                 if "DEW" in key:
-#                     valid_keys.append(key)
-
-#         elif self.attribute == "VPD":
-#             for key in self.d.keys():
-
-#                 if "VPD" in key:
-#                     valid_keys.append(key)
-
-#         elif self.attribute in "SOLAR":
-
-#             valid_keys = ["RADPRI01","RADVAN01","RADUPL01","RADCEN01"]
-
-#         elif self.attribute in "NR":
-
-#             valid_keys = ["RADPRI02","RADVAN02"]
-
-#         elif self.attribute in "SOILWC":
-#             for key in self.d.keys():
-
-#                 if "SWC" in key:
-#                     valid_keys.append(key)
-
-#         elif self.attribute in "SOILTEMP":
-#             for key in self.d.keys():
-
-#                 if "SOI" in key:
-#                     valid_keys.append(key)
-
-
-#         elif self.attribute in "LYS":
-
-#             for key in self.d.keys():
-#                 if "LYS" in key:
-#                     valid_keys.append(key)
-
-#         else:
-#             pass
-
-#         if valid_keys != []:
-
-#             for each_key in valid_keys:
-
-#                 startdate = self.d[each_key]['startdate']
-#                 enddate = self.d[each_key]['enddate']
-#                 res = self.d[each_key]['res']
-
-#                 if res == "15 minutes":
-#                     replace_flag = "F"
-#                 elif res == "60 minutes":
-#                     replace_flag = "H"
-#                 else:
-#                     continue
-                
-#                 # check for max and min sets
-#                 if self.attribute in ["AIRTEMP", "RELHUM", "WSPD_PRO", "SOLAR", "DEWPT", "VPD", "SOILTEMP", "SOILWC", "PAR", "WSPD_SNC"]:
-                    
-#                     ### Update max flag to new replacement
-#                     new_query = "update LTERLogger_Pro.dbo." + query_d[self.attribute] + " set " + self.attribute + "_MAX_FLAG = \'" +  replace_flag + "\' where probe_code like \'" + each_key + "\' and Date >= \'" + startdate + "\' and Date < \'" + enddate + "\'"
-
-#                     cursor.execute(new_query) 
-
-
-#                 if self.attribute in ["AIRTEMP", "DEWPT", "VPD", "SOILTEMP", "SOILWC"]:
-                    
-#                     # update min flag to new replacement
-#                     new_query = "update LTERLogger_Pro.dbo." + query_d[self.attribute] + " set " + self.attribute + "_MIN_FLAG = \'" +  replace_flag + "\' where probe_code like \'" + each_key + "\' and Date >= \'" + startdate + "\' and Date < \'" + enddate + "\'"
- 
-#                     cursor.execute(new_query)
-
-            
-#             # commit the changes
-#             conn.commit() 
-        
-#         else:
-#             print "nothing to commit!"
+            return shortened_lookup
