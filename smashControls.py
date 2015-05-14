@@ -12,57 +12,51 @@ import smashWorkers
 class Worker(object):
     ''' The smash controls "Workers" are responsible for using the attribute arguement to get the correct data from the servers. They can also generate a header, if desired. '''
 
-    def __init__(self, attribute, startdate, enddate, server, *args):
+    def __init__(self, attribute, startdate, enddate, server):
 
-        self.HeaderWriter = smashWorkers.HeaderWriter(attribute)
         self.attribute = attribute
 
-        if args:
-            self.probe_code = args[0]
-        else:
-            pass
-
         if self.attribute == "AIRTEMP":
-            self.Worker = smashWorkers.AirTemperature(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.AirTemperature(startdate, enddate, server)
 
         elif self.attribute == "LYS":
-            self.Worker = smashWorkers.SnowLysimeter(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.SnowLysimeter(startdate, enddate, server)
 
         elif self.attribute == "RELHUM":
-            self.Worker = smashWorkers.RelHum(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.RelHum(startdate, enddate, server)
 
         elif self.attribute == "DEWPT":
-            self.Worker = smashWorkers.DewPoint(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.DewPoint(startdate, enddate, server)
 
         elif self.attribute == "VPD":
-            self.Worker = smashWorkers.VPD(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.VPD(startdate, enddate, server)
 
         elif self.attribute == "PAR":
-            self.Worker = smashWorkers.PhotosyntheticRad(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.PhotosyntheticRad(startdate, enddate, server)
 
         elif self.attribute == "SOILTEMP":
-            self.Worker = smashWorkers.SoilTemperature(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.SoilTemperature(startdate, enddate, server)
 
         elif self.attribute == "SOILWC":
-            self.Worker = smashWorkers.SoilWaterContent(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.SoilWaterContent(startdate, enddate, server)
 
         elif self.attribute == "WSPD_PRO":
-            self.Worker = smashWorkers.Wind(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.Wind(startdate, enddate, server)
 
         elif self.attribute == "WSPD_SNC":
-            self.Worker = smashWorkers.Sonic(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.Sonic(startdate, enddate, server)
 
         elif self.attribute == "LYS":
-            self.Worker = smashWorkers.SnowLysimeter(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.SnowLysimeter(startdate, enddate, server)
 
         elif self.attribute == "PRECIP":
-            self.Worker = smashWorkers.Precipitation(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.Precipitation(startdate, enddate, server)
 
         elif self.attribute == "SOLAR":
-            self.Worker = smashWorkers.Solar(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.Solar(startdate, enddate, server)
 
         elif self.attribute == "NR":
-            self.Worker = smashWorkers.NetRadiometer(startdate, enddate, server, *args)
+            self.Worker = smashWorkers.NetRadiometer(startdate, enddate, server)
         
         else:
             pass
@@ -456,3 +450,123 @@ class DBControl(object):
             enddate_out = self.lookup['MS04321']['enddate']
 
         return startdate_out, enddate_out
+
+class HeaderWriter(object):
+    """ 
+    Writes a header given a certain attribute, should be used to generate CSVs
+
+    """
+
+    def __init__(self, attribute):
+    
+        # the reference entity and call to the worker 
+        daily_attr = {'LYS': '09',
+                'NR': '25',
+                'WSPD_SNC': '24',
+                'SOILWC':'23',
+                'PAR':'22',
+                'SOILTEMP':'21',
+                'VPD':'08',
+                'DEWPT':'07',
+                'SOLAR': '05',
+                'WSPD_PRO': '04',
+                'PRECIP': '03',
+                'RELHUM':'02',
+                'AIRTEMP':'01',
+                'WSPD_SNC': '24',
+                'SNODEP': '20'}
+
+        dbcode = 'MS043'
+        
+        # The following properties create the daily components needed in any headers
+        self.attribute = attribute
+        self.dbcode = dbcode
+        self.entity = daily_attr[attribute]
+        self.method = attribute + '_METHOD'
+        self.height = self.isdirty()
+        self.mean_method = attribute + "_MEAN_DAY"
+        self.mean_flag_method = attribute + "_MEAN_FLAG"
+        self.max_method = attribute + "_MAX_DAY"
+        self.max_flag_method = attribute + "_MAX_FLAG"
+        self.maxtime_method = attribute + "_MAXTIME"
+        self.min_method = attribute + "_MIN_DAY"
+        self.mintime_method = attribute + "_MINTIME"
+        self.min_flag_method = attribute + "_MIN_FLAG"
+    
+        # writes a header line for a csv
+        self.header = self.write_header_template()
+
+        # name of the csvfile
+        self.filename = dbcode + daily_attr[attribute] + '_copy.csv'
+
+    def isdirty(self):
+        """ If an attribute has to do with the soil, it will take depth rather than height in the header"""
+
+        if self.attribute == "SOILWC" or self.attribute == "SOILTEMP":
+            height_word = "DEPTH"
+        
+        else:
+            height_word = "HEIGHT"
+
+        return height_word
+
+    def write_header_template(self):
+        """ The following headers are generated based on given attributes"""
+
+        # if the attribute is given in lowercase, make it into an upper case.
+        if self.attribute in ["airtemp", "relhum", "dewpt", "soilwc", "vpd", "soiltemp", "par", "nr", "precip", "lys", "wspd_snc", "wspd_pro"]:
+
+            self.attribute = self.attribute.upper()
+        
+        else:
+            pass
+
+        # the "big six" simplest case
+        if self.attribute == "AIRTEMP" or self.attribute == "RELHUM" or self.attribute == "SOILWC" or self.attribute == "DEWPT" or self.attribute == "SOILTEMP":
+
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.min_flag_method, self.mintime_method, "EVENT_CODE", "SOURCE"]
+
+        elif self.attribute == "VPD":
+
+            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.min_flag_method, self.mintime_method, "VAP_MEAN_DAY", "VAP_MEAN_FLAG", "VAP_MAX_DAY", "VAP_MAX_FLAG", "VAP_MIN_DAY", "VAP_MIN_FLAG", "SATVP_MEAN_DAY", "SATVP_MEAN_FLAG", "SATVP_MAX_DAY", "SATVP_MAX_FLAG", "SATVP_MIN_DAY", "SATVP_MIN_FLAG", "EVENT_CODE", "SOURCE"]
+
+        # attributes which need a "total"
+        elif self.attribute == "PRECIP":
+
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "PRECIP_TOT_DAY", "PRECIP_TOT_FLAG", "EVENT_CODE", "SOURCE"]
+
+        # propellor anemometer
+        elif self.attribute == "WSPD_PRO":
+
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_PRO_MEAN_DAY", "WMAG_PRO_MEAN_FLAG", "WDIR_PRO_MEAN_DAY", "WDIR_PRO_MEAN_FLAG", "WDIR_PRO_STDDEV_DAY", "WDIR_PRO_STDDEV_FLAG", "WSPD_ROSE1_MEAN_DAY", "WSPD_ROSE1_MEAN_FLAG", "WSPD_ROSE2_MEAN_DAY", "WSPD_ROSE2_MEAN_FLAG", "WSPD_ROSE3_MEAN_DAY", "WSPD_ROSE1_MEAN_FLAG", "WSPD_ROSE4_MEAN_DAY", "WSPD_ROSE4_MEAN_FLAG", "WSPD_ROSE5_MEAN_DAY",  "WSPD_ROSE5_MEAN_FLAG", "WSPD_ROSE6_MEAN_DAY", "WSPD_ROSE6_MEAN_FLAG", "WSPD_ROSE7_MEAN_DAY", "WSPD_ROSE7_MEAN_FLAG", "WSPD_ROSE8_MEAN_DAY", "WSPD_ROSE8_MEAN_FLAG", "EVENT_CODE", "SOURCE"]
+
+        # the sonic anemometer
+        elif self.attribute == "WSPD_SNC":
+
+            header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, "WDIR_SNC_MEAN_DAY", "WDIR_SNC_MEAN_FLAG", "WDIR_SNC_STDDEV_DAY", "WDIR_SNC_STDDEV_FLAG", "WUX_SNC_MEAN_DAY", "WUX_SNC_MEAN_FLAG", "WUX_SNC_STDDEV_DAY", "WUX_SNC_STDDEV_FLAG","WUY_SNC_MEAN_DAY", "WUY_SNC_MEAN_FLAG", "WUY_SNC_STDDEV_DAY", "WUY_SNC_STDDEV_FLAG", "WAIR_SNC_MEAN_DAY", "WAIR_SNC_MEAN_FLAG", "WAIR_SNC_STDDEV_DAY", "WAIR_SNC_STDDEV_FLAG",  "EVENT_CODE", "SOURCE"]
+
+        # net radiometer
+        elif self.attribute == "NR":
+
+            # NO SOURCE TABLE HERE!!
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "SW_IN_MEAN_DAY", "SW_IN_MEAN_FLAG", "SW_OUT_MEAN_DAY", "SW_OUT_MEAN_FLAG", "LW_IN_MEAN_DAY", "LW_IN_MEAN_FLAG", "LW_OUT_MEAN_DAY", "LW_OUT_MEAN_FLAG", "NR_TOT_MEAN_DAY", "NR_TOT_MEAN_FLAG", "SENSOR_TEMP_DAY", "SENSOR_TEMP_FLAG", "EVENT_CODE"]
+
+        # pyranometer (similar method to precip but takes a max and min time as well)
+        elif self.attribute == "SOLAR":
+            
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "SOLAR_TOT_DAY", "SOLAR_TOT_FLAG", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "EVENT_CODE", "SOURCE"]
+
+        # very simple, like the "big six", but no minimums
+        elif self.attribute == "PAR":
+            header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "EVENT_CODE", "SOURCE"]
+
+        # still not sure if this is right
+        elif self.attribute == "LYS":
+
+            header = ["DBCODE","ENTITY","SITECODE", "SNOWMELT_METHOD", "QC_LEVEL", "PROBE_CODE", "DATE", "SNOWMELT_TOT_DAY", "SNOWMELT_TOT_FLAG", "EVENT_CODE", "SOURCE"]
+
+        elif self.attribute == "SNODEP":
+
+            header = ["DBCODE","ENTITY","SITECODE", "SNOW_METHOD", "QC_LEVEL", "PROBE_CODE", "DATE", "SWE_DAY", "SWE_DAY_FLAG", "SNODEP_DAY","SNODEP_DAY_FLAG", "EVENT_CODE", "DB_TABLE", "SOURCE"]
+
+        return header

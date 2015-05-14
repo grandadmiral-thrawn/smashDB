@@ -9,112 +9,6 @@ import itertools
 import smashControls
 import argparse
 
-class ProbeBoss(object):
-    """ The smashBosses are responsible for conducting specific data queries, such as generating probe-specific outputs """
-
-    def __init__(self, attribute, server, vpd="off"):
-        """ initialize the boss with a configuration file and an attribute"""
-
-        # limits is the config
-        self.limits = yaml.load(open('LIMITED.yaml','rb'))
-        # attribute you give
-        self.attribute = attribute
-        # server is either sheldon or stewartia
-        self.server = server
-        # startdate is the day it begins
-        self.startdate = ''
-        # end date is the day it ends
-        self.enddate = ''
-        # vpd is a kwarg- if it's "off" then nothing happens. if it's "on" we use the special computation. we change the default when we change method
-        self.vpd = vpd
-
-    def get_one_config(self, chosen_probe):
-        """ get one configuration - that means 1 probe over 1 set of time stamps, i.e. AIRPRI01 between say january 2 2015 and february 22, 2015. or VPDCEN04 between april 5 2015 and april 10 2015. This doesn't get all the probes at once! But note that by default in the controller dew and vpd are checked for bad dates. """
-
-        # compute the startdate and end date as strings if they are not already strings!
-        self.startdate = datetime.datetime.strftime(self.limits[chosen_probe]['startdate'], '%Y-%m-%d %H:%M:%S')
-        self.enddate = datetime.datetime.strftime(self.limits[chosen_probe]['enddate'], '%Y-%m-%d %H:%M:%S')
-        
-        # if it is not VPD, then go ahead and make a worker
-        if self.attribute != "VPD":
-            myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server, chosen_probe)
-
-        # if it is VPD but we are using the old method, then go ahead and make a worker
-        elif self.attribute == "VPD" and self.vpd == "off":
-            myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server, chosen_probe)
-
-        # if it is VPD and we are using the new method, then we assign that to the worker
-        elif self.attribute == "VPD" and self.vpd == "on":
-            myWorker = smashControls.VaporControl(self.startdate, self.enddate, self.server, chosen_probe)
-
-        # my worker is one worker object
-        return myWorker
-
-    @staticmethod
-    def write_one_worker_to_csv(myWorker, *args):
-        """ open a csvfile and write out one data - this is in a sense just doing one probe to one csv, for the purpose of maybe patching something"""
-        
-        with open(myWorker.HeaderWriter.filename, 'wb') as writefile:
-            writer = csv.writer(writefile, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-            myHeader = myWorker.HeaderWriter.write_header_template()
-            
-            writer.writerow(myHeader)
-
-            if args:
-                try:
-                    my_new_rows = myWorker.Worker.condense_data(args[0])
-                except Exception:
-                    my_new_rows = myWorker.condense_data(args[0])
-            
-            else:
-                try:
-                    my_new_rows = myWorker.Worker.condense_data()
-                except Exception:
-                    my_new_rows = myWorker.condense_data()
-            
-            for row in my_new_rows:
-
-                writer.writerow(row)
-
-
-    def iterate_over_many_config(self, *args):
-        """ walks over the limits file and creates for each a worker, who then goes and gets the data for each and writes it to a single csv output"""
-        
-        import smashWorkers
-
-        # writes the csv-headers
-        templateWorker = smashWorkers.HeaderWriter(self.attribute)
-
-        # writing to the csv
-        with open(templateWorker.filename, 'wb') as writefile:
-                
-            writer = csv.writer(writefile, quoting = csv.QUOTE_NONNUMERIC, delimiter = ",")
-
-            myHeader = templateWorker.write_header_template()
-            
-            writer.writerow(myHeader)
-
-            # for the prose you choose
-            for chosen_probe in self.limits.keys():
-
-                # get that worker
-                myWorker = self.get_one_config(chosen_probe)
-
-                # if you need the custom configuration, use it
-                if args:
-                    my_new_rows = myWorker.Worker.condense_data(args[0])
-                else:
-                    my_new_rows = myWorker.Worker.condense_data()
-
-                # write the rows, then delete the worker
-                for row in my_new_rows:
-                    writer.writerow(row)
-
-                del myWorker
-
-        print("Finished writing data to " + templateWorker.filename)
-
 
 class UpdateBoss(object):
     """ The UpdateBoss updates an attribute based on the times you specify"""
@@ -129,12 +23,14 @@ class UpdateBoss(object):
 
         # if it is not VPD, then go ahead and make a worker
         if self.attribute != "VPD":
-            self.myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server)
             
+            self.myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server)
             self.new_rows = self.myWorker.Worker.condense_data()
 
+            # get the appropriate entity number and format to a string
             if self.myWorker.Worker.entity < 10:
                 new_string = "0"+str(self.myWorker.Worker.entity)
+            
             else:
                 new_string = str(self.myWorker.Worker.entity)
 
@@ -146,14 +42,8 @@ class UpdateBoss(object):
             self.myWorker = smashControls.Worker(self.attribute, self.startdate, self.enddate, self.server)
             self.new_rows = self.myWorker.Worker.condense_data()
 
-            if self.myWorker.Worker.entity < 10:
-                new_string = "0"+str(self.myWorker.Worker.entity)
-            else:
-                new_string = str(self.myWorker.Worker.entity)
-
-
-            # name of the table
-            self.table = 'MS043' + new_string
+            # name of the table - VPD IS ALWAYS 8
+            self.table = 'MS04308'
 
         # if it is VPD and we are using the new method, then we assign that to the worker
         elif self.attribute == "VPD" and self.vpd == "on":
@@ -167,7 +57,7 @@ class UpdateBoss(object):
             print "this will never get called"
 
     def only_one_station(self, station):
-
+        """ If we want to parse incoming data to just one station, use this"""
         h = [self.new_rows[index] for index, row in enumerate(self.new_rows) if self.new_rows[index][2] == station]
 
         return h
