@@ -1,7 +1,9 @@
 import argparse
 import smashBosses
 import smashControls
+import smashWorkers
 import datetime
+import pymssql
 
 """SMASHER is the executable for the other parts of the data 'smashing'. The smasher bash program will run all of the update bosses in a row, for one day.
 
@@ -33,26 +35,20 @@ DELETE - Duplicate rows
 
 parser = argparse.ArgumentParser(description="SMASHER tool for FSDB summaries. Use the SMASHER bosses within a bash file or on the API to conduct controlled summaries. SMASHER bosses are superclasses with controlled operations and vocabularies. SMASHER controls are switch statements designed to drive SMASHER bosses. SMASHER workers are microprocesses designed to work with high-resolution data in the FSDB structure.")
 
-# working on airTemperature
-B = smashWorkers.AirTemperature('2015-01-01 00:00:00','2015-01-05 00:00:00','SHELDON')
-B.condense_data()
-# # which function you are running -- REQUIRED!
-# parser.add_argument('boss')
+# which function you are running -- REQUIRED!
+parser.add_argument('crud')
 
-# # which server you are using -- REQUIRED!
-# parser.add_argument('server')
+# which server you are using -- REQUIRED!
+parser.add_argument('server')
 
-# # which attribute you are using 
-# parser.add_argument('--attribute', '-a', nargs = 1, required = False, help = " the official name of an attribute to be processed in isolation ")
+# which attribute you are using 
+parser.add_argument('--attribute', '-a', nargs = 1, required = False, help = " the attribute you want to process. type 'all' for everything and 'big4' for airtemp, relhum, vpd, and dew.")
 
-# # startdate 
-# parser.add_argument('--startdate', '-sd', nargs = 1, required = False, help = " the first date, as a date-string in form YYYY-MM-DD HH:MM:SS, that you want to process ")
+# startdate 
+parser.add_argument('--startdate', '-sd', nargs = 1, required = False, help = " the first date, as a date-string in form YYYY-MM-DD HH:MM:SS, that you want to process ")
 
-# # enddate
-# parser.add_argument('--enddate', '-ed', nargs = 1, required = False, help = " the last date, as a date-string in form YYYY-MM-DD HH:MM:SS, that you want to process ")
-
-# # specific probe
-# parser.add_argument('--probe', '-p', nargs = 1, required = False, help = " a single probe, which can be run in isolation ")
+# enddate
+parser.add_argument('--enddate', '-ed', nargs = 1, required = False, help = " the last date, as a date-string in form YYYY-MM-DD HH:MM:SS, that you want to process ")
 
 # # specific station
 # parser.add_arguement('--station', nargs=1, required=False, help="one station, such as PRIMET, for updates, deletes, and management")
@@ -73,56 +69,207 @@ B.condense_data()
 # parser.add_arguement('--batch', action="store-true", required=False, help="if --batch is on, the whole data will be run for 1 day")
 
 # # go!
-# args = parser.parse_args()
+args = parser.parse_args()
 
-# # Printing an intro 
-# print(" You are processing using the SMASHER Python toolkit. (c) MIT LICENSCE. 2015. You have given the following information: \n")
- 
-# print("~ Attribute: {}".format(args.attribute))
-# print("~ Server: {}".format(args.server))
+# Printing an intro 
+print(" You are processing using the SMASHER Python toolkit. (c) MIT 2015. You have given the following information: \n")
 
-# print("~ Start Date: {}".format(args.startdate))
-# print("~ End Date: {}".format(args.enddate))
+# print("~ Worker: {}".format(arg_proxy))
+print("~ Attribute: {}".format(args.attribute))
+print("~ Server: {}".format(args.server))
 
-# print("~ Probe Code: {}".format(args.probe))
-# print("~ New Configuration File: {}".format(args.newcfg))
+print("~ Start Date: {}".format(args.startdate))
+print("~ End Date: {}".format(args.enddate))
 
+### CREATION METHODS ###
 
-# if args.boss == 'XXDEL'
+sd = args.startdate
+ed = args.enddate
+server = args.server
 
-#     print(" Deleting all data from LTERLogger_Pro for your attribute! ")
+if args.crud == "CREATE" and args.attribute == "ALL":
+  C = smashWorkers.AirTemperature(sd, ed, server)
+  nr = C.condense_data()
+  del C
 
-#     if args.attribute == None:
-#         print("I cannot process this command without an attribute to delete. Try again :)")
+  C = smashWorkers.RelHum(sd, ed, server)
+  nr = C.condense_data()
+  del C
 
-#     else:
+  C = smashWorkers.VPD2(sd, ed, server)
+  nr = C.condense_data()
+  del C
 
-#         deleteable = args.attribute[0]
+  C = smashWorkers.DewPoint(sd, ed, server)
+  nr = C.condense_data()
+  del C
 
-#         if deleteable == "AIRTEMP":
-#             full_name = "LTERLogger_Pro.dbo.MS04301"
-#         elif deleteable == "RELHUM":
-#             full_name = "LTERLogger_Pro.dbo.MS04302"
-#         elif deleteable == "WSPD_PRO":
-#             full_name = "LTERLogger_Pro.dbo.MS04304"
-#         elif deleteable == "SOLAR"
-#             full_name = "LTERLogger_Pro.dbo.MS04305"
-#         elif deleteable == "PRECIP":
-#             full_name = "LTERLogger_Pro.dbo.MS04303"
-#         elif deleteable == "NR":
-#             full_name = "LTERLogger_Pro.dbo.MS04325"
-#         elif deleteable == "WSPD_SNC":
-#             full_name = "LTERLogger_Pro.dbo.MS04324"
-#         elif deleteable == "SOILWC":
-#             full_name = "LTERLogger_Pro.dbo.MS04323"
-#         elif deleteable == "SOILTEMP":
-#             full_name = "LTERLogger_Pro.dbo.MS04321"
-#         elif deleteable == "PAR":
-#             full_name = "LTERLogger_Pro.dbo.MS04322"
-#         elif deletable == "LYS":
-#             full_name = "LTERLogger_Pro.dbo.MS04309"
-#         else:
-#             print("need to create a method to delete {}".format(deleteable))
+  C = smashWorkers.VPD(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.NetRadiometer(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.Solar(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.Sonic(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.Wind(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.SoilTemperature(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.SoilWaterContent(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.Precipitation(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.Solar(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.SnowLysimeter(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute == "BIG4":
+  C = smashWorkers.AirTemperature(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.RelHum(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.VPD2(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+  C = smashWorkers.DewPoint(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["AIRTEMP", "airtemp", "MS04301"]:
+  C = smashWorkers.AirTemperature(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["RELHUM", "relhum", "MS04302"]:
+  C = smashWorkers.RelHum(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["PRECIP", "precip", "MS04303"]:
+  C = smashWorkers.Precipitation(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["VPD", "vpd"]:
+  C = smashWorkers.VPD(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["VPD2", "vpd2", "MS04308"]:
+  C = smashWorkers.VPD2(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["DEWPT", "dewpt", "MS04307"]:
+  C = smashWorkers.DewPoint(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["SOLAR", "solar", "MS04305"]:
+  C = smashWorkers.Solar(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["WSPD_SNC", "SONIC", "sonic", "wspd_snc" "MS04334"]:
+  C = smashWorkers.Sonic(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["NR", "net", "radiation", "netrad", "NETRAD", "MS04325"]:
+  C = smashWorkers.NR(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["WSPD_PRO", "wspd_pro", "WIND","wind", "PROP", "prop", "MS04304"]:
+  C = smashWorkers.Wind(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["SOILTEMP", "soiltemp", "MS04321"]:
+  C = smashWorkers.SoilTemperature(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["SOILWC", "SWC", "soiltemp","swc","MS04323"]:
+  C = smashWorkers.SoilWaterContent(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["LYS", "SNOWMELT", "lys", "snowmelt", "MS04309"]:
+  C = smashWorkers.SnowLysimeter(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["SNOWDEPTH", "SNOW", "snowdepth","snow","MS04310"]:
+  C = smashWorkers.SnowDepth(sd, ed, server)
+  nr = C.condense_data()
+  del C
+
+else: 
+  pass
+
+### DELETION METHODS ###
+if args.worker == 'XXDEL':
+
+  print(" Deleting all data from LTERLogger_Pro for your attribute! ")
+
+  if args.attribute == None:
+    print("I cannot process this command without an attribute to delete. Try again :)")
+
+  else:
+
+    deleteable = args.attribute[0]
+
+    if deleteable == "AIRTEMP":
+        full_name = "LTERLogger_Pro.dbo.MS04301"
+    elif deleteable == "RELHUM":
+        full_name = "LTERLogger_Pro.dbo.MS04302"
+    elif deleteable == "WSPD_PRO":
+        full_name = "LTERLogger_Pro.dbo.MS04304"
+    elif deleteable == "SOLAR":
+        full_name = "LTERLogger_Pro.dbo.MS04305"
+    elif deleteable == "PRECIP":
+        full_name = "LTERLogger_Pro.dbo.MS04303"
+    elif deleteable == "NR":
+        full_name = "LTERLogger_Pro.dbo.MS04325"
+    elif deleteable == "WSPD_SNC":
+        full_name = "LTERLogger_Pro.dbo.MS04324"
+    elif deleteable == "SOILWC":
+        full_name = "LTERLogger_Pro.dbo.MS04323"
+    elif deleteable == "SOILTEMP":
+        full_name = "LTERLogger_Pro.dbo.MS04321"
+    elif deleteable == "PAR":
+        full_name = "LTERLogger_Pro.dbo.MS04322"
+    elif deletable == "LYS":
+        full_name = "LTERLogger_Pro.dbo.MS04309"
+    else:
+        print("need to create a method to delete {}".format(deleteable))
 
 
 #         # choose the range over which to delete.

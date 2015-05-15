@@ -4316,6 +4316,7 @@ class Wind(object):
 
 class Sonic(object):
 
+    """ Many Sonic. """
    
     def __init__(self, startdate, enddate, server):
 
@@ -4358,7 +4359,8 @@ class Sonic(object):
 
         self.cursor.execute(query)
 
-def height_and_method_getter(self, probe_code, cursor_sheldon):
+    
+    def height_and_method_getter(self, probe_code, cursor_sheldon):
         """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
@@ -4446,12 +4448,18 @@ def height_and_method_getter(self, probe_code, cursor_sheldon):
             
         # iterate over each probe-code that was collected
         for probe_code in self.od.keys():
+            
+            if probe_code != "WNDCEN02":
 
+                # get height, method, and site from table  
+                height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
 
-            # get the height, method_code, and sitecode from the height_and_method_getter function  
-            height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+            elif probe_code == "WNDCEN02":
 
-            # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
+                height, method_code, site_code = 1000, "WND011","CENMET"
+           
+
+            # valid_dates for sonic wind
             valid_dates = sorted(self.od[probe_code].keys())
             
             for each_date in valid_dates:
