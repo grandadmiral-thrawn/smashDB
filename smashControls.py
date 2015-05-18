@@ -166,7 +166,7 @@ class HRMethodControl(object):
     def process_db(self):
 
         # write to the error log if the method is not consistent
-        with open('errorlog_hr.csv', 'wb') as writefile, open('eventlog.csv','wb') as writefile2:
+        with open('errorlog_hr.csv', 'wb') as writefile, open('eventlog_hr.csv','wb') as writefile2:
 
             writer = csv.writer(writefile)
             writer2 = csv.writer(writefile2)
@@ -255,13 +255,11 @@ class HRMethodControl(object):
                             else: 
                                 print "this should not be called ever"
 
-                        # write out only the first ouput from each to a file
-                        for each_key in sorted (od2.keys()):
-                            writer.writerow(nr)
+
                     
 
                         # select the event code from the database on the begin date
-                        newquery2 = "select event_code from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
+                        newquery2 = "select event_code from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
 
                         self.cursor2.execute(newquery2)
 
@@ -273,6 +271,11 @@ class HRMethodControl(object):
                             elif str(row[0]) != "METHOD":
                                 nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
                                 writer2.writerow(nr2)
+
+                        # write out only the first ouput from each to a file
+                        for each_probey_key in sorted (od2.keys()):
+                            writer.writerow(od2[each_probey_key])
+
 
                     elif self.server == "SHELDON":
                         # find the date times in that range

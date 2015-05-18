@@ -679,7 +679,7 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
   print("Updates come from the source of {}".format(args.server))
 
 
-if args.crud == "UPDATE" and args.attribute == "AIRTEMP" and args.startdate == None and args.enddate == None:
+if args.crud == "UPDATE" and args.attribute in ["AIRTEMP","MS04301"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -696,7 +696,7 @@ if args.crud == "UPDATE" and args.attribute == "AIRTEMP" and args.startdate == N
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "RELHUM" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["RELHUM","MS04302"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -713,7 +713,7 @@ elif args.crud == "UPDATE" and args.attribute == "RELHUM" and args.startdate == 
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "PRECIP" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["PRECIP","MS04303"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -730,7 +730,7 @@ elif args.crud == "UPDATE" and args.attribute == "PRECIP" and args.startdate == 
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "DEWPT" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["DEWPT","MS04307"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -747,7 +747,7 @@ elif args.crud == "UPDATE" and args.attribute == "DEWPT" and args.startdate == N
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "VPD2" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["VPD2", "MS04308"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -764,7 +764,7 @@ elif args.crud == "UPDATE" and args.attribute == "VPD2" and args.startdate == No
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "SOLAR" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["SOLAR", "MS04305"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -782,7 +782,7 @@ elif args.crud == "UPDATE" and args.attribute == "SOLAR" and args.startdate == N
   del D
 
 
-elif args.crud == "UPDATE" and args.attribute == "SOILTEMP" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["SOILTEMP", "MS04321"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -799,7 +799,7 @@ elif args.crud == "UPDATE" and args.attribute == "SOILTEMP" and args.startdate =
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "SOILWC" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["SOILWC", "MS04323"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -816,7 +816,7 @@ elif args.crud == "UPDATE" and args.attribute == "SOILWC" and args.startdate == 
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "NR" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["NR", "MS04325"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -833,7 +833,7 @@ elif args.crud == "UPDATE" and args.attribute == "NR" and args.startdate == None
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "WSPD_PRO" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["WSPD_PRO", "MS04304"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -850,7 +850,7 @@ elif args.crud == "UPDATE" and args.attribute == "WSPD_PRO" and args.startdate =
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "WSPD_SNC" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["WSPD_SNC","MS04334"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
@@ -867,7 +867,7 @@ elif args.crud == "UPDATE" and args.attribute == "WSPD_SNC" and args.startdate =
   del C
   del D
 
-elif args.crud == "UPDATE" and args.attribute == "LYS" and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["LYS","MS04309"] and args.startdate == None and args.enddate == None:
 
   B = smashControls.DBControl(args.server)
   B.build_queries()
