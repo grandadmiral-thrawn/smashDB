@@ -28,13 +28,13 @@ class MethodTableReader(object):
         self.cursor_sheldon = cursor_sheldon
 
     def height_and_method_getter(self, probe_code, daterange):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         self.cursor_sheldon.execute(query)
             
@@ -128,13 +128,13 @@ class AirTemperature(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -206,13 +206,14 @@ class AirTemperature(object):
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
 
-        # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history table.
+        # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history_daily table.
         cursor_sheldon = fc.form_connection("SHELDON")
             
         # iterate over each probe-code that was collected
         for probe_code in self.od.keys():
+            print probe_code
 
-            if "AIRR" not in probe_code:
+            if "AIRR" not in probe_code and probe_code != "AIRCEN08":
 
                 # get the height, method_code, and sitecode from the height_and_method_getter function  
                 height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
@@ -220,6 +221,9 @@ class AirTemperature(object):
             elif "AIRR" in probe_code:
                 # height is 150m?, method is AIR999, site is REFS plus last two digits of probe_code
                 height, method_code, site_code = 150, "AIR999", "REFS"+probe_code[-4:-2]
+
+            elif probe_code == "AIRCEN08":
+                height, method_code, site_code = 350, 'AIR243','CENMET'
 
             # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
             valid_dates = sorted(self.od[probe_code].keys())
@@ -317,7 +321,7 @@ class AirTemperature(object):
                 else:
                     max_flag = 'Q'
 
-
+                
                 # DAILY FLAG ON MINIMUMS
                 if num_missing_obs_min/num_total_obs >= 0.2:
                     min_flag = 'M'
@@ -340,7 +344,7 @@ class AirTemperature(object):
                 # the mean is the mean of the day where the values are not none
                 try:
                     mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None'])/num_valid_obs),3)
-                
+                    
                 except ZeroDivisionError:
                     # if the whole day is missing, then the mean_valid_obs is None
                     mean_valid_obs = None
@@ -350,17 +354,15 @@ class AirTemperature(object):
                 # the max of the day is the max of the max column
                 try:
                     max_valid_obs = round(np.max([float(x) for x in self.od[probe_code][each_date]['maxval'] if x != 'None']),3)
-
                 except Exception:
-                    
                     # the max of the day is the max of the mean column
                     try:
                         max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
-
                     except ValueError:
                         # check to see if the whole day was missing, if so, set it to none
                         if mean_valid_obs == None:
                             max_valid_obs = None
+
                         else:
                             error_string3 = "error in max_valid_obs for %s on %s" %(probe_code, each_date)
                             #print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
@@ -370,16 +372,17 @@ class AirTemperature(object):
                 # the max time is stolen from the corresponding five minutes 
                 try:
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['maxval']) if j != "None" and round(float(j),3) == max_valid_obs]
-                
+                    max_valid_time = max_valid_time[0]
                 except Exception:
                     # the max time is stolen from the mean corresponding five minutes
                     try:
                         max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
-
+                        max_valid_time = max_valid_time[0]
                     except ValueError:
                         # check to see if the the whole day was missing, if so, set it to none
                         if mean_valid_obs == None:
                             max_valid_time = None
+
                         else: 
                             error_string4 = "error in max_valid_time for %s on %s" %(probe_code, each_date)
                             my_log.write('max_time_error', error_string4)
@@ -388,6 +391,7 @@ class AirTemperature(object):
                 # DAILY MINIMUM AIR TEMPERATURE
                 try:
                     min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['minval'] if x != 'None']),3)
+                
                 except Exception:
                     try:
                         min_valid_obs = round(min([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
@@ -402,11 +406,11 @@ class AirTemperature(object):
                 # MINIMUM TIME AIR TEMPERATURE
                 try:
                     min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['minval']) if j != "None" and round(float(j),3) == min_valid_obs]
-                
+                    min_valid_time = min_valid_time[0]
                 except Exception:
                     try:
                         min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
-                
+                        min_valid_time = min_valid_time[0]
                     except ValueError:
                         if mean_valid_obs == None:
                             min_valid_time = None
@@ -416,7 +420,8 @@ class AirTemperature(object):
 
                 # final check on missing days
                 if mean_valid_obs == None:
-                    daily_flag == "M"
+                    print "mean valid obs is None?!?"
+                    daily_flag = "M"
                     max_flag = "M"
                     min_flag = "M"
                 else:
@@ -432,16 +437,17 @@ class AirTemperature(object):
                     print("no server given")
 
                 # in the best possible case, we print it out just as it is here: 
-                try:
-                    newrow = ['MS043', 1, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", source]
+                #try:
+                newrow = ['MS043', 1, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time, '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time, '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
-                except IndexError:
-                    newrow = ['MS043', 1, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
+                #except IndexError:
+                #    newrow = ['MS043', 1, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
                 #print newrow
                 my_new_rows.append(newrow)
     
+            mylog.dump()
         return my_new_rows
 
 class RelHum(object):
@@ -490,13 +496,13 @@ class RelHum(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -591,8 +597,8 @@ class RelHum(object):
 
                     # break on missing dates and continue to the next
 
-                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs, each_date)
-                    mylog.write(error_string2)
+                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
+                    mylog.write('incomplete_day', error_string2)
                     continue
                 else:
                     pass
@@ -810,13 +816,13 @@ class DewPoint(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -890,7 +896,7 @@ class DewPoint(object):
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
 
-        # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history table.
+        # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history_daily table.
         cursor_sheldon = fc.form_connection("SHELDON")
             
         # iterate over each probe-code that was collected
@@ -1181,13 +1187,13 @@ class VPD(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -1278,8 +1284,8 @@ class VPD(object):
 
                     # break on missing dates and continue to the next
 
-                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs, each_date)
-                    mylog.write(error_string2)
+                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
+                    mylog.write('incompleteday', error_string2)
                     continue
                 else:
                     pass
@@ -1496,13 +1502,13 @@ class VPD2(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -1605,16 +1611,16 @@ class VPD2(object):
 
                     # break on missing dates and continue to the next
 
-                    error_string2 = "Incomplete or overfilled day-AIRTEMP (called first):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air, each_date)
-                    mylog.write(error_string2)
+                    error_string2 = "Incomplete or overfilled day-AIRTEMP (called first):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air)
+                    mylog.write('incompleteday', error_string2)
                     continue
 
                 elif num_total_obs_rel not in [288, 96, 24] and each_date != self.daterange.dr[0]:
 
                     # break on missing dates and continue to the next
 
-                    error_string2 = "Incomplete or overfilled day- RELHUM (AIRTEMP OK):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air, each_date)
-                    mylog.write(error_string2)
+                    error_string2 = "Incomplete or overfilled day- RELHUM (AIRTEMP OK):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air)
+                    mylog.write('incompleteday', error_string2)
                     continue
 
                 else:
@@ -1897,13 +1903,13 @@ class PhotosyntheticRad(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -2142,13 +2148,13 @@ class SoilTemperature(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT depth, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT depth, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -2248,8 +2254,8 @@ class SoilTemperature(object):
 
                     # break on missing dates and continue to the next
 
-                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs, each_date)
-                    mylog.write(error_string2)
+                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
+                    mylog.write('incompleteday', error_string2)
                     continue
                 else:
                     pass
@@ -2465,13 +2471,13 @@ class SoilWaterContent(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT depth, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT depth, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -2565,8 +2571,8 @@ class SoilWaterContent(object):
 
                     # break on missing dates and continue to the next
 
-                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs, each_date)
-                    mylog.write('incomplete_day', error_string2)
+                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
+                    mylog.write('incompleteday', error_string2)
                     continue
                 else:
                     pass
@@ -2778,19 +2784,19 @@ class Precipitation(object):
         elif self.server == "STEWARTIA":
             dbname = "FSDBDATA.dbo."
 
-            query = "SELECT DATE_TIME, PROBE_CODE, PRECIP_TOT, PRECIP_TOT_FLAG from " + dbname + "MS04313 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
+        query = "SELECT DATE_TIME, PROBE_CODE, PRECIP_TOT, PRECIP_TOT_FLAG from " + dbname + "MS04313 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
 
         self.cursor.execute(query)
 
     
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -2980,13 +2986,13 @@ class SnowLysimeter(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -3168,13 +3174,13 @@ class Solar(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -3435,13 +3441,13 @@ class SnowDepth(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -3662,13 +3668,13 @@ class NetRadiometer(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -4021,13 +4027,13 @@ class Wind(object):
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -4361,13 +4367,13 @@ class Sonic(object):
 
     
     def height_and_method_getter(self, probe_code, cursor_sheldon):
-        """ determines the height and method based on the method_history table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history where date_time_bgn <= \'" + humanrange[0] + "\' and date_time_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
             
@@ -4443,7 +4449,7 @@ class Sonic(object):
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
 
-        # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history table.
+        # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history_daily table.
         cursor_sheldon = fc.form_connection("SHELDON")
             
         # iterate over each probe-code that was collected

@@ -3,281 +3,149 @@ import pymssql
 import csv
 import datetime
 import math
-import yaml
 import numpy as np
 import itertools
 import smashWorkers
 
-             
-class Worker(object):
-    ''' The smash controls "Workers" are responsible for using the attribute arguement to get the correct data from the servers. They can also generate a header, if desired. '''
 
-    def __init__(self, attribute, startdate, enddate, server):
+class MethodControl(object):
+    """ used to generate a date range from the method table and then check the database that every item it it agrees"""
+    def __init__(self, server):
 
-        self.attribute = attribute
-
-        if self.attribute == "AIRTEMP":
-            self.Worker = smashWorkers.AirTemperature(startdate, enddate, server)
-
-        elif self.attribute == "LYS":
-            self.Worker = smashWorkers.SnowLysimeter(startdate, enddate, server)
-
-        elif self.attribute == "RELHUM":
-            self.Worker = smashWorkers.RelHum(startdate, enddate, server)
-
-        elif self.attribute == "DEWPT":
-            self.Worker = smashWorkers.DewPoint(startdate, enddate, server)
-
-        elif self.attribute == "VPD":
-            self.Worker = smashWorkers.VPD(startdate, enddate, server)
-
-        elif self.attribute == "PAR":
-            self.Worker = smashWorkers.PhotosyntheticRad(startdate, enddate, server)
-
-        elif self.attribute == "SOILTEMP":
-            self.Worker = smashWorkers.SoilTemperature(startdate, enddate, server)
-
-        elif self.attribute == "SOILWC":
-            self.Worker = smashWorkers.SoilWaterContent(startdate, enddate, server)
-
-        elif self.attribute == "WSPD_PRO":
-            self.Worker = smashWorkers.Wind(startdate, enddate, server)
-
-        elif self.attribute == "WSPD_SNC":
-            self.Worker = smashWorkers.Sonic(startdate, enddate, server)
-
-        elif self.attribute == "LYS":
-            self.Worker = smashWorkers.SnowLysimeter(startdate, enddate, server)
-
-        elif self.attribute == "PRECIP":
-            self.Worker = smashWorkers.Precipitation(startdate, enddate, server)
-
-        elif self.attribute == "SOLAR":
-            self.Worker = smashWorkers.Solar(startdate, enddate, server)
-
-        elif self.attribute == "NR":
-            self.Worker = smashWorkers.NetRadiometer(startdate, enddate, server)
+        # connect to the right server
+        self.cursor = fc.form_connection('SHELDON')
+        self.cursor2 = fc.form_connection('STEWARTIA')
+        self.server = server
         
-        else:
-            pass
+        # look up  table for the daily method
+        self.lu = {'AIR':'MS04301', 'REL': 'MS04302', 'DEW': 'MS04307', 'VPD': 'MS04308','RAD': 'MS04305', 'SOI': 'MS04321', 'PAR': 'MS04322', 'WND': 'MS04304', 'PPT': 'MS04303', 'SWC': 'MS04323', 'LYS':'MS04309', 'SNO':'MS04310'}
 
-class VaporControl(object):
+        # name of the method column
+        self.special = {'MS04301': 'AIRTEMP_METHOD', 'MS04302': 'RELHUM_METHOD', 'MS04307':'DEWPT_METHOD', 'MS04308': 'VPD_METHOD','MS04305': 'SOLAR_METHOD', 'MS04325': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS04322':'PAR_METHOD', 'MS04304':'WIND_METHOD', 'MS04303': 'PRECIP_METHOD', 'MS04323': 'SOILWC_METHOD', 'MS04309':'SNOWMELT_METHOD','MS04324': 'WIND_METHOD', 'MS04310':'SNOW_METHOD'}
 
-    def __init__(self, startdate, enddate, server, *args):
+    # query database
+    def process_db(self):
 
-        # create air temperature and relative humidity
-        self.A = smashWorkers.AirTemperature(startdate, enddate, server, *args)
-        self.R = smashWorkers.RelHum(startdate, enddate, server, *args)
+        # write to the error log if the method is not consistent
+        with open('errorlog.csv', 'wb') as writefile, open('eventlog.csv','wb') as writefile2:
 
-        air_rows = self.A.condense_data()
-        rel_rows = self.R.condense_data()
+            writer = csv.writer(writefile)
+            writer2 = csv.writer(writefile2)
+            writer.writerow(['date_in_db','method_in_db', 'method_in_table', 'probe_code', 'date_start_table','date_end_table'])
+            writer2.writerow(['probe_code', 'date_start_table','date_end_table', 'current_event_code'])
 
-        # create a list of "bad dates"
-        self.bad_dates = []
+            query = "SELECT probe_code, date_bgn, date_end, method_code from LTERLogger_new.dbo.method_history_daily" 
+            self.cursor.execute(query)
 
-        for index, details in enumerate(air_rows):
-            if details[9] == "M":
-                self.bad_dates.append(details[7])
+            od = {}
 
-        for index2, details2 in enumerate(rel_rows):
-            if details[9] == "M" and details[7] not in self.bad_dates:
-                self.bad_dates.append(details[7])
+            for row in self.cursor:
 
-        # load a lookup table
-        if not args:
-            with open('CONFIG.yaml','rb') as readfile:
-                self.cfg = yaml.load(readfile)
+                # probe code in row 0, beginning of type of attribute in probe code, position (tokened from) 0-3
+                probe_code = str(row[0])
+                qual = probe_code[0:3]
+                method_code = str(row[3])
 
-        elif args:
-            with open(args[0], 'rb') as readfile:
-                self.cfg = yaml.load(readfile)
+                # dt1 = startdate, dt2 = enddate
+                dt1 = datetime.datetime.strptime(str(row[1]), '%Y-%m-%d %H:%M:%S')   
+                dt2 = datetime.datetime.strptime(str(row[2]), '%Y-%m-%d %H:%M:%S')
 
-    def condense_data(self):
-        """ determine if two of the probes share names/times so we can compute a vapor pressure deficit or dewpoint"""
-        # happy data is our output!
-        happy_data = []
-
-        # get the 3rd to end of each, which is the shared probe code sans the front part of name
-        overlaps = [x[3:] for x in self.R.od.keys() if x[3:] in [y[3:] for y in self.A.od.keys()]]
-        
-        # these will come back in the same order so we can index on them
-        Over_Rel = ['REL'+ x for x in overlaps]
-        Over_Air = ['AIR'+ x for x in overlaps]
-
-        # zip together the probes you want to look at together
-        iProbes = itertools.izip(Over_Rel, Over_Air)
-
-        # iterate over the zipped list of matching probes
-        for x,y in iProbes:
-
-            # calculate the height
-            height = self.R.heightcalc(x)
-            # write the probe code
-            probe_code = 'VPD' + x[3:]
-            # write the site code
-            site_code = x[3:6].upper() +'MET'
-            
-            # write the method code
-            try:
-                method_code = self.cfg[site_code][probe_code]
-            except KeyError:
-                method_code = "VPD999"
-
-            # iterate over the shared days
-            for each_key in sorted(self.R.od[x].keys()):
-
-                print "processing..." + datetime.datetime.strftime(each_key, '%Y-%m-%d')
-
-                # if either of the days is a "bad day", write a null row, append it to the happy_data, and continue on
-                if datetime.datetime.strftime(each_key, '%Y-%m-%d %H:%M:%S') in self.bad_dates:
-                    print "MEEEEEH"
-                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),None, "M", None, "M", "None", None, "M", "None", None, None, None, None, None, None, None, None, None, None, None, None, "NA", "STEWARTIA"]
-                    happy_data.append(new_row)
-                    continue
-
-                # get all the values which are not none 
-                try:
-                    check_flags1 =  [val for val in self.A.od[y][each_key]['val'] if val == "None"]
-                except KeyError:
-                    print "MEEEEEH"
-                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),None, "M", None, "M", "None", None, "M", "None",None, None, None, None, None, None, None, None, None, None, None, None, "NA", "STEWARTIA"]
-                    happy_data.append(new_row)
-                    continue
-                try:
-                    check_flags2 =  [val for val in self.R.od[x][each_key]['val'] if val == "None"]
-                except KeyError:
-                    print "MEEEEEH"
-                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'),None, "M", None, "M", None, None, "M", None, None, None, None, None, None, None, None, None, None, None, None, None, "NA", "STEWARTIA"]
-                    happy_data.append(new_row)
-                    continue
-
-
-                # get all the values who have impossible flags
-                check_flags_impossible=  len([val for val in self.A.od[y][each_key]['fval'] if val == "M" or val == "I"])/len(self.A.od[y][each_key]['fval'])
-                check_flags_impossible2=  len([val for val in self.R.od[x][each_key]['fval'] if val == "M" or val == "I"])/len(self.R.od[x][each_key]['fval'])
-
-                # get all the values who have questionable flags
-                check_flags_questionable=  len([val for val in self.A.od[y][each_key]['fval'] if val == "Q" or val == "O"])/len(self.A.od[y][each_key]['fval'])
-                check_flags_questionable2=  len([val for val in self.R.od[x][each_key]['fval'] if val == "Q" or val == "O"])/len(self.R.od[x][each_key]['fval'])
-
-                # get all the values who have estimated flags
-                check_flags_estimated=  len([val for val in self.A.od[y][each_key]['fval'] if val == "E"])/len(self.A.od[y][each_key]['fval'])
-                check_flags_estimated2=  len([val for val in self.R.od[x][each_key]['fval'] if val == "E"])/len(self.R.od[x][each_key]['fval'])
+                # if the probe code is for the sonic wind go to table 24
+                if probe_code in ['WNDPRI02', 'WNDVAN02', 'WNDCEN02']:
+                    table = 'MS04324'
                 
-                # if the number of impossible flags/missing flags / total number of flags > 20 % then the day is missing and all the attributes are nones
-                if len(check_flags1)/len(self.A.od[y][each_key]['val']) > 0.2 or len(check_flags2)/len(self.R.od[x][each_key]['val']) > 0.2:
-                    
-                    # new outputs
-                    mean_vpd = None
-                    vpd_flag = "M"
-                    max_vpd = None
-                    max_flag = "M"
-                    max_time = "None"
-                    min_time = "None"
-                    min_flag = "M"
-                    min_vpd = None
-                
+                # if the probe code is for net radiometer, go to table 25
+                elif probe_code in ['RADPRI02', 'RADVAN02']:
+                    table = 'MS04325'
 
-                elif check_flags_impossible > 0.2 or check_flags_impossible2 > 0.2:
+                # if the qualifier is soil moisture potential or snow depth we don't know how to do it righ tnow
+                elif qual == 'SMP' or qual == "SNO":
+                    continue
 
-                    # new outputs
-                    mean_vpd = None
-                    vpd_flag = "M"
-                    max_vpd = None
-                    max_flag = "M"
-                    max_time = "None"
-                    min_time = "None"
-                    min_flag = "M"
-                    min_vpd = None
-
-                # if the proportion of days that are queationable is > 5 % then the day is questionable, but still do the analysis
-                elif check_flags_questionable > 0.05 or check_flags_questionable2 > 0.05:
-
-                    # new outputs
-                    vpd_flag = "Q"
-                    max_flag = "Q"
-                    min_flag = "Q"
-
-                # if the day's estimated values > 5 % then its estimated, but stll do the analysis
-                elif check_flags_estimated > 0.05 or check_flags_estimated2 > 0.05:
-
-                    # new outputs
-                    vpd_flag = "E"
-                    max_flag = "E"
-                    min_flag = "E"
-
-                # if the Q + E + M > 5 % then it's questionable, but still do the analysis
-                elif check_flags_estimated + check_flags_questionable + check_flags_impossible > 0.05 or check_flags_estimated2 + check_flags_questionable2 + check_flags_impossible2 > 0.05:
-
-                    vpd_flag = "Q"
-                    max_flag = "Q"
-                    min_flag = "Q"
-
-                # in all other cases it's ok!
                 else:
-                    # get the daily airtemp values, daily relhum values, and daily times
-                    pre_sample = zip(self.A.od[y][each_key]['val'], self.R.od[x][each_key]['val'], self.A.od[y][each_key]['timekeep'])
-                    
-                    # zip em together in a tuple
-                    good_sample = [tup for tup in pre_sample if 'None' not in tup]
-                    
-                    # break out each part to make teh vpd calculations easier to understand 
-                    sample_at = [float(val) for (val,_,_) in good_sample]
-                    sample_rh = [float(val) for (_,val,_) in good_sample]
-                    sample_dates = [val for (_,_,val) in good_sample]
-                    
-                    # the days satvp - a function of air temp
-                    sample_SatVP = [6.1094*math.exp(17.625*(float(AT))/(243.04+float(AT))) for AT in sample_at]
+                    table = self.lu[qual]
 
-                    # the days dewpt - a function of rel adn satvp
-                    sample_Td = [237.3*math.log(SatVP*float(RH)/611.)/(7.5*math.log(10)-math.log(SatVP*float(RH)/611.)) for SatVP, RH in itertools.izip(sample_SatVP, sample_rh)]
-
-                    # the days vpd - a function of rel and satvp
-                    sample_vpd = [((100-float(RH))*0.01)*SatVP for SatVP, RH in itertools.izip(sample_SatVP, sample_rh)]
-
-                    if len(sample_vpd)==0:
-                        print sample_SatVP
-                        print sample_rh
-                    else:
-                        pass
-
-                    # determine the daily vpd -- we've gotten rid of the crappy values 
-                    try:
-                        mean_vpd = round(sum(sample_vpd)/len(sample_vpd),3)
-                    except Exception:
-                        mean_vpd = sum(sample_vpd)/len(sample_vpd)
-
-                    # determine the max vpd - no crappy values
-                    try:
-                        max_vpd = round(max(sample_vpd),3)
-                    except Exception:
-                        max_vpd = max(sample_vpd)
-
-                    index_of_max = sample_vpd.index(max(sample_vpd))
-                    max_time = datetime.datetime.strftime(sample_dates[index_of_max], '%H%M')
-                   
-                    
-                    # determine the min vpd - no crappy values
-                    try:
-                        min_vpd = round(min(sample_vpd),3)
-                    except Exception:
-                        min_vpd = min(sample_vpd)
-                    
-                    index_of_min = sample_vpd.index(min(sample_vpd))
-                    min_time = datetime.datetime.strftime(sample_dates[index_of_min], '%H%M')
-                    
-                    vpd_flag = "A"
-                    max_flag = "A"
-                    min_flag = "A"
-
-                # the new row should be clean
-                new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_key,'%Y-%m-%d %H:%M:%S'), mean_vpd, vpd_flag, max_vpd, max_flag, max_time, min_vpd, min_flag, min_time, None, None, None, None, None, None, None, None, None, None, None, None, "NA", "STEWARTIA"]
                 
-                happy_data.append(new_row)
+                # if not listed, list in th eoutput 
+                if table not in od:
+                    od[table] =[(probe_code, dt1, dt2, method_code)]
+                elif table in od:
+                    od[table].append((probe_code, dt1, dt2, method_code))
 
-                print happy_data
 
-        return happy_data
+            for each_key in od.keys():
+
+                # special is the reference method to go to the high resolution method. 
+                special = self.special[each_key]
+
+                # for each of the tables, walk over the daily table that corresponds to it, getting the probe codes etc. between the start and end dates. 
+                # added, also get event code
+                for each_item in od[each_key]:
+
+                    if self.server == 'STEWARTIA':
+
+                        newquery = "select probe_code, date, " + special + " from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+
+
+                        self.cursor2.execute(newquery)
+
+                        for row in self.cursor2:
+
+                            # if the method is what is listed, we're probably ok
+                            if str(row[2]) == each_item[3]:
+                                continue
+
+                            elif str(row[2]) != each_item[3]:
+                                nr = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
+                                writer.writerow(nr)
+
+                            else: 
+                                print "this should not be called ever"
+                    
+                        # select the event code from the database on the begin date
+                        newquery2 = "select event_code from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
+
+                        self.cursor2.execute(newquery2)
+
+                        for row in self.cursor2:
+
+                            if str(row[0]) == "METHOD":
+                                continue
+                            elif str(row[0]) != "METHOD":
+                                nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
+                                writer2.writerow(nr2)
+
+                    elif self.server == "SHELDON":
+                        newquery = "select probe_code, date, " + special + " from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') + "\'"
+                        
+                        print newquery
+                        self.cursor.execute(newquery)
+
+                        for row in self.cursor:
+                            if str(row[2]) == each_item[3]:
+                                continue
+
+                            elif str(row[2]) != each_item[3]:
+                                print "method_code of %s is not %s from table for %s" %(str(row[2]), each_item[3], each_item[0])
+
+                            else: 
+                                print "this should not be called ever"
+
+                        # select the event code from the database on the begin date
+                        newquery2 = "select event_code from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
+
+                        print newquery
+
+                        self.cursor.execute(newquery2)
+
+                        for row in self.cursor:
+
+                            if str(row[0]) == "METHOD":
+                                continue
+                            elif str(row[0]) != "METHOD":
+                                nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
+                                writer2.writerow(nr2)
+
 
 
 class DBControl(object):
@@ -289,39 +157,34 @@ class DBControl(object):
         
         # until we switch to LTERLogger_pro use this one:
 
-        self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324']
+        # self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324']
 
-        self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334']
+        # self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334']
 
-        #self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324','MS04325']
+        self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324','MS04325']
         
-        #self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334','MS04335']
+        self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334','MS04335']
 
         self.lookup = {}
 
     def build_queries(self):
         """ check the existing dates and output last values for each table"""
         
-
         # zip together the two tables
         iTables = itertools.izip(self.daily_table_list, self.hr_table_list)
-
         if self.server == "SHELDON":
-
             # for the two tables, check the last input value
             for daily_table, hr_table in iTables:
-
                 last_daily = self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " order by date desc")
-
-                print last_daily
 
                 # get the day of that value
                 for row in self.cursor:
 
-                    print row
-
-                    daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-                    
+                    try:
+                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d')
+                        
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
 
                 # checking the last on high res, in theory it should be after the daily
@@ -329,8 +192,6 @@ class DBControl(object):
 
 
                 for row in self.cursor:
-
-                    print last_hr
                     high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
 
                     converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
@@ -362,12 +223,10 @@ class DBControl(object):
             # for the two tables, check the last input value
             for daily_table, hr_table in iTables:
 
-
                 last_daily = self.cursor.execute("select top 1 date from FSDBDATA.dbo." + daily_table + " order by date desc")
 
                 # get the day of that value
                 for row in self.cursor:
-
                     try:
                         daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
                     except ValueError:
@@ -381,7 +240,6 @@ class DBControl(object):
 
                 for row in self.cursor:
                     high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-
                     converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
 
 
@@ -427,15 +285,21 @@ class DBControl(object):
         elif attribute == "LYS":
             startdate_out = self.lookup['MS04309']['startdate']
             enddate_out = self.lookup['MS04309']['enddate']
+        elif attribute == "SNOWDEPTH":
+            startdate_out = self.lookup['MS04310']['startdate']
+            enddate_out = self.lookup['MS04310']['enddate']
         elif attribute == "NR":
             startdate_out = self.lookup['MS04325']['startdate']
             enddate_out = self.lookup['MS04325']['enddate']
         elif attribute == "VPD":
-            startdate_out = self.lookup['MS04307']['startdate']
-            enddate_out = self.lookup['MS04307']['enddate']
-        elif attribute == "DEWPT":
             startdate_out = self.lookup['MS04308']['startdate']
             enddate_out = self.lookup['MS04308']['enddate']
+        elif attribute == "VPD2":
+            startdate_out = self.lookup['MS04308']['startdate']
+            enddate_out = self.lookup['MS04308']['enddate']
+        elif attribute == "DEWPT":
+            startdate_out = self.lookup['MS04307']['startdate']
+            enddate_out = self.lookup['MS04307']['enddate']
         elif attribute == "WSPD_SNC":
             startdate_out = self.lookup['MS04324']['startdate']
             enddate_out = self.lookup['MS04324']['enddate']
