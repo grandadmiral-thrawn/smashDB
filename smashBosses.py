@@ -215,24 +215,24 @@ class UpdateBoss(object):
 
            conn.commit()
 
-        elif self.attribute in "MS04322":
+        elif self.table in "MS04322":
             
             cursor.executemany("insert into LTERLogger_Pro.dbo" + self.table + " (" + column_string + ") VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %d, %s, %s)", new_tuples)
             conn.commit()
 
-        elif self.attribute in "MS04325":
+        elif self.table in "MS04325":
             
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", new_tuples)
 
             conn.commit()
 
 
-        elif self.attribute in "MS04304":
+        elif self.table in "MS04304":
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES(%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %d,%s ,%s, %d, %s, %d, %s, %d,  %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s)", new_tuples)
 
             conn.commit()
         
-        elif self.attribute in "MS04334":
+        elif self.table in "MS04334":
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES( %s,  %d,  %s, %s,  %d,  %s, %s,  %s,    %d,  %s,  %d,  %s,  %d, %s,  %d, %s,    %d, %s,   %d, %s, %d,   %s,   %d,  %s, %d   %s,  %d, %s,  %s,  %s)",new_tuples)
 
             conn.commit()

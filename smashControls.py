@@ -147,6 +147,177 @@ class MethodControl(object):
                                 writer2.writerow(nr2)
 
 
+class HRMethodControl(object):
+    """ used to generate a date range from the method table and then check the database that every item it it agrees"""
+    def __init__(self, server):
+
+        # connect to the right server
+        self.cursor = fc.form_connection('SHELDON')
+        self.cursor2 = fc.form_connection('STEWARTIA')
+        self.server = server
+        
+        # look up  table for the daily method
+        self.lu = {'AIR':'MS04311', 'REL': 'MS04312', 'DEW': 'MS04317', 'VPD': 'MS04318','RAD': 'MS04335', 'SOI': 'MS04331', 'PAR': 'MS04332', 'WND': 'MS04334', 'PPT': 'MS04313', 'SWC': 'MS04333', 'LYS':'MS04319'}
+
+        # name of the method column
+        self.special = {'MS04311': 'AIRTEMP_METHOD', 'MS04312': 'RELHUM_METHOD', 'MS04317':'DEWPT_METHOD', 'MS04318': 'VPD_METHOD','MS04335': 'SOLAR_METHOD', 'MS04315': 'SOLAR_METHOD', 'MS04331': 'SOILTEMP_METHOD', 'MS04332':'PAR_METHOD', 'MS04314':'WIND_METHOD', 'MS04313': 'PRECIP_METHOD', 'MS04333': 'SOILWC_METHOD', 'MS04319':'SNOWMELT_METHOD','MS04334': 'WIND_METHOD'}
+
+    # query database
+    def process_db(self):
+
+        # write to the error log if the method is not consistent
+        with open('errorlog_hr.csv', 'wb') as writefile, open('eventlog.csv','wb') as writefile2:
+
+            writer = csv.writer(writefile)
+            writer2 = csv.writer(writefile2)
+            writer.writerow(['first_date_in_db','method_in_db', 'method_in_table', 'probe_code', 'date_start_table','date_end_table'])
+            writer2.writerow(['probe_code', 'date_start_table','date_end_table', 'current_event_code'])
+
+            # get the probe code, date surroundings, etc. from the method history
+            query = "SELECT probe_code, date_time_bgn, date_time_end, method_code from LTERLogger_new.dbo.method_history" 
+
+            self.cursor.execute(query)
+
+            od = {}
+
+            for row in self.cursor:
+
+                # probe code in row 0, beginning of type of attribute in probe code, position (tokened from) 0-3
+                probe_code = str(row[0])
+                qual = probe_code[0:3]
+                method_code = str(row[3])
+
+                # dt1 = startdate, dt2 = enddate
+                dt1 = datetime.datetime.strptime(str(row[1]), '%Y-%m-%d %H:%M:%S')   
+                dt2 = datetime.datetime.strptime(str(row[2]), '%Y-%m-%d %H:%M:%S')
+
+                # if the probe code is for the sonic wind go to table 24
+                if probe_code in ['WNDPRI02', 'WNDVAN02', 'WNDCEN02']:
+                    table = 'MS04334'
+                
+                # if the probe code is for net radiometer, go to table 25
+                elif probe_code in ['RADPRI02', 'RADVAN02']:
+                    table = 'MS04335'
+
+                # if the qualifier is soil moisture potential or snow depth we don't know how to do it righ tnow
+                elif qual == 'SMP' or qual == "SNO":
+                    continue
+
+                else:
+                    table = self.lu[qual]
+
+                
+                # if not listed, list in th eoutput 
+                if table not in od:
+                    od[table] =[(probe_code, dt1, dt2, method_code)]
+                elif table in od:
+                    od[table].append((probe_code, dt1, dt2, method_code))
+
+
+            for each_key in od.keys():
+
+                # special is the reference method to go to the high resolution method. 
+                special = self.special[each_key]
+
+                # for each of the tables, walk over the hr table that corresponds to it, getting the probe codes etc. between the start and end dates. 
+                # added, also get event code
+
+                # temporary storage by table, we don't want too many
+                od2 = {}
+
+                # for each table in the database
+                for each_item in od[each_key]:
+
+                    if self.server == 'STEWARTIA':
+
+                        # find the date times in that range
+                        newquery = "select probe_code, date_time, " + special + " from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+
+                        # execute!
+                        self.cursor2.execute(newquery)
+
+                        for row in self.cursor2:
+
+                            # if the method is what is listed, we're probably ok
+                            if str(row[2]) == each_item[3]:
+                                continue
+
+                            # if the method is not what is listed
+                            elif str(row[2]) != each_item[3]:
+
+                                if each_item[0] not in od2:
+                                    od2[each_item[0]] = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
+                                elif each_item[0] in od2:
+                                    pass
+                                # nr = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
+                                # writer.writerow(nr)
+
+                            else: 
+                                print "this should not be called ever"
+
+                        # write out only the first ouput from each to a file
+                        for each_key in sorted (od2.keys()):
+                            writer.writerow(nr)
+                    
+
+                        # select the event code from the database on the begin date
+                        newquery2 = "select event_code from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
+
+                        self.cursor2.execute(newquery2)
+
+                        for row in self.cursor2:
+
+                            if str(row[0]) == "METHOD":
+                                continue
+
+                            elif str(row[0]) != "METHOD":
+                                nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
+                                writer2.writerow(nr2)
+
+                    elif self.server == "SHELDON":
+                        # find the date times in that range
+                        newquery = "select probe_code, date_time, " + special + " from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+
+                        # execute!
+                        self.cursor2.execute(newquery)
+
+                        for row in self.cursor2:
+
+                            # if the method is what is listed, we're probably ok
+                            if str(row[2]) == each_item[3]:
+                                continue
+
+                            # if the method is not what is listed
+                            elif str(row[2]) != each_item[3]:
+
+                                if each_item[0] not in od2:
+                                    od2[each_item[0]] = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
+                                elif each_item[0] in od2:
+                                    pass
+                                # nr = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
+                                # writer.writerow(nr)
+
+                            else: 
+                                print "this should not be called ever"
+
+
+                        # select the event code from the database on the begin date
+                        newquery2 = "select event_code from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
+
+                        print newquery
+
+                        self.cursor.execute(newquery2)
+
+                        for row in self.cursor:
+
+                            if str(row[0]) == "METHOD":
+                                continue
+                            elif str(row[0]) != "METHOD":
+                                nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
+                                writer2.writerow(nr2)
+
+
+
 
 class DBControl(object):
     """ used to generate a list of attributes that needs updating and the date of last update """
