@@ -85,7 +85,17 @@ Because the update methods use bulk insert, if you are concerned you have messed
 
 For example:
 
-    python smasher.py DELETE SHELDON SOLAR --startdate '2015-04-15 00:00:00' will delete daily SOLAR INCLUDING AND AFTER 2015-04-15. repeat: INCLUDING and AFTER!
+        python smasher.py DELETE SHELDON SOLAR --startdate '2015-04-15 00:00:00' will delete daily SOLAR INCLUDING AND AFTER 2015-04-15. repeat: INCLUDING and AFTER!
+
+
+You can also delete for only one station.
+
+For example:
+
+        python smasher.py DELETE SHELDON MS04305 --station CENMET --startdate '2015-04-15 00:00:00'
+
+
+Be sure to use the double-dashed flags for station and startdate to indicate their placement in the command.
 
 
 ------
@@ -139,6 +149,13 @@ mylog-sonic.csv contains
 
 These files don't do anything special, and you can call them whatever you want. You can find them in the top of the condense_data() method in each Worker class.
 
+You can also just update one station, just add the double-dashed station flag to your call.
+
+For example:
+
+        python smasher.py UPDATE SHELDON MS04305 --station CENMET --startdate '2015-04-10 00:00:00' --enddate '2015-05-01 00:00:00'
+
+You do not need to use the startdate and enddate calls if you do not want to. But, if you supply a start date, you must also supply an end date. 
 
 --------
 
@@ -168,8 +185,11 @@ In the daily data, eventlog.csv looks like this:
         VPDCEN01,2014-08-26 00:00:00,2050-12-31 00:00:00,NA    
 
 
-In the HR data, errorlog_hr.csv looks like this:
+If you want to read the high resolution data, just call READ on ALLHR:
 
+    python smasher.py READ STEWARTIA ALLHR
+
+In the HR data, errorlog_hr.csv looks like this:
 
         VPDCEN04,2014-08-26 00:00:00,2050-12-31 00:00:00,NA    
 
