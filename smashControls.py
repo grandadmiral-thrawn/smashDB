@@ -156,25 +156,29 @@ class HRMethodControl(object):
         self.cursor2 = fc.form_connection('STEWARTIA')
         self.server = server
         
-        # look up  table for the daily method
-        self.lu = {'AIR':'MS04311', 'REL': 'MS04312', 'DEW': 'MS04317', 'VPD': 'MS04318','RAD': 'MS04335', 'SOI': 'MS04331', 'PAR': 'MS04332', 'WND': 'MS04334', 'PPT': 'MS04313', 'SWC': 'MS04333', 'LYS':'MS04319'}
+        # look up  table for the hr method
+        self.lu = {'AIR':'MS04311', 'REL': 'MS04312', 'DEW': 'MS04317', 'VPD': 'MS04318', 'RAD': 'MS04315', 'SOI': 'MS04331', 'PAR': 'MS04332', 'WND': 'MS04314', 'PPT': 'MS04313', 'SWC': 'MS04333', 'LYS':'MS04319'}
 
         # name of the method column
-        self.special = {'MS04311': 'AIRTEMP_METHOD', 'MS04312': 'RELHUM_METHOD', 'MS04317':'DEWPT_METHOD', 'MS04318': 'VPD_METHOD','MS04335': 'SOLAR_METHOD', 'MS04315': 'SOLAR_METHOD', 'MS04331': 'SOILTEMP_METHOD', 'MS04332':'PAR_METHOD', 'MS04314':'WIND_METHOD', 'MS04313': 'PRECIP_METHOD', 'MS04333': 'SOILWC_METHOD', 'MS04319':'SNOWMELT_METHOD','MS04334': 'WIND_METHOD'}
+        self.special = {'MS04311': 'AIRTEMP_METHOD', 'MS04312': 'RELHUM_METHOD', 'MS04317':'DEWPT_METHOD', 'MS04318': 'VPD_METHOD','MS04335': 'SOLAR_METHOD', 'MS04315': 'SOLAR_METHOD', 'MS04331': 'SOILTEMP_METHOD', 'MS04332':'PAR_METHOD', 'MS04314':'WIND_METHOD', 'MS04334':'WIND_METHOD', 'MS04313': 'PRECIP_METHOD', 'MS04333': 'SOILWC_METHOD', 'MS04319':'SNOWMELT_METHOD','MS04334': 'WIND_METHOD'}
 
     # query database
     def process_db(self):
 
         # write to the error log if the method is not consistent
-        with open('errorlog_hr.csv', 'wb') as writefile, open('eventlog_hr.csv','wb') as writefile2:
+        with open('errorlog_hr.csv', 'wb') as writefile, open('eventlog_hr.csv','wb') as writefile2, open('heightlog_hr.csv','wb') as writefile3:
 
             writer = csv.writer(writefile)
             writer2 = csv.writer(writefile2)
             writer.writerow(['first_date_in_db','method_in_db', 'method_in_table', 'probe_code', 'date_start_table','date_end_table'])
             writer2.writerow(['probe_code', 'date_start_table','date_end_table', 'current_event_code'])
+            writer3 = csv.writer(writefile3)
+            writer3.writerow(['height_in_db', 'height_in_table', 'probe_code', 'date_in_db'])
 
             # get the probe code, date surroundings, etc. from the method history
-            query = "SELECT probe_code, date_time_bgn, date_time_end, method_code from LTERLogger_new.dbo.method_history" 
+
+            # FIRST TEST IS FOR THE METHOD CODES BEING THE SAME!
+            query = "SELECT probe_code, date_time_bgn, date_time_end, method_code, height, depth from LTERLogger_new.dbo.method_history" 
 
             self.cursor.execute(query)
 
@@ -186,6 +190,8 @@ class HRMethodControl(object):
                 probe_code = str(row[0])
                 qual = probe_code[0:3]
                 method_code = str(row[3])
+                height = str(row[4])
+                depth = str(row[5])
 
                 # dt1 = startdate, dt2 = enddate
                 dt1 = datetime.datetime.strptime(str(row[1]), '%Y-%m-%d %H:%M:%S')   
@@ -206,12 +212,11 @@ class HRMethodControl(object):
                 else:
                     table = self.lu[qual]
 
-                
                 # if not listed, list in th eoutput 
                 if table not in od:
-                    od[table] =[(probe_code, dt1, dt2, method_code)]
+                    od[table] =[(probe_code, dt1, dt2, method_code, height, depth)]
                 elif table in od:
-                    od[table].append((probe_code, dt1, dt2, method_code))
+                    od[table].append((probe_code, dt1, dt2, method_code, height, depth))
 
 
             for each_key in od.keys():
@@ -222,15 +227,12 @@ class HRMethodControl(object):
                 # for each of the tables, walk over the hr table that corresponds to it, getting the probe codes etc. between the start and end dates. 
                 # added, also get event code
 
-                # temporary storage by table, we don't want too many
-                od2 = {}
-
                 # for each table in the database
                 for each_item in od[each_key]:
 
                     if self.server == 'STEWARTIA':
 
-                        # find the date times in that range
+                        # find the date times in that range -- and the methods, are the the same as what you want?
                         newquery = "select probe_code, date_time, " + special + " from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
                         # execute!
@@ -245,20 +247,13 @@ class HRMethodControl(object):
                             # if the method is not what is listed
                             elif str(row[2]) != each_item[3]:
 
-                                if each_item[0] not in od2:
-                                    od2[each_item[0]] = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
-                                elif each_item[0] in od2:
-                                    pass
-                                # nr = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
-                                # writer.writerow(nr)
+                                nr = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
+                                writer.writerow(nr)
 
                             else: 
                                 print "this should not be called ever"
-
-
                     
-
-                        # select the event code from the database on the begin date
+                        # select the event code from the database on the begin date = we want "method" to be this row
                         newquery2 = "select event_code from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
 
                         self.cursor2.execute(newquery2)
@@ -268,17 +263,43 @@ class HRMethodControl(object):
                             if str(row[0]) == "METHOD":
                                 continue
 
+                            # if that entry is not "method, write it out to the file"
                             elif str(row[0]) != "METHOD":
                                 nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
                                 writer2.writerow(nr2)
 
-                        # write out only the first ouput from each to a file
-                        for each_probey_key in sorted (od2.keys()):
-                            writer.writerow(od2[each_probey_key])
+                        # third test for height and depth-- first, skip lysimeter
+                        if each_key == "MS04319":
+                            continue
 
+                        # if the key word is "height"
+                        if each_key not in ['MS04331', 'MS04333']:
+                        
+                            newquery3 = "select date_time, height from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+                        
+                        # if the key word is depth
+                        elif each_key in ['MS04331', 'MS04333']:
+                         
+                            newquery3 = "select date_time, depth from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+
+                        self.cursor2.execute(newquery3)
+
+                        for row in self.cursor2:
+
+                            if str(row[1]) == each_item[4]:
+                                continue
+                            elif str(row[1]) == each_item[5]:
+                                continue
+
+                            elif str(row[1]) != each_item[4] or str(row[1]) != each_item[5]:
+
+                                #nr3 = 'height_in_db', 'height_in_table', 'depth_in_table' 'probe_code', 'date_in_db'
+                                nr3 = [str(row[1]), each_item[4], each_item[5], each_item[0], str(row[0])]
+                                writer3.writerow(nr3)
 
                     elif self.server == "SHELDON":
-                        # find the date times in that range
+
+                        # find the date times in that range -- and the methods, are the the same as what you want?
                         newquery = "select probe_code, date_time, " + special + " from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
                         # execute!
@@ -293,33 +314,53 @@ class HRMethodControl(object):
                             # if the method is not what is listed
                             elif str(row[2]) != each_item[3]:
 
-                                if each_item[0] not in od2:
-                                    od2[each_item[0]] = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
-                                elif each_item[0] in od2:
-                                    pass
-                                # nr = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
-                                # writer.writerow(nr)
+                                nr = [str(row[1]), str(row[2]), each_item[3], each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S')]
+                                writer.writerow(nr)
 
                             else: 
                                 print "this should not be called ever"
+                    
+                        # select the event code from the database on the begin date = we want "method" to be this row
+                        newquery2 = "select event_code from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
 
+                        self.cursor2.execute(newquery2)
 
-                        # select the event code from the database on the begin date
-                        newquery2 = "select event_code from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date = \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\'"
-
-                        print newquery
-
-                        self.cursor.execute(newquery2)
-
-                        for row in self.cursor:
+                        for row in self.cursor2:
 
                             if str(row[0]) == "METHOD":
                                 continue
+
+                            # if that entry is not "method, write it out to the file"
                             elif str(row[0]) != "METHOD":
                                 nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
                                 writer2.writerow(nr2)
 
+                        # third test for height and depth-- first, skip lysimeter
+                        if each_key == "MS04319":
+                            continue
 
+                        # if the key word is "height"
+                        if each_key not in ['MS04331', 'MS04333']:
+                        
+                            newquery3 = "select date_time, height from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+                        
+                        # if the key word is depth
+                        elif each_key in ['MS04331', 'MS04333']:
+                         
+                            newquery3 = "select date_time, depth from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+
+                        self.cursor2.execute(newquery3)
+
+                        for row in self.cursor2:
+
+                            if str(row[1]) == each_item[4] or str(row[1]) == each_item[5]:
+                                continue
+
+                            elif str(row[1]) != each_item[4] or str(row[1]) != each_item[5]:
+
+                                #nr3 = 'height_in_db', 'height_in_table', 'depth_in_table' 'probe_code', 'date_in_db'
+                                nr3 = [str(row[1]), each_item[4], each_item[5], each_item[0], str(row[0])]
+                                writer3.writerow(nr3)
 
 
 class DBControl(object):
