@@ -510,7 +510,7 @@ if args.crud == "READ" and args.attribute == "ALLHR":
 
 
 ### DELETION METHODS ###
-if args.crud == 'DELETE':
+if args.crud == 'DELETE' and args.station == None:
 
   print(" Deleting all data from LTERLogger_Pro for your attribute! ")
 
@@ -521,27 +521,27 @@ if args.crud == 'DELETE':
 
     deleteable = args.attribute[0]
 
-    if deleteable == "AIRTEMP":
+    if deleteable == "AIRTEMP" or deleteable == "MS04301":
         full_name = "LTERLogger_Pro.dbo.MS04301"
-    elif deleteable == "RELHUM":
+    elif deleteable == "RELHUM" or deleteable == "MS04302":
         full_name = "LTERLogger_Pro.dbo.MS04302"
-    elif deleteable == "WSPD_PRO":
+    elif deleteable == "WSPD_PRO" or deleteable == "MS04304":
         full_name = "LTERLogger_Pro.dbo.MS04304"
-    elif deleteable == "SOLAR":
+    elif deleteable == "SOLAR" or deleteable == "MS04305":
         full_name = "LTERLogger_Pro.dbo.MS04305"
-    elif deleteable == "PRECIP":
+    elif deleteable == "PRECIP" or deleteable == "MS04303":
         full_name = "LTERLogger_Pro.dbo.MS04303"
-    elif deleteable == "NR":
+    elif deleteable == "NR" or deleteable == "MS04325":
         full_name = "LTERLogger_Pro.dbo.MS04325"
-    elif deleteable == "WSPD_SNC":
+    elif deleteable == "WSPD_SNC" or deleteable == "MS04324":
         full_name = "LTERLogger_Pro.dbo.MS04324"
-    elif deleteable == "SOILWC":
+    elif deleteable == "SOILWC" or deleteable == "MS04323":
         full_name = "LTERLogger_Pro.dbo.MS04323"
-    elif deleteable == "SOILTEMP":
+    elif deleteable == "SOILTEMP" or deleteable == "MS04321":
         full_name = "LTERLogger_Pro.dbo.MS04321"
-    elif deleteable == "PAR":
+    elif deleteable == "PAR" or deleteable == "MS04322":
         full_name = "LTERLogger_Pro.dbo.MS04322"
-    elif deletable == "LYS":
+    elif deletable == "LYS" or deleteable == "MS04309":
         full_name = "LTERLogger_Pro.dbo.MS04309"
     else:
         print("need to create a method to delete {}".format(deleteable))
@@ -557,6 +557,55 @@ if args.crud == 'DELETE':
     conn.commit()
 
     print "you have deleted from %s following %s" %(full_name, args.startdate[0])
+
+elif args.crud == "DELETE" and args.station != None:
+  station = args.station[0]
+
+  if args.attribute == None:
+    print("I cannot process this command without an attribute to delete. Try again :)")
+
+  else:
+
+    print "DELETING FOR STATION: %s" %(station)
+    deleteable = args.attribute[0]
+
+    if deleteable == "AIRTEMP" or deletable == "MS04301":
+        full_name = "LTERLogger_Pro.dbo.MS04301"
+    elif deleteable == "RELHUM" or deleteable == "MS04302":
+        full_name = "LTERLogger_Pro.dbo.MS04302"
+    elif deleteable == "WSPD_PRO" or deleteable == "MS04304":
+        full_name = "LTERLogger_Pro.dbo.MS04304"
+    elif deleteable == "SOLAR" or deleteable == "MS04305":
+        full_name = "LTERLogger_Pro.dbo.MS04305"
+    elif deleteable == "PRECIP" or deleteable == "MS04303":
+        full_name = "LTERLogger_Pro.dbo.MS04303"
+    elif deleteable == "NR" or deleteable == "MS04325":
+        full_name = "LTERLogger_Pro.dbo.MS04325"
+    elif deleteable == "WSPD_SNC" or deleteable == "MS04324":
+        full_name = "LTERLogger_Pro.dbo.MS04324"
+    elif deleteable == "SOILWC" or deleteable == "MS04323":
+        full_name = "LTERLogger_Pro.dbo.MS04323"
+    elif deleteable == "SOILTEMP" or deleteable == "MS04321":
+        full_name = "LTERLogger_Pro.dbo.MS04321"
+    elif deleteable == "PAR" or deleteable == "MS04322":
+        full_name = "LTERLogger_Pro.dbo.MS04322"
+    elif deletable == "LYS" or deleteable == "MS04309":
+        full_name = "LTERLogger_Pro.dbo.MS04309"
+    else:
+        print("need to create a method to delete {}".format(deleteable))
+
+    query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and sitecode like \'" + station + "\'"
+
+    conn = fc.micro_conn("SHELDON")
+
+    cur = conn.cursor()
+
+    cur.execute(query)
+
+    conn.commit()
+
+    print "you have deleted from %s following %s on the station %s" %(full_name, args.startdate[0], station)
+
 
 ### UPDATE METHODS ####
 
