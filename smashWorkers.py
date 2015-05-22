@@ -2155,11 +2155,14 @@ class VPD2(object):
                 # in the best possible case, we print it out just as it is here: 
                 # right now I am giving the max flags on satvp and regularvp the same as their mean flags
                 try:
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, mean_valid_obs_satvp, daily_flag_satvp, max_valid_obs_satvp, max_flag_satvp, min_valid_obs_satvp, min_flag_satvp, "NA", self.server]
+                   # newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, mean_valid_obs_satvp, daily_flag_satvp, max_valid_obs_satvp, max_flag_satvp, min_valid_obs_satvp, min_flag_satvp, "NA", self.server]
+
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", None, "M", None, "M", None, "M" "NA", self.server]
+                    #newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", None, "M", None, "M", None, "M" "NA", self.server]
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
 
                 
                 my_new_rows.append(newrow)

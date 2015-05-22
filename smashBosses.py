@@ -18,13 +18,19 @@ class UpdateBoss(object):
         self.Worker = Worker
         self.new_rows = Worker.condense_data()
 
+        # gets the id name of the row based on the first row
+       
         sample_row = self.new_rows[0]
 
+        # if the entity number is less than 10 put a 0 in front of it
         if sample_row[1] < 10:
             entity_string = "0" + str(sample_row[1])
+
+        # if the entitty number is > than 10 then just run as is
         elif sample_row[1] >= 10:
             entity_string = str(sample_row[1])
 
+        # the table name is these two things put together
         self.table = "MS043" + entity_string
 
     def only_one_station(self, station):
@@ -192,7 +198,8 @@ class UpdateBoss(object):
 
         elif self.table in "MS04308":
             print "processing vpd!"
-            cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ") VALUES (%s,%d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %d, %s, %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s,%d, %s, %s, %s)", new_tuples)
+            #cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ") VALUES (%s,%d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %d, %s, %s, %d, %s, %d, %s, %d, %s, %d, %s, %d, %s,%d, %s, %s, %s)", new_tuples)
+            cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ") VALUES (%s,%d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %d, %s, %s, %d, %s, %d, %s, %d, %s, %s, %s)", new_tuples)
                 
 
             #cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ") VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", new_tuples)
