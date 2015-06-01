@@ -125,6 +125,12 @@ if args.crud == "CREATE" and args.attribute == "ALL" and args.startdate == None 
   print "finished creating WSPD_PRO from %s to %s" %(sd, ed)
   del C
 
+  sd, ed = B.check_out_one_attribute("WSPD_PRO2")
+  C = smashWorkers.Wind2(sd, ed, server)
+  nr = C.condense_data()
+  print "finished creating WSPD_PRO2 from %s to %s" %(sd, ed)
+  del C
+
   sd, ed = B.check_out_one_attribute("SOILTEMP")
   C = smashWorkers.SoilTemperature(sd, ed, server)
   nr = C.condense_data()
@@ -285,6 +291,8 @@ elif args.crud == "CREATE" and args.attribute in ["SOLAR", "solar", "MS04305"] a
       print row
   del C
 
+
+
 elif args.crud == "CREATE" and args.attribute in ["WSPD_SNC", "SONIC", "sonic", "wspd_snc" "MS04334"] and args.startdate == None and args.enddate == None:
 
   # create a list of last updates
@@ -322,6 +330,20 @@ elif args.crud == "CREATE" and args.attribute in ["WSPD_PRO", "wspd_pro", "WIND"
   sd, ed = B.check_out_one_attribute("WSPD_PRO")
   print sd, ed
   C = smashWorkers.Wind(sd, ed, server)
+  nr = C.condense_data()
+  for row in nr:
+      print row
+  del C
+
+elif args.crud == "CREATE" and args.attribute in ["WSPD_PRO2", "wspd_pro2", "WIND2","wind2", "PROP2", "prop2", "MS04304"] and args.startdate == None and args.enddate == None:
+
+  # create a list of last updates
+  B = smashControls.DBControl(server)
+  B.build_queries()
+
+  sd, ed = B.check_out_one_attribute("WSPD_PRO2")
+  print sd, ed
+  C = smashWorkers.Wind2(sd, ed, server)
   nr = C.condense_data()
   for row in nr:
       print row
@@ -439,6 +461,14 @@ if args.crud == "CREATE" and args.startdate != None and args.enddate != None:
       print row
     del C
 
+    elif args.attribute in ["WSPD_PRO2", "wspd_pro2", "WIND2","wind2", "PROP2", "prop2", "MS04304"]:
+
+    C = smashWorkers.Wind2(sd, ed, server)
+    nr = C.condense_data()
+    for row in nr:
+      print row
+    del C
+
   elif args.attribute in ["NR", "net", "radiation", "netrad", "NETRAD", "MS04325"]:
 
     C = smashWorkers.NetRadiometer(sd, ed, server)
@@ -526,6 +556,8 @@ if args.crud == 'DELETE' and args.station == None:
     elif deleteable == "RELHUM" or deleteable == "MS04302":
         full_name = "LTERLogger_Pro.dbo.MS04302"
     elif deleteable == "WSPD_PRO" or deleteable == "MS04304":
+        full_name = "LTERLogger_Pro.dbo.MS04304"
+    elif deleteable == "WSPD_PRO2" or deleteable == "MS04304":
         full_name = "LTERLogger_Pro.dbo.MS04304"
     elif deleteable == "SOLAR" or deleteable == "MS04305":
         full_name = "LTERLogger_Pro.dbo.MS04305"
@@ -781,6 +813,25 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     del D
   else:
     print "database for PROP is already up to date!"
+
+  # # PROP2
+  # sd, ed = B.check_out_one_attribute("WSPD_PRO2")
+  # if sd != ed:
+  #   C = smashWorkers.Wind2(sd, ed, server)
+  #   nr = C.condense_data()
+  #   print "checking that the methods are updated"
+  #   D = smashBosses.UpdateBoss(C, nr)
+  #   if args.station != None:
+  #     D.only_one_station(args.station[0])
+  #   else:
+  #     pass
+  #   D.update_the_db_methods()
+  #   D.update_the_db()
+  #   print "finished creating WSPD_PRO2 from %s to %s" %(sd, ed)
+  #   del C
+  #   del D
+  # else:
+  #   print "database for PROP is already up to date!"
 
   # SOIL TEMP
   sd, ed = B.check_out_one_attribute("SOILTEMP")

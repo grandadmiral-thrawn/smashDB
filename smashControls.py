@@ -556,6 +556,9 @@ class DBControl(object):
         elif attribute == "WSPD_PRO":
             startdate_out = self.lookup['MS04304']['startdate']
             enddate_out = self.lookup['MS04304']['enddate']
+        elif attribute == "WSPD_PRO2":
+            startdate_out = self.lookup['MS04304']['startdate']
+            enddate_out = self.lookup['MS04304']['enddate']
         elif attribute == "SOLAR":
             startdate_out = self.lookup['MS04305']['startdate']
             enddate_out = self.lookup['MS04305']['enddate']
@@ -608,9 +611,11 @@ class HeaderWriter(object):
                 'PAR':'22',
                 'SOILTEMP':'21',
                 'VPD':'08',
+                'VPD2':'08',
                 'DEWPT':'07',
                 'SOLAR': '05',
                 'WSPD_PRO': '04',
+                'WSPD_PRO2': '04',
                 'PRECIP': '03',
                 'RELHUM':'02',
                 'AIRTEMP':'01',
@@ -677,7 +682,7 @@ class HeaderWriter(object):
             header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "PRECIP_TOT_DAY", "PRECIP_TOT_FLAG", "EVENT_CODE", "SOURCE"]
 
         # propellor anemometer
-        elif self.attribute == "WSPD_PRO":
+        elif self.attribute == "WSPD_PRO" or self.attribue == "WSPD_PRO2":
 
             header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_PRO_MEAN_DAY", "WMAG_PRO_MEAN_FLAG", "WDIR_PRO_MEAN_DAY", "WDIR_PRO_MEAN_FLAG", "WDIR_PRO_STDDEV_DAY", "WDIR_PRO_STDDEV_FLAG", "WSPD_ROSE1_MEAN_DAY", "WSPD_ROSE1_MEAN_FLAG", "WSPD_ROSE2_MEAN_DAY", "WSPD_ROSE2_MEAN_FLAG", "WSPD_ROSE3_MEAN_DAY", "WSPD_ROSE1_MEAN_FLAG", "WSPD_ROSE4_MEAN_DAY", "WSPD_ROSE4_MEAN_FLAG", "WSPD_ROSE5_MEAN_DAY",  "WSPD_ROSE5_MEAN_FLAG", "WSPD_ROSE6_MEAN_DAY", "WSPD_ROSE6_MEAN_FLAG", "WSPD_ROSE7_MEAN_DAY", "WSPD_ROSE7_MEAN_FLAG", "WSPD_ROSE8_MEAN_DAY", "WSPD_ROSE8_MEAN_FLAG", "EVENT_CODE", "SOURCE"]
 

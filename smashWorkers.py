@@ -4403,6 +4403,7 @@ class Wind(object):
         
         return od
 
+
     def condense_data(self, *args):
     
         
@@ -4634,6 +4635,352 @@ class Wind(object):
                 my_new_rows.append(newrow)
         mylog.dump()
         return my_new_rows
+
+class Wind2(object):
+    """ Wind 2 should be used on the new prop wind data where we will have a filed for max at five minues"""
+
+    def __init__(self, startdate, enddate, server):
+
+        # the server is either "SHELDON" or "STEWARTIA"
+        self.cursor = fc.form_connection(server)
+
+        # the date range contains the start date and the end date, 
+        # and a method for making it into a human readable
+        self.daterange = DateRange(startdate,enddate)
+        
+        # entity is integer 4
+        self.entity = 4
+
+        # server is STEWARTIA OR SHELDON
+        self.server = server
+
+        # query the database
+        self.querydb()
+
+        # od is the 'obtained dictionary'. it is blank before the query. 
+        self.od = {}
+
+        self.od = self.attack_data()
+
+    def querydb(self):
+        """ 
+        queries the data base, returning a cursor to the requested data
+        """
+
+        # human-readable date range for the database
+        # dr = self.human_readable()
+        humanrange = self.daterange.human_readable()
+
+        if self.server == "SHELDON":
+            dbname = "LTERLogger_pro.dbo."
+        elif self.server == "STEWARTIA":
+            dbname = "FSDBDATA.dbo."
+
+        # max are at the end of query!
+        query = "SELECT DATE_TIME, PROBE_CODE, WSPD_PRO_MEAN, WSPD_PRO_MEAN_FLAG, WMAG_PRO_MEAN, WMAG_PRO_MEAN_FLAG, WDIR_PRO_MEAN, WDIR_PRO_MEAN_FLAG, WDIR_PRO_STDDEV, WDIR_PRO_STDDEV_FLAG, WSPD_PRO_MAX, WSPD_PRO_MAX_FLAG from " + dbname + "MS04314 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
+
+        self.cursor.execute(query)
+
+    def height_and_method_getter(self, probe_code, cursor_sheldon):
+        """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
+        
+        # use the human readable date
+        humanrange = self.daterange.human_readable()
+
+        # query the DB for the right height and method
+        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        
+        cursor_sheldon.execute(query)
+            
+        for row in cursor_sheldon:
+
+            this_height = int(row[0])
+            this_method = str(row[1])
+            this_sitecode = str(row[2])
+
+        return this_height, this_method, this_sitecode
+
+    def attack_data(self):
+        """ gather the daily wind (propellor) data """
+        
+        # obtained dictionary dictionary
+        od = {}
+
+        for row in self.cursor:
+
+            # get only the day
+            
+            dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+            dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
+            probe_code = str(row[1])
+
+            if probe_code not in od:
+                # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
+                od[probe_code] = {dt:{'spd_val': [str(row[2])], 'spd_fval': [str(row[3])], 'mag_val': [str(row[4])], 'mag_fval': [str(row[5])], 'dir_val': [str(row[6])], 'dir_fval': [str(row[7])], 'dirstd_val': [str(row[8])], 'dirstd_fval': [str(row[9])], 'maxgust_val':[str(row[10])], 'maxgust_fval':[str(row[11])], 'timekeep':[dt_old]}}
+
+            elif probe_code in od:
+                
+                if dt not in od[probe_code]:
+                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
+                    od[probe_code][dt] = {'spd_val': [str(row[2])], 'spd_fval': [str(row[3])], 'mag_val': [str(row[4])], 'mag_fval': [str(row[5])], 'dir_val': [str(row[6])], 'dir_fval': [str(row[7])], 'dirstd_val': [str(row[8])], 'dirstd_fval': [str(row[9])], 'maxgust_val':[str(row[10])], 'maxgust_fval':[str(row[11])], 'timekeep':[dt_old]}
+
+                elif dt in od[probe_code]:
+                    # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
+                    od[probe_code][dt]['spd_val'].append(str(row[2]))
+                    od[probe_code][dt]['spd_fval'].append(str(row[3]))
+                    od[probe_code][dt]['mag_val'].append(str(row[4]))
+                    od[probe_code][dt]['mag_fval'].append(str(row[5]))
+                    od[probe_code][dt]['dir_val'].append(str(row[6]))
+                    od[probe_code][dt]['dir_fval'].append(str(row[7]))
+                    od[probe_code][dt]['dirstd_val'].append(str(row[8]))
+                    od[probe_code][dt]['dirstd_fval'].append(str(row[9]))
+                    od[probe_code][dt]['maxgust_val'].append(str(row[10]))
+                    od[probe_code][dt]['maxgust_fval'].append(str(row[11]))
+                    od[probe_code][dt]['timekeep'].append(dt_old)
+
+                else:
+                    pass
+            else:
+                pass
+        
+        return od
+
+
+    def condense_data(self, *args):
+    
+        
+        """ 
+        Computes the daily aggregates, assigns the flags and methods selected above - wind prop data
+        """
+        mylog = LogIssues('mylog_wind')
+
+        # my new rows is the output rows that can be read as csv or into the database
+        my_new_rows = []
+
+        # make a sheldon cursor
+        cursor_sheldon = fc.form_connection("SHELDON")
+        
+        # iterate over the returns, getting each probe code - if args are passed, include them also!
+        for probe_code in self.od.keys():
+       
+            # get the height, method_code, and sitecode from the height_and_method_getter function  
+            # doesn't look like we'll need any exceptions here right now
+            height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+
+            # valid_dates are the dates we will iterate over to do the computation of the daily precip
+            valid_dates = sorted(self.od[probe_code].keys())
+            for each_date in valid_dates:
+                # get the number of valid observations
+                num_valid_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_val'] if x != 'None'])
+                num_valid_obs_mag = len([x for x in self.od[probe_code][each_date]['mag_val'] if x != 'None'])
+                num_valid_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])
+                num_valid_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_val'] if x != 'None'])
+                num_valid_obs_maxgust = len([x for x in self.od[probe_code][each_date]['maxgust_val'] if x != 'None'])
+               
+
+                # get the number of obs
+                num_total_obs_spd = len(self.od[probe_code][each_date]['spd_val'])
+                num_total_obs_mag = len(self.od[probe_code][each_date]['mag_val'])
+                num_total_obs_dir = len(self.od[probe_code][each_date]['dir_val'])
+                num_total_obs_mag = len(self.od[probe_code][each_date]['dirstd_val'])
+                num_total_obs_maxgust = len(self.od[probe_code][each_date]['maxgust_val'])
+
+                # if it's not a total of observations on that day that we would expect, then print this
+                if num_total_obs_spd not in [288, 96, 24] and each_date != self.daterange.dr[0]: 
+                    error_string = "the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs_spd, probe_code)
+                    mylog.write('incomplete_day', error_string)
+                    continue
+
+                
+                else:
+                    pass
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean speed
+                num_missing_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean mag
+                num_missing_obs_mag = len([x for x in self.od[probe_code][each_date]['mag_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_mag = len([x for x in self.od[probe_code][each_date]['mag_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_mag = len([x for x in self.od[probe_code][each_date]['mag_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean dir
+                num_missing_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_fval'] if x == 'E'])
+
+                # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily dirstd
+                num_missing_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'M' or x == 'I'])
+                num_questionable_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'Q' or x == 'O'])
+                num_estimated_obs_dirstd = len([x for x in self.od[probe_code][each_date]['dirstd_fval'] if x == 'E'])
+
+                # daily flag, wind speed-- if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_spd/num_total_obs_spd >= 0.2:
+                    daily_flag_spd = 'M'
+                elif (num_missing_obs_spd + num_questionable_obs_spd)/num_total_obs_spd > 0.05:
+                    daily_flag_spd = 'Q'
+                elif (num_estimated_obs_spd)/num_total_obs_spd > 0.05:
+                    daily_flag_spd = 'E'
+                elif (num_estimated_obs_spd + num_missing_obs_spd + num_questionable_obs_spd)/num_total_obs_spd<= 0.05:
+                    daily_flag_spd = 'A'
+                else:
+                    daily_flag_spd = 'Q'
+
+                # daily flag, wind mag: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_mag/num_total_obs_mag >= 0.2:
+                    daily_flag_mag = 'M'
+                elif (num_missing_obs_mag + num_questionable_obs_mag)/num_total_obs_mag > 0.05:
+                    daily_flag_mag = 'Q'
+                elif (num_estimated_obs_mag)/num_total_obs_mag > 0.05:
+                    daily_flag_mag = 'E'
+                elif (num_estimated_obs_mag + num_missing_obs_mag + num_questionable_obs_mag)/num_total_obs_mag <= 0.05:
+                    daily_flag_mag = 'A'
+                else:
+                    daily_flag_mag = 'Q'
+
+
+                # daily flag, wind dir: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_dir/num_total_obs_dir >= 0.2:
+                    daily_flag_dir = 'M'
+                elif (num_missing_obs_dir + num_questionable_obs_dir)/num_total_obs_dir > 0.05:
+                    daily_flag_dir = 'Q'
+                elif (num_estimated_obs_dir)/num_total_obs_dir > 0.05:
+                    daily_flag_dir = 'E'
+                elif (num_estimated_obs_dir + num_missing_obs_dir + num_questionable_obs_dir)/num_total_obs_dir <= 0.05:
+                    daily_flag_dir = 'A'
+                else:
+                    daily_flag_dir = 'Q'
+
+                # daily flag, wind dir std: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
+                if num_missing_obs_dirstd/num_total_obs_dir >= 0.2:
+                    daily_flag_dirstd = 'M'
+                elif (num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dir > 0.05:
+                    daily_flag_dirstd = 'Q'
+                elif (num_estimated_obs_dirstd)/num_total_obs_dir > 0.05:
+                    daily_flag_dirstd = 'E'
+                elif (num_estimated_obs_dirstd + num_missing_obs_dirstd + num_questionable_obs_dirstd)/num_total_obs_dir <= 0.05:
+                    daily_flag_dirstd = 'A'
+                else:
+                    daily_flag_dirstd = 'Q'
+
+                try: 
+                    # compute the mean daily wind speed -- just the mean of what is given...
+                    daily_spd_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['spd_val'] if x != 'None'])/num_valid_obs_spd),3)
+
+                except ZeroDivisionError:
+                    # if the case is that there are no valid observations
+                    daily_spd_valid_obs = None
+                    
+                    # magnitude and speed are therefore also M
+                    daily_flag_spd = "M"
+                    
+
+                if num_valid_obs_spd != 0:
+                # compute the daily resultant--- this one is a true joy.
+                
+                ## This is a working example using [2, 2, 2, 4, 4] for speed and [10, 10, 10, 350, 10] for direction:
+                # daily_mag_x_part = (sum([speed * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(speedlist,dirlist) if speed != 'None' and x != 'None'])/5.)**2
+                # daily_mag_y_part = (sum([speed * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(speedlist,dirlist) if speed != 'None' and x != 'None'])/5.)**2
+                # math.sqrt(daily_mag_y_part + daily_mag_x_part)
+                # >> Returns: 2.7653239207215683
+
+                    daily_mag_y_part = (sum([float(speed) * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'], self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2  
+
+                    daily_mag_x_part = (sum([float(speed) * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'],self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)**2 
+
+                    daily_mag_results = math.sqrt(daily_mag_y_part + daily_mag_x_part)
+
+                    if daily_mag_results != None:
+                        daily_mag_results = round(daily_mag_results,3)
+                    else:
+                        pass
+
+                    
+                    # compute the mean of the daily observations of degrees-- must be done with RADIANS - not including the missing, questionable, or estimated ones
+
+                    # campbell uses the frickin weighted resultant aaaaahgh
+
+                    theta_u = math.atan2(sum([float(speed) * math.sin(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'], self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd, sum([float(speed) * math.cos(math.radians(float(x))) for (speed, x) in itertools.izip(self.od[probe_code][each_date]['spd_val'],self.od[probe_code][each_date]['dir_val']) if speed != 'None' and x != 'None'])/num_valid_obs_spd)
+
+                    daily_dir_valid_obs = round(math.degrees(theta_u),3)
+
+                    # roll over the zero
+                    if daily_dir_valid_obs < 0.:
+                        daily_dir_valid_obs +=360
+                    else:
+                        pass
+
+                   # print "daily dir valid sin: %s, daily dir valid cos: %s, daily dir valid obs: %s" %(sum(daily_dir_valid_sins), sum(daily_dir_valid_cos), daily_dir_valid_obs)
+                   # daily_dir_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+
+
+                    # compute the standard deviation of the daily wind directions -- yamartino method:
+                    # see this: http://en.wikipedia.org/wiki/Yamartino_method for details
+
+                    daily_epsilon = math.sqrt(1-((sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2 + (sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/num_valid_obs_dir)**2))
+
+                    daily_sigma_theta = math.degrees(math.asin(daily_epsilon)*(1+(2./math.sqrt(3))-1)*daily_epsilon)
+
+                    # if it gives you back a less than 0 value due to the conversion, abs it. 
+                    if daily_sigma_theta < 0.:
+                        daily_sigma_theta = round(abs(daily_sigma_theta),3)
+                    else:
+                        daily_sigma_theta = round(daily_sigma_theta,3)
+
+                    # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
+
+                    # get the max of those observations (mean speed)
+                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['maxgust_val'] if x != 'None']),3)
+
+                elif num_valid_obs_spd == 0:
+                    max_valid_obs = None
+                    daily_sigma_theta = None
+                    daily_dir_valid_obs = None
+                    daily_mag_results = None
+
+                else:
+                    pass
+
+                if num_valid_obs_spd != 0:
+                
+                    # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
+                    max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['maxgust_val']) if j != "None" and round(float(j),3) == max_valid_obs]
+                    
+                    # get the flag of that maximum - which again, is controlled via the max_valid_obs
+                    max_flag = [self.od[probe_code][each_date]['spd_fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['maxgust_val']) if j != "None" and round(float(j),3) == max_valid_obs]
+
+
+                else: 
+                    max_valid_time = None
+                    max_flag = ["M"]
+
+                # If no flag has been assigned
+                if max_flag[0] =="":
+                    max_flag = ["A"]
+                else:
+                    pass
+
+
+                if self.server == "STEWARTIA":
+                    source = self.server + "_FSDBDATA_MS04314"
+                elif self.server == "SHELDON":
+                    source = self.server + "_LTERLogger_Pro_MS04314"
+                else:
+                    pass
+
+                try:
+                    newrow = ['MS043',4, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                
+                except TypeError:
+                    newrow = ['MS043', 4, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+
+
+                print newrow
+                my_new_rows.append(newrow)
+        mylog.dump()
+        return my_new_rows
+
 
 class Sonic(object):
 
