@@ -8,9 +8,12 @@ import numpy as np
 import yaml
 import form_connection as fc
 
+""" Smash Workers is the working classes for doing daily aggregation. Use the smashworkers individually to quickly process a data set or two :) """
+
 
 class DateRange(object):
-    """ Compresses startdate and enddate into a range that needs to travel together"""
+    """ Compresses startdate and enddate into a range- you must give both a start date and an end date to do processing with smasher"""
+    
     def __init__(self, startdate, enddate):
     
         self.dr = [datetime.datetime.strptime(startdate, '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(enddate, '%Y-%m-%d %H:%M:%S')]
@@ -37,10 +40,16 @@ class MethodTableReader(object):
         query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         self.cursor_sheldon.execute(query)
-            
-        for row in cursor_sheldon:
-            this_height = int(row[0])
-            this_method = str(row[1])
+        
+        try:
+            for row in cursor_sheldon:
+                this_height = int(row[0])
+                this_method = str(row[1])
+                this_sitecode = str(row[2])
+        except exception:
+            print "cannot find a value for %s in method history daily" %(probe_code)
+            this_height = 100
+            this_method = probe_code[0:3] + '999'
             this_sitecode = str(row[2])
         
         return this_height, this_method, this_sitecode
@@ -110,7 +119,7 @@ class AirTemperature(object):
         self.od = self.attack_data()
 
     def querydb(self):
-        """ queries the data base and returns the cursor after population. THIS MAY CAUSE A NATURAL SWITCH BETWEEN LOGGER_PRO and LOGGER_NEW BECAUSE PRO DOESN'T HAVE THE SAME COLUMNS BUT THAT WILL ONLY WORK IN AIRTEMP ATTRIBUTE"""
+        """ queries the data base and returns the cursor after population. """
 
         # human-readable date range for the database
         # dr = self.human_readable()
@@ -121,11 +130,26 @@ class AirTemperature(object):
                 dbname = "LTERLogger_pro.dbo."
         elif self.server == "STEWARTIA":
                 dbname = "FSDBDATA.dbo."
-             
-        query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG, AIRTEMP_MIN, AIRTEMP_MIN_FLAG, AIRTEMP_MAX, AIRTEMP_MAX_FLAG from " + dbname + "MS04311 WHERE DATE_TIME >= \'"  + humanrange[0] +  "\' AND DATE_TIME < \'" + humanrange[1]+  "\' ORDER BY DATE_TIME ASC"
         
-        # execute the query
-        self.cursor.execute(query)
+        try:    
+            
+            query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG, AIRTEMP_MIN, AIRTEMP_MIN_FLAG, AIRTEMP_MAX, AIRTEMP_MAX_FLAG from " + dbname + "MS04311 WHERE DATE_TIME >= \'"  + humanrange[0] +  "\' AND DATE_TIME < \'" + humanrange[1]+  "\' ORDER BY DATE_TIME ASC"
+
+            # execute the query
+            self.cursor.execute(query)
+        
+        except Exception:
+            
+            try:
+                query = "SELECT DATE_TIME, PROBE_CODE, AIRTEMP_MEAN, AIRTEMP_MEAN_FLAG from " + dbname + "MS04311 WHERE DATE_TIME >= \'"  + humanrange[0] +  "\' AND DATE_TIME < \'" + humanrange[1]+  "\' ORDER BY DATE_TIME ASC"
+                print "...needed to use the old syntax here... for airtemperature on %s" %(self.server)
+        
+                # execute the query
+                self.cursor.execute(query)
+            
+            except ValueError:
+                print("Invalid Range Chosen, please select different range")
+
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
         """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
@@ -156,7 +180,19 @@ class AirTemperature(object):
         for row in self.cursor:
             
             # get only the day from the incoming result row    
-            dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+            try:
+                dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+            except Exception:
+                
+                try:
+                    dt_old = datetime.datetime.strptime(str(row[0]), '%m/%d/%Y %H:%M')
+                except Exception:
+                    
+                    try:
+                        dt_old = datetime.datetime.strptime(str(row[0]).rstrip('0').rstrip('.'), '%Y-%m-%d %H:%M:%S')
+                    except Exception:
+                        print "could not resolve the date time!"
+
 
             # extract day info
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
@@ -3107,6 +3143,9 @@ class Precipitation(object):
     def height_and_method_getter(self, probe_code, cursor_sheldon):
         """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
         
+        #if probe_code == 'PPTVAR02':
+        #    probe_code = 'PPTVAN02'
+
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
@@ -3114,12 +3153,18 @@ class Precipitation(object):
         query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
+        print query
             
-        for row in cursor_sheldon:
+        try:
+            for row in cursor_sheldon:
 
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
+                this_height = int(row[0])
+                this_method = str(row[1])
+                this_sitecode = str(row[2])
+
+            print row
+        except Exception:
+            print "exception thrown"
         
         return this_height, this_method, this_sitecode
 
@@ -3131,10 +3176,19 @@ class Precipitation(object):
 
         for row in self.cursor:
 
-            # get only the day
-            
+            # get only the day      
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            # fix the day for the zeroth hour; if the hour is 0 and the minute is 0 then the day is the previous day
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old- datetime.timedelta(days = 1)
+            # otherwise, that is not the case! -> THIS CHANGE MUST PERSIST IN ALL THE THINGS
+            else:
+                pass
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
+            #dt = datetime.datetime(dt_fixed.year, dt_fixed.month, dt_fixed.day)
+            
             probe_code = str(row[1])
 
             if probe_code not in od:
@@ -3168,7 +3222,7 @@ class Precipitation(object):
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
 
-        # make a sheldon cursor
+        # make a sheldon cursor - used for getting the daily methods
         cursor_sheldon = fc.form_connection("SHELDON")
         
         # iterate over the returns, getting each probe code - if args are passed, include them also!
@@ -3516,8 +3570,14 @@ class Solar(object):
         for row in self.cursor:
 
             # get only the day
-            
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            # if the hour is the midnight hour we move it back to the prior day
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old-datetime.timedelta(days=1)
+            else:
+                pass
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
