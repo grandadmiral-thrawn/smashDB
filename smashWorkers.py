@@ -3294,7 +3294,7 @@ class Precipitation(object):
         query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
-        print query
+        #print query
             
         try:
             for row in cursor_sheldon:
@@ -3449,7 +3449,7 @@ class Precipitation(object):
                 else:
                     print("no server given")
                 
-                newrow = ['MS043',3, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
+                newrow = ['MS043',3, site_code, method_code, int(height), "2D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
 
                 
                 my_new_rows.append(newrow)
@@ -4694,7 +4694,6 @@ class Wind(object):
                     error_string = "the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs_spd, probe_code)
                     mylog.write('incomplete_day', error_string)
                     continue
-
                 
                 else:
                     pass
@@ -4880,7 +4879,7 @@ class Wind(object):
                     newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
 
 
-                print newrow
+                #print newrow
                 my_new_rows.append(newrow)
         mylog.dump()
         return my_new_rows

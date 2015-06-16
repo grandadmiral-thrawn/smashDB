@@ -560,7 +560,7 @@ class DBControl(object):
             # for the two tables, check the last input value
             for daily_table, hr_table in iTables:
 
-                last_daily = self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " where station like \'" + self.station + "\' order by date desc")
+                last_daily = self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " where sitecode like \'" + self.station + "\' order by date desc")
 
                 # get the day of that value
                 for row in self.cursor:
@@ -574,7 +574,7 @@ class DBControl(object):
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
 
                 # checking the last on high res, in theory it should be after the daily
-                last_hr = self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " where station like \'" + self.station + "\' order by date_time desc")
+                last_hr = self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time desc")
 
 
                 for row in self.cursor:
@@ -609,7 +609,7 @@ class DBControl(object):
             # for the two tables, check the last input value
             for daily_table, hr_table in iTables:
 
-                last_daily = self.cursor.execute("select top 1 date from FSDBDATA.dbo." + daily_table + " where station like \'" + self.station + "\' order by date desc")
+                last_daily = self.cursor.execute("select top 1 date from FSDBDATA.dbo." + daily_table + " where sitecode like \'" + self.station + "\' order by date desc")
 
                 # get the day of that value
                 for row in self.cursor:
@@ -621,7 +621,7 @@ class DBControl(object):
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
 
                 # checking the last on high res, in theory it should be after the daily
-                last_hr = self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " where station like \'" + self.station + "\' order by date_time desc")
+                last_hr = self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time desc")
 
 
                 for row in self.cursor:
@@ -781,7 +781,7 @@ class HeaderWriter(object):
 
             header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.min_flag_method, self.mintime_method, "EVENT_CODE", "SOURCE"]
 
-        elif self.attribute == "VPD":
+        elif self.attribute == "VPD" or self.attribute == "VPD2":
 
             header = ['DBCODE','ENTITY','SITECODE', self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, self.min_method, self.min_flag_method, self.mintime_method, "VAP_MEAN_DAY", "VAP_MEAN_FLAG", "VAP_MAX_DAY", "VAP_MAX_FLAG", "VAP_MIN_DAY", "VAP_MIN_FLAG", "SATVP_MEAN_DAY", "SATVP_MEAN_FLAG", "SATVP_MAX_DAY", "SATVP_MAX_FLAG", "SATVP_MIN_DAY", "SATVP_MIN_FLAG", "EVENT_CODE", "SOURCE"]
 
@@ -791,7 +791,7 @@ class HeaderWriter(object):
             header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", "PRECIP_TOT_DAY", "PRECIP_TOT_FLAG", "EVENT_CODE", "SOURCE"]
 
         # propellor anemometer
-        elif self.attribute == "WSPD_PRO" or self.attribue == "WSPD_PRO2":
+        elif self.attribute == "WSPD_PRO" or self.attribute == "WSPD_PRO2":
 
             header = ["DBCODE","ENTITY","SITECODE", self.method, self.height, "QC_LEVEL", "PROBE_CODE", "DATE", self.mean_method, self.mean_flag_method, self.max_method, self.max_flag_method, self.maxtime_method, "WMAG_PRO_MEAN_DAY", "WMAG_PRO_MEAN_FLAG", "WDIR_PRO_MEAN_DAY", "WDIR_PRO_MEAN_FLAG", "WDIR_PRO_STDDEV_DAY", "WDIR_PRO_STDDEV_FLAG", "WSPD_ROSE1_MEAN_DAY", "WSPD_ROSE1_MEAN_FLAG", "WSPD_ROSE2_MEAN_DAY", "WSPD_ROSE2_MEAN_FLAG", "WSPD_ROSE3_MEAN_DAY", "WSPD_ROSE1_MEAN_FLAG", "WSPD_ROSE4_MEAN_DAY", "WSPD_ROSE4_MEAN_FLAG", "WSPD_ROSE5_MEAN_DAY",  "WSPD_ROSE5_MEAN_FLAG", "WSPD_ROSE6_MEAN_DAY", "WSPD_ROSE6_MEAN_FLAG", "WSPD_ROSE7_MEAN_DAY", "WSPD_ROSE7_MEAN_FLAG", "WSPD_ROSE8_MEAN_DAY", "WSPD_ROSE8_MEAN_FLAG", "EVENT_CODE", "SOURCE"]
 
