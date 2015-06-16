@@ -1,1 +1,8 @@
 "ERROR","DESCRIPTION"
+"incomplete_day","incomplete or overfilled day: the total number of observations on 2012-10-09 00:00:00 is 1 for LYSH1501"
+"incomplete_day","incomplete or overfilled day: the total number of observations on 2012-11-01 00:00:00 is 287 for LYSH1501"
+"incomplete_day","incomplete or overfilled day: the total number of observations on 2012-10-09 00:00:00 is 1 for LYSUPL01"
+"incomplete_day","incomplete or overfilled day: the total number of observations on 2012-11-01 00:00:00 is 287 for LYSUPL01"
+"incomplete_day","incomplete or overfilled day: the total number of observations on 2012-10-09 00:00:00 is 1 for LYSCEN01"
+"incomplete_day","incomplete or overfilled day: the total number of observations on 2012-11-01 00:00:00 is 287 for LYSCEN01"
+"nullday","there are only null values on 2012-10-09 00:00:00 for LYSUPL01"

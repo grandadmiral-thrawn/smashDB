@@ -16,7 +16,8 @@ class MethodControl(object):
         self.cursor = fc.form_connection('SHELDON')
         self.cursor2 = fc.form_connection('STEWARTIA')
         self.server = server
-        
+        self.stations = ['CENMET','PRIMET','VANMET','UPLMET','VARMET','CS2MET','H15MET']
+
         # look up  table for the daily method
         self.lu = {'AIR':'MS04301', 'REL': 'MS04302', 'DEW': 'MS04307', 'VPD': 'MS04308','RAD': 'MS04305', 'SOI': 'MS04321', 'PAR': 'MS04322', 'WND': 'MS04304', 'PPT': 'MS04303', 'SWC': 'MS04323', 'LYS':'MS04309', 'SNO':'MS04310'}
 
@@ -46,6 +47,7 @@ class MethodControl(object):
 
                 # probe code in row 0, beginning of type of attribute in probe code, position (tokened from) 0-3
                 probe_code = str(row[0])
+                site_code = probe_code[3:6]
                 qual = probe_code[0:3]
                 method_code = str(row[3])
                 height = str(row[4])
@@ -251,6 +253,7 @@ class HRMethodControl(object):
                 # probe code in row 0, beginning of type of attribute in probe code, position (tokened from) 0-3
                 probe_code = str(row[0])
                 qual = probe_code[0:3]
+                site_code = probe_code[3:6]
                 method_code = str(row[3])
                 height = str(row[4])
                 depth = str(row[5])
@@ -427,10 +430,13 @@ class HRMethodControl(object):
 
 class DBControl(object):
     """ used to generate a list of attributes that needs updating and the date of last update """
-    def __init__(self, server):
+    def __init__(self, server, *args):
         
         self.server = server
         self.cursor = fc.form_connection(server)
+
+        if args and args != []:
+            self.station = args[0]
         
         # until we switch to LTERLogger_pro use this one:
 
@@ -450,8 +456,10 @@ class DBControl(object):
         # zip together the two tables
         iTables = itertools.izip(self.daily_table_list, self.hr_table_list)
         if self.server == "SHELDON":
+            
             # for the two tables, check the last input value
             for daily_table, hr_table in iTables:
+
                 last_daily = self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " order by date desc")
 
                 # get the day of that value
@@ -513,6 +521,107 @@ class DBControl(object):
 
                 # checking the last on high res, in theory it should be after the daily
                 last_hr = self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " order by date_time desc")
+
+
+                for row in self.cursor:
+                    high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+                    converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
+
+
+                # no matter which database, we want to compare to be sure that the converted hr comes after the daily so we can see how much to grab
+
+                if converted_hr > converted_d:
+
+                    # add a day to the last daily record for where we will start from 
+                    daily_data_plus_one = converted_d + datetime.timedelta(days = 1)
+
+                    # the start date is the first day we have still in our daily data plus one
+                    startdate = datetime.datetime.strftime(daily_data_plus_one, '%Y-%m-%d %H:%M:%S')
+
+                    # the end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
+                    enddate = datetime.datetime.strftime(converted_hr, '%Y-%m-%d %H:%M:%S')
+
+                    if daily_table not in self.lookup:
+                        self.lookup[daily_table] = {'startdate': startdate, 'enddate': enddate}
+                    elif daily_table in self.lookup:
+                        print 'this table is already in the lookup'
+
+                elif converted_hr <= converted_d:
+
+                    pass
+
+    def build_queries_station(self):
+        """ check the existing dates and output last values for each table"""
+        
+        # zip together the two tables
+        iTables = itertools.izip(self.daily_table_list, self.hr_table_list)
+        if self.server == "SHELDON":
+            
+            # for the two tables, check the last input value
+            for daily_table, hr_table in iTables:
+
+                last_daily = self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " where station like \'" + self.station + "\' order by date desc")
+
+                # get the day of that value
+                for row in self.cursor:
+
+                    try:
+                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+                    
+                    except ValueError:
+                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d')
+                        
+                    converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+
+                # checking the last on high res, in theory it should be after the daily
+                last_hr = self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " where station like \'" + self.station + "\' order by date_time desc")
+
+
+                for row in self.cursor:
+                    high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+                    converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
+
+                # no matter which database, we want to compare to be sure that the converted hr comes after the daily so we can see how much to grab
+
+                if converted_hr > converted_d:
+
+                    # add a day to the last daily record for where we will start from 
+                    daily_data_plus_one = converted_d + datetime.timedelta(days = 1)
+
+                    # the start date is the first day we have still in our daily data plus one
+                    startdate = datetime.datetime.strftime(daily_data_plus_one, '%Y-%m-%d %H:%M:%S')
+
+                    # the end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
+                    enddate = datetime.datetime.strftime(converted_hr, '%Y-%m-%d %H:%M:%S')
+
+                    if daily_table not in self.lookup:
+                        self.lookup[daily_table] = {'startdate': startdate, 'enddate': enddate}
+                    elif daily_table in self.lookup:
+                        print 'this table is already in the lookup'
+
+                elif converted_hr <= converted_d:
+
+                    print(daily_table + " is already up to date")
+
+        elif self.server == "STEWARTIA":
+
+            # for the two tables, check the last input value
+            for daily_table, hr_table in iTables:
+
+                last_daily = self.cursor.execute("select top 1 date from FSDBDATA.dbo." + daily_table + " where station like \'" + self.station + "\' order by date desc")
+
+                # get the day of that value
+                for row in self.cursor:
+                    try:
+                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d')
+                    
+                    converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+
+                # checking the last on high res, in theory it should be after the daily
+                last_hr = self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " where station like \'" + self.station + "\' order by date_time desc")
 
 
                 for row in self.cursor:

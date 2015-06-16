@@ -161,12 +161,22 @@ class AirTemperature(object):
         query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
         cursor_sheldon.execute(query)
-            
-        for row in cursor_sheldon:
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
         
+        for row in cursor_sheldon:
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 100
+            try:    
+                this_method = str(row[1])
+            except Exception:
+                this_method = "AIR999"
+
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
+
         return this_height, this_method, this_sitecode
 
     def attack_data(self):
@@ -193,6 +203,12 @@ class AirTemperature(object):
                     except Exception:
                         print "could not resolve the date time!"
 
+            # resolve the midnight point to the next day
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
+            else:
+                pass
+
 
             # extract day info
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
@@ -203,24 +219,42 @@ class AirTemperature(object):
             # if the probe code is not in the output dictionary, insert it into the output dictionary
             if probe_code not in od:
 
-                # if the probe code isn't there, get the day, val, fval, and store the time which is the closest five minute interval we'll be matching on
-                od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}}
+                try:
+                    # if the probe code isn't there, get the day, val, fval, and store the time which is the closest five minute interval we'll be matching on
+                    od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}}
+
+
+                # how it was done before... put the min/max/mean all in separate things to be called
+                except Exception:
+                    od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[2])], 'minflag': [str(row[3])], 'maxval':[str(row[2])], 'maxflag':[str(row[3])], 'timekeep':[dt_old]}}
 
             # if we already have the probe code
             elif probe_code in od:
+
                 # if the date isn't there and we dont have one fo the new methods
                 if dt not in od[probe_code]:
-                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
-                    od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}
+                    try:
+                        # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
+                        od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}
+                    except Exception:
+                        # old style
+                        od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[2])], 'minflag': [str(row[3])], 'maxval':[str(row[2])], 'maxflag':[str(row[3])], 'timekeep':[dt_old]}
 
                 elif dt in od[probe_code]:
                     # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
                     od[probe_code][dt]['val'].append(str(row[2]))
                     od[probe_code][dt]['fval'].append(str(row[3]))
-                    od[probe_code][dt]['minval'].append(str(row[4]))
-                    od[probe_code][dt]['minflag'].append(str(row[5]))
-                    od[probe_code][dt]['maxval'].append(str(row[6]))
-                    od[probe_code][dt]['maxflag'].append(str(row[7]))
+
+                    try:
+                        od[probe_code][dt]['minval'].append(str(row[4]))
+                        od[probe_code][dt]['minflag'].append(str(row[5]))
+                        od[probe_code][dt]['maxval'].append(str(row[6]))
+                        od[probe_code][dt]['maxflag'].append(str(row[7]))
+                    except Exception:
+                        od[probe_code][dt]['minval'].append(str(row[2]))
+                        od[probe_code][dt]['minflag'].append(str(row[3]))
+                        od[probe_code][dt]['maxval'].append(str(row[2]))
+                        od[probe_code][dt]['maxflag'].append(str(row[3]))
 
                     # the timekeep attribute holds onto the 5 minute time, so that if it happens to be the max or the min of the day we have it handy
                     od[probe_code][dt]['timekeep'].append(dt_old)
@@ -237,7 +271,8 @@ class AirTemperature(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above
         """
-        mylog = LogIssues('mylog_airtemp')
+        # write an output log
+        mylog = LogIssues('mylog_airtemp.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -247,7 +282,7 @@ class AirTemperature(object):
             
         # iterate over each probe-code that was collected
         for probe_code in self.od.keys():
-            print probe_code
+            print "calculating now ...%s" %(probe_code)
 
             if "AIRR" not in probe_code and probe_code != "AIRCEN08":
 
@@ -474,11 +509,11 @@ class AirTemperature(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 #try:
-                newrow = ['MS043', 1, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time, '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time, '%H%M'), "NA", source]
+                newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time, '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time, '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 #except IndexError:
-                #    newrow = ['MS043', 1, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
+                #    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
                 #print newrow
                 my_new_rows.append(newrow)
@@ -488,7 +523,7 @@ class AirTemperature(object):
 
 class RelHum(object):
     """ 
-    Generates relative humidity from 5 or 15 or hourly data
+    Generates relative humidity from 5 or 15 or hourly data; no weird methods that I know of
     """
 
     def __init__(self, startdate, enddate, server):
@@ -543,11 +578,21 @@ class RelHum(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 100
 
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
-            print this_sitecode
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "REL999"
+
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
+            
         
         return this_height, this_method, this_sitecode
     
@@ -561,6 +606,12 @@ class RelHum(object):
 
             # get only the day
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
+            else:
+                pass
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
 
             probe_code = str(row[1])
@@ -592,7 +643,7 @@ class RelHum(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above
         """
-        mylog = LogIssues('mylog_relhum')
+        mylog = LogIssues('mylog_relhum.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -789,11 +840,11 @@ class RelHum(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',2, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',2, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
                 my_new_rows.append(newrow)
@@ -876,6 +927,13 @@ class Light(object):
 
             # get only the day
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            # resolve to the previous day
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days = 1)
+            else:
+                pass
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
 
             probe_code = str(row[1])
@@ -907,7 +965,7 @@ class Light(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above
         """
-        mylog = LogIssues('mylog_light')
+        mylog = LogIssues('mylog_light.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -1104,11 +1162,11 @@ class Light(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',27, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',27, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',27, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    newrow = ['MS043',27, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
                 my_new_rows.append(newrow)
@@ -1160,11 +1218,19 @@ class DewPoint(object):
                 dbname = "LTERLogger_pro.dbo."
         elif self.server == "STEWARTIA":
                 dbname = "FSDBDATA.dbo."
-             
-        query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG, DEWPT_MIN, DEWPT_MIN_FLAG, DEWPT_MAX, DEWPT_MAX_FLAG from " + dbname + "MS04317 WHERE DATE_TIME >= \'"  + humanrange[0] +  "\' AND DATE_TIME < \'" + humanrange[1]+  "\' ORDER BY DATE_TIME ASC"
+    
+        try:
+            query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG, DEWPT_MIN, DEWPT_MIN_FLAG, DEWPT_MAX, DEWPT_MAX_FLAG from " + dbname + "MS04317 WHERE DATE_TIME >= \'"  + humanrange[0] +  "\' AND DATE_TIME < \'" + humanrange[1]+  "\' ORDER BY DATE_TIME ASC"
+
+            # execute the query
+            self.cursor.execute(query)
         
-        # execute the query
-        self.cursor.execute(query)
+        except Exception:
+            query = "SELECT DATE_TIME, PROBE_CODE, DEWPT_MEAN, DEWPT_MEAN_FLAG from " + dbname + "MS04317 WHERE DATE_TIME >= \'"  + humanrange[0] +  "\' AND DATE_TIME < \'" + humanrange[1]+  "\' ORDER BY DATE_TIME ASC"
+            print "... had to use the old dewpoint method! ..."
+            # execute the query
+            self.cursor.execute(query)
+        
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
         """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
@@ -1178,10 +1244,20 @@ class DewPoint(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
-        
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 100
+
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "DEW999"
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
+
         return this_height, this_method, this_sitecode
 
 
@@ -1198,6 +1274,9 @@ class DewPoint(object):
             # get only the day from the incoming result row    
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
 
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old -datetime.timedelta(days =1)
+
             # extract day info
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
 
@@ -1207,24 +1286,40 @@ class DewPoint(object):
             # if the probe code is not in the output dictionary, insert it into the output dictionary
             if probe_code not in od:
 
-                # if the probe code isn't there, get the day, val, fval, and store the time which is the closest five minute interval we'll be matching on
-                od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}}
+                try:
+                    # if the probe code isn't there, get the day, val, fval, and store the time which is the closest five minute interval we'll be matching on
+                    od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}}
+                
+                except Exception:
+                    # old method
+                    od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[2])], 'minflag': [str(row[3])], 'maxval':[str(row[2])], 'maxflag':[str(row[3])], 'timekeep':[dt_old]}}
 
             # if we already have the probe code
             elif probe_code in od:
                 # if the date isn't there and we dont have one fo the new methods
                 if dt not in od[probe_code]:
-                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
-                    od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}
+                    try:
+                        # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
+                        od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}
+                    except Exception:
+                        # old method
+                        od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[2])], 'minflag': [str(row[3])], 'maxval':[str(row[2])], 'maxflag':[str(row[3])], 'timekeep':[dt_old]}
 
                 elif dt in od[probe_code]:
                     # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
                     od[probe_code][dt]['val'].append(str(row[2]))
                     od[probe_code][dt]['fval'].append(str(row[3]))
-                    od[probe_code][dt]['minval'].append(str(row[4]))
-                    od[probe_code][dt]['minflag'].append(str(row[5]))
-                    od[probe_code][dt]['maxval'].append(str(row[6]))
-                    od[probe_code][dt]['maxflag'].append(str(row[7]))
+
+                    try:
+                        od[probe_code][dt]['minval'].append(str(row[4]))
+                        od[probe_code][dt]['minflag'].append(str(row[5]))
+                        od[probe_code][dt]['maxval'].append(str(row[6]))
+                        od[probe_code][dt]['maxflag'].append(str(row[7]))
+                    except Exception:
+                        od[probe_code][dt]['minval'].append(str(row[2]))
+                        od[probe_code][dt]['minflag'].append(str(row[3]))
+                        od[probe_code][dt]['maxval'].append(str(row[2]))
+                        od[probe_code][dt]['maxflag'].append(str(row[3]))
 
                     # the timekeep attribute holds onto the 5 minute time, so that if it happens to be the max or the min of the day we have it handy
                     od[probe_code][dt]['timekeep'].append(dt_old)
@@ -1474,11 +1569,11 @@ class DewPoint(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043', 7, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", source]
+                    newrow = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 7, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
+                    newrow = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
                 #print newrow
                 my_new_rows.append(newrow)
@@ -1549,9 +1644,18 @@ class VPD(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 100
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "VPD999"
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
         
         return this_height, this_method, this_sitecode
 
@@ -1566,6 +1670,10 @@ class VPD(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
@@ -1625,7 +1733,6 @@ class VPD(object):
                 # there may be the case that all the numbers are none, and in this case, we want to know about it, but keep on going through that day
                 if num_valid_obs == 0:
                     error_string = "there are only null values on %s for %s" %(each_date, probe_code)
-                    mylog.write('nullday',error_string)
                 
                 # get the number of obs total 
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
@@ -1636,7 +1743,6 @@ class VPD(object):
                     # break on missing dates and continue to the next
 
                     error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
-                    mylog.write('incompleteday', error_string2)
                     continue
                 else:
                     pass
@@ -1687,7 +1793,6 @@ class VPD(object):
                         max_valid_obs = None
                     else:
                         error_string3 = "error in max_valid_obs for %s on %s" %(probe_code, each_date)
-                        mylog.write("maxvalueerror", error_string3)
 
                 # DAILY MAX TIME VPD
                 try:
@@ -1700,7 +1805,6 @@ class VPD(object):
                         max_valid_time = None
                     else: 
                         error_string4 = "error in max_valid_time for %s on %s" %(probe_code, each_date)
-                        mylog.write("max_time_error", error_string4)
 
                 # DAILY MAX FLAG VPD
                 if mean_valid_obs is not None:
@@ -1713,7 +1817,6 @@ class VPD(object):
                     
                     else:
                         error_string5 = "error in max_valid_flag for %s on %s" %(probe_code, each_date)
-                        mylog.write("max_flag_error", error_string5)
 
                 # DAILY MINIMUM VPD
                 try:
@@ -1724,7 +1827,6 @@ class VPD(object):
                         min_valid_obs = None
                     else:
                         error_string6 = "error in min_valid_obs for %s on %s" %(probe_code, each_date)
-                        mylog.write("min_value_error", error_string6)
 
                 # DAILY MINIMUM TIME VPD 
                 try:
@@ -1735,7 +1837,6 @@ class VPD(object):
                         min_valid_time = None
                     else:
                         error_string7 = "error in min_valid_time for %s on %s" %(probe_code, each_date)
-                        mylog.write("mintimeerror", error_string7)
 
                 # DAILY MINIMUM FLAG VPD
                 if mean_valid_obs is not None:
@@ -1744,7 +1845,6 @@ class VPD(object):
                 
                 else:
                     error_string8= "min flag is none on %s, %s" %(probe_code, each_date)
-                    mylog.write("minflagerror",error_string8)
                     
                     if mean_valid_obs == None:
                         min_flag = ["M"]
@@ -1791,16 +1891,15 @@ class VPD(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
                 my_new_rows.append(newrow)
         
-            mylog.dump()
         return my_new_rows
 
 class VPD2(object):
@@ -1844,6 +1943,7 @@ class VPD2(object):
         # Queries for SHELDON and STEWARTIA
         if self.server == "SHELDON":
                 dbname = "LTERLogger_pro.dbo."
+        
         elif self.server == "STEWARTIA":
                 dbname = "FSDBDATA.dbo."
              
@@ -1864,10 +1964,20 @@ class VPD2(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
-        
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 100
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "VPD999"
+
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
+
         return this_height, this_method, this_sitecode
 
     def attack_data(self):
@@ -1881,13 +1991,17 @@ class VPD2(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             
             # generate a new probe code
             probe_code = 'VPD'+str(row[1])[3:]
 
             # skip values which are from PRIMET aspirated and other aspirated
-            if probe_code[-2:] in ['05','06','07','08','09', '10']:
+            if probe_code[-2:] in ['05','06','07','08','09','10']:
                 continue
 
             if probe_code not in od:
@@ -1919,7 +2033,8 @@ class VPD2(object):
         """ 
         Calculates VPD from raw data!
         """
-        mylog = LogIssues('calculatedVPDlog')
+        mylog = LogIssues('calculatedVPDlog.log')
+        
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
 
@@ -1986,8 +2101,6 @@ class VPD2(object):
                     df = 'F'
                 else:
                     df = 'A'
-
-
                 
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc.
                 num_missing_obs_air = len([x for x in self.od[probe_code][each_date]['airfval'] if x == 'M' or x == 'I'])
@@ -1996,7 +2109,6 @@ class VPD2(object):
                 
                 num_estimated_obs_air = len([x for x in self.od[probe_code][each_date]['airfval'] if x == 'E'])
                 
-
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc.
                 num_missing_obs_rel = len([x for x in self.od[probe_code][each_date]['relfval'] if x == 'M' or x == 'I'])
                 
@@ -2191,14 +2303,14 @@ class VPD2(object):
                 # in the best possible case, we print it out just as it is here: 
                 # right now I am giving the max flags on satvp and regularvp the same as their mean flags
                 try:
-                   # newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, mean_valid_obs_satvp, daily_flag_satvp, max_valid_obs_satvp, max_flag_satvp, min_valid_obs_satvp, min_flag_satvp, "NA", self.server]
+                   # newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, mean_valid_obs_satvp, daily_flag_satvp, max_valid_obs_satvp, max_flag_satvp, min_valid_obs_satvp, min_flag_satvp, "NA", self.server]
 
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, "NA", self.server]
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    #newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", None, "M", None, "M", None, "M" "NA", self.server]
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
+                    #newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", None, "M", None, "M", None, "M" "NA", self.server]
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
 
                 
                 my_new_rows.append(newrow)
@@ -2248,6 +2360,7 @@ class PhotosyntheticRad(object):
         # Queries for SHELDON and STEWARTIA
         if self.server == "SHELDON":
                 dbname = "LTERLogger_pro.dbo."
+
         elif self.server == "STEWARTIA":
                 dbname = "FSDBDATA.dbo."
 
@@ -2268,9 +2381,19 @@ class PhotosyntheticRad(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 100
+
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "PAR999"
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_method = "ANYMET"
         
         return this_height, this_method, this_sitecode
 
@@ -2285,6 +2408,8 @@ class PhotosyntheticRad(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            dt_old = dt_old-datetime.timedelta(days=1)
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
@@ -2317,7 +2442,7 @@ class PhotosyntheticRad(object):
 
         """
 
-        mylog = LogIssues('parlog')
+        mylog = LogIssues('parlog.log')
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
 
@@ -2446,11 +2571,11 @@ class PhotosyntheticRad(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',22, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", source]
+                    newrow = ['MS043',22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 22, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", source]
+                    newrow = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", source]
 
                 print newrow
                 my_new_rows.append(newrow)
@@ -2530,6 +2655,11 @@ class SoilTemperature(object):
 
             # get only the day
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            # offset to midnight
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days = 1)
+            
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
 
             probe_code = str(row[1])
@@ -2562,7 +2692,7 @@ class SoilTemperature(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above
         """
-        mylog = LogIssues('mylog_soiltemp')
+        mylog = LogIssues('mylog_soiltemp.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -2761,11 +2891,11 @@ class SoilTemperature(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',21, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',21, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    newrow = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
                 my_new_rows.append(newrow)
@@ -2833,11 +2963,18 @@ class SoilWaterContent(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
-
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
-        
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 100
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "SWC999"
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
         return this_height, this_method, this_sitecode
     
     def attack_data(self):
@@ -2850,6 +2987,10 @@ class SoilWaterContent(object):
 
             # get only the day
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+
+                dt_old = dt_old - datetime.timedelta(days=1)
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
 
             probe_code = str(row[1])
@@ -3079,11 +3220,11 @@ class SoilWaterContent(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
                 my_new_rows.append(newrow)
@@ -3157,10 +3298,18 @@ class Precipitation(object):
             
         try:
             for row in cursor_sheldon:
-
-                this_height = int(row[0])
-                this_method = str(row[1])
-                this_sitecode = str(row[2])
+                try:
+                    this_height = int(row[0])
+                except Exception:
+                    this_height = 100
+                try:
+                    this_method = str(row[1])
+                except Exception:
+                    this_method = "PPT999"
+                try:
+                    this_sitecode = str(row[2])
+                except Exception:
+                    this_sitecode = "ANYMET"
 
             print row
         except Exception:
@@ -3178,6 +3327,7 @@ class Precipitation(object):
 
             # get only the day      
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+          
 
             # fix the day for the zeroth hour; if the hour is 0 and the minute is 0 then the day is the previous day
             if dt_old.hour == 0 and dt_old.minute == 0:
@@ -3217,7 +3367,7 @@ class Precipitation(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above
         """
-        mylog = LogIssues('mylog_precip')
+        mylog = LogIssues('mylog_precip.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -3299,7 +3449,7 @@ class Precipitation(object):
                 else:
                     print("no server given")
                 
-                newrow = ['MS043',3, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
+                newrow = ['MS043',3, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
 
                 
                 my_new_rows.append(newrow)
@@ -3366,9 +3516,14 @@ class SnowLysimeter(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
-            this_method = str(row[0])
-            this_sitecode = str(row[1])
-        
+            try:
+                this_method = str(row[0])
+            except Exception:
+                this_method = "SNO999"
+            try:
+                this_sitecode = str(row[1])
+            except Exception:
+                this_sitecode = "ANYMET"
         return this_method, this_sitecode
 
     def attack_data(self):
@@ -3382,6 +3537,9 @@ class SnowLysimeter(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old -datetime.timedelta(days=1)
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
@@ -3489,7 +3647,7 @@ class SnowLysimeter(object):
                 else:
                     print("no server given")
                 
-                newrow = ['MS043',9, site_code, method_code, "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
+                newrow = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
 
                 
                 my_new_rows.append(newrow)
@@ -3554,11 +3712,19 @@ class Solar(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 100
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "SOL999"
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
 
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
-        
         return this_height, this_method, this_sitecode
     
     def attack_data(self):
@@ -3758,11 +3924,11 @@ class Solar(object):
                     print("no server given")
 
                 try:
-                    newrow = ['MS043', 5, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043', 5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", self.server]
                 
                 except Exception:
 
-                    newrow = ['MS043',5, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", self.server]
+                    newrow = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", self.server]
 
 
                 
@@ -3827,10 +3993,15 @@ class SnowDepth(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
+            try:
+                this_method = str(row[0])
+            except Exception:
+                this_method = "SNO999"
+            try:
+                this_sitecode = str(row[1])
+            except Exception:
+                this_sitecode = "ANYMET"
 
-            this_method = str(row[0])
-            this_sitecode = str(row[1])
-        
         return this_method, this_sitecode
     
     def attack_data(self):
@@ -3844,6 +4015,10 @@ class SnowDepth(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old -datetime.timedelta(days =1)
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
@@ -3986,11 +4161,11 @@ class SnowDepth(object):
                     print("no server given")
 
                 try:
-                    newrow = ['MS043', 10, site_code, method_code, "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), swe_valid_obs, daily_flag_swe, median_valid_obs, daily_flag_sno, "NA", self.server]
+                    newrow = ['MS043', 10, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), swe_valid_obs, daily_flag_swe, median_valid_obs, daily_flag_sno, "NA", self.server]
                 
                 except Exception:
 
-                    newrow = ['MS043', 10, site_code, method_code, "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "NA", self.server]
+                    newrow = ['MS043', 10, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "NA", self.server]
                 
                 my_new_rows.append(newrow)
         mylog.dump()
@@ -4073,6 +4248,10 @@ class NetRadiometer(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour==0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
@@ -4113,7 +4292,7 @@ class NetRadiometer(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above
         """
-        mylog = LogIssues('mylog_solar')
+        mylog = LogIssues('mylog_solar.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -4344,12 +4523,12 @@ class NetRadiometer(object):
 
 
                 try:
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA"]
+                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA"]
                 
                 except Exception:
                     # which might happen if a day is just missing
 
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None, "M", "NA"]
+                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None, "M", "NA"]
 
 
                 
@@ -4413,11 +4592,18 @@ class Wind(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
-
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
-
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 1000
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "WND999"
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
         return this_height, this_method, this_sitecode
 
     def attack_data(self):
@@ -4431,6 +4617,9 @@ class Wind(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
@@ -4470,7 +4659,7 @@ class Wind(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above - wind prop data
         """
-        mylog = LogIssues('mylog_wind')
+        mylog = LogIssues('mylog_wind.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -4685,10 +4874,10 @@ class Wind(object):
                     pass
 
                 try:
-                    newrow = ['MS043',4, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    newrow = ['MS043',4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
                 
                 except TypeError:
-                    newrow = ['MS043', 4, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
 
 
                 print newrow
@@ -4753,10 +4942,19 @@ class Wind2(object):
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
+            try:
+                this_height = int(row[0])
+            except Exception:
+                this_height = 1000
 
-            this_height = int(row[0])
-            this_method = str(row[1])
-            this_sitecode = str(row[2])
+            try:
+                this_method = str(row[1])
+            except Exception:
+                this_method = "WND999"
+            try:
+                this_sitecode = str(row[2])
+            except Exception:
+                this_sitecode = "ANYMET"
 
         return this_height, this_method, this_sitecode
 
@@ -4771,6 +4969,9 @@ class Wind2(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute ==0:
+                dt_old = dt_old -datetime.timedelta(days=1)
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
@@ -4812,7 +5013,7 @@ class Wind2(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above - wind prop data
         """
-        mylog = LogIssues('mylog_wind')
+        mylog = LogIssues('mylog_wind2.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -5030,10 +5231,10 @@ class Wind2(object):
                     pass
 
                 try:
-                    newrow = ['MS043',4, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    newrow = ['MS043',4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
                 
                 except TypeError:
-                    newrow = ['MS043', 4, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
 
 
                 print newrow
@@ -5118,6 +5319,9 @@ class Sonic(object):
             # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             probe_code = str(row[1])
 
@@ -5166,7 +5370,7 @@ class Sonic(object):
         """ 
         Computes the daily aggregates, assigns the flags and methods selected above
         """
-        mylog = LogIssues('mylog_sonic')
+        mylog = LogIssues('mylog_sonic.log')
 
         # my new rows is the output rows that can be read as csv or into the database
         my_new_rows = []
@@ -5584,7 +5788,7 @@ class Sonic(object):
                 else:
                     pass
 
-                newrow = ['MS043',24, site_code, method_code, int(height), "1P", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "NA", source]
+                newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "NA", source]
 
                 print newrow
                 my_new_rows.append(newrow)
