@@ -405,8 +405,7 @@ if args.crud == "CREATE" and args.attribute == "ALL" and args.startdate == None 
 
 
 
-#---- in this case, we are doing only one attribute-- 
-
+#---- in this case, we are doing only one attribute, and only on the dates we don't already have-- 
 elif args.crud == "CREATE" and args.attribute in ["AIRTEMP", "airtemp", "MS04301"] and args.startdate == None and args.enddate == None:
 
   if station == None:
@@ -418,9 +417,12 @@ elif args.crud == "CREATE" and args.attribute in ["AIRTEMP", "airtemp", "MS04301
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("AIRTEMP")
-  print "Starting on : %s and ending on %s" %(sd, ed)
-  
+  try:
+    sd, ed = B.check_out_one_attribute("AIRTEMP")
+    print "Starting on : %s and ending on %s" %(sd, ed)
+  except KeyError:
+    print "AIRTEMP is already up to date, please specify a range"
+
   C = smashWorkers.AirTemperature(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -461,8 +463,12 @@ elif args.crud == "CREATE" and args.attribute in ["RELHUM", "relhum", "MS04302"]
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("RELHUM")
-  print "starting on %s and ending on %s" %(sd, ed)
+  try:
+    sd, ed = B.check_out_one_attribute("RELHUM")
+    print "starting on %s and ending on %s" %(sd, ed)
+  except KeyError:
+    print "relhum is already up to date, please specify a range"
+
   C = smashWorkers.RelHum(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -501,8 +507,11 @@ elif args.crud == "CREATE" and args.attribute in ["PRECIP", "precip", "MS04303"]
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("PRECIP")
-  print sd, ed
+  try:
+    sd, ed = B.check_out_one_attribute("PRECIP")
+  except Exception:
+    print "precip is already up to date, please specify a range!"
+  
   C = smashWorkers.Precipitation(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -541,8 +550,11 @@ elif args.crud == "CREATE" and args.attribute in ["VPD", "vpd"] and args.startda
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("VPD")
-  print sd, ed
+  try:
+    sd, ed = B.check_out_one_attribute("VPD")
+  except KeyError:
+    print "VPD is up to date, please specify a range"
+  
   C = smashWorkers.VPD(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -582,8 +594,10 @@ elif args.crud == "CREATE" and args.attribute in ["VPD2", "vpd2", "MS04308"] and
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("VPD2")
-  print sd, ed
+  try:
+    sd, ed = B.check_out_one_attribute("VPD2")
+  except KeyError:
+    print "VPD is already up to date, please specify a range"
   C = smashWorkers.VPD2(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -624,8 +638,10 @@ elif args.crud == "CREATE" and args.attribute in ["DEWPT", "dewpt", "MS04307"] a
     B.build_queries_station()
 
 
-  sd, ed = B.check_out_one_attribute("DEWPT")
-  print sd, ed
+  try:
+    sd, ed = B.check_out_one_attribute("DEWPT")
+  except KeyError:
+    print "dewpoint is already up to date, please specify a range"
   C = smashWorkers.DewPoint(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -665,8 +681,11 @@ elif args.crud == "CREATE" and args.attribute in ["SOLAR", "solar", "MS04305"] a
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("SOLAR")
-  print sd, ed
+  try:
+    sd, ed = B.check_out_one_attribute("SOLAR")
+  except KeyError:
+    print "Solar is already up to date, please specify a range"
+
   C = smashWorkers.Solar(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -695,8 +714,6 @@ elif args.crud == "CREATE" and args.attribute in ["SOLAR", "solar", "MS04305"] a
         writer.writerow(row)
   del C
 
-
-
 elif args.crud == "CREATE" and args.attribute in ["WSPD_SNC", "SONIC", "sonic", "wspd_snc" "MS04334"] and args.startdate == None and args.enddate == None:
 
   if station == None:
@@ -708,8 +725,10 @@ elif args.crud == "CREATE" and args.attribute in ["WSPD_SNC", "SONIC", "sonic", 
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("WSPD_SNC")
-  print sd, ed
+  try:
+    sd, ed = B.check_out_one_attribute("WSPD_SNC")
+  except Exception:
+    print "Sonic is already up to date, please specify a range"
   C = smashWorkers.Sonic(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -732,7 +751,7 @@ elif args.crud == "CREATE" and args.attribute in ["WSPD_SNC", "SONIC", "sonic", 
   if mycsv != None:
     with open(csv_filename, 'wb') as writefile:
       writer = csv.writer(writefile)
-      output = smashControls.HeaderWriter('SOILTEMP').write_header_template()
+      output = smashControls.HeaderWriter('WSPD_SNC').write_header_template()
       writer.writerow(output)
       for row in new_rows:
         writer.writerow(row)
@@ -749,8 +768,10 @@ elif args.crud == "CREATE" and args.attribute in ["NR", "net", "radiation", "net
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("NR")
-  print sd, ed
+  try:
+    sd, ed = B.check_out_one_attribute("NR")
+  except KeyError:
+    print "Radiometer is already up to date, please specify a range"
   C = smashWorkers.NetRadiometer(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -789,86 +810,251 @@ elif args.crud == "CREATE" and args.attribute in ["WSPD_PRO", "wspd_pro", "WIND"
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("WSPD_PRO")
-  print sd, ed
+  try:
+    sd, ed = B.check_out_one_attribute("WSPD_PRO")
+  except KeyError:
+    print "WSPD_PRO is already up to date, please specify a range"
   C = smashWorkers.Wind(sd, ed, server)
   nr = C.condense_data()
-  for row in nr:
+  new_rows = []
+  # prints only the station of interest
+  if station != None:
+  
+    for each_list in nr:
+      if each_list[2] == station:
+        print each_list
+        new_rows.append(each_list)
+      else:
+        pass
+  else:
+    for row in nr:
       print row
+      new_rows.append(row)
+
+  # if the csv is not none
+  if mycsv != None:
+    with open(csv_filename, 'wb') as writefile:
+      writer = csv.writer(writefile)
+      output = smashControls.HeaderWriter('WSPD_PRO').write_header_template()
+      writer.writerow(output)
+      for row in new_rows:
+        writer.writerow(row)
   del C
 
 elif args.crud == "CREATE" and args.attribute in ["WSPD_PRO2", "wspd_pro2", "WIND2","wind2", "PROP2", "prop2", "MS04304"] and args.startdate == None and args.enddate == None:
 
-  # create a list of last updates
-  B = smashControls.DBControl(server)
-  B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("WSPD_PRO2")
-  print sd, ed
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
+
+  try:
+    sd, ed = B.check_out_one_attribute("WSPD_PRO2")
+  except KeyError:
+    print "WSPD PRO is already up to date, please specify a range"
   C = smashWorkers.Wind2(sd, ed, server)
-  nr = C.condense_data()
-  for row in nr:
+  new_rows = []
+  # prints only the station of interest
+  if station != None:
+  
+    for each_list in nr:
+      if each_list[2] == station:
+        print each_list
+        new_rows.append(each_list)
+      else:
+        pass
+  else:
+    for row in nr:
       print row
+      new_rows.append(row)
+
+  # if the csv is not none
+  if mycsv != None:
+    with open(csv_filename, 'wb') as writefile:
+      writer = csv.writer(writefile)
+      output = smashControls.HeaderWriter('WSPD_PRO').write_header_template()
+      writer.writerow(output)
+      for row in new_rows:
+        writer.writerow(row)
   del C
 
 elif args.crud == "CREATE" and args.attribute in ["SOILTEMP", "soiltemp", "MS04321"] and args.startdate == None and args.enddate == None:
 
-  # create a list of last updates
-  B = smashControls.DBControl(server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("SOILTEMP")
-  print sd, ed
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
+
+  try:
+    sd, ed = B.check_out_one_attribute("SOILTEMP")
+  except KeyError:
+    print "Soil Temp is already up to date, please specify a range"
   C = smashWorkers.SoilTemperature(sd, ed, server)
   nr = C.condense_data()
-  for row in nr:
+  new_rows = []
+  # prints only the station of interest
+  if station != None:
+  
+    for each_list in nr:
+      if each_list[2] == station:
+        print each_list
+        new_rows.append(each_list)
+      else:
+        pass
+  else:
+    for row in nr:
       print row
+      new_rows.append(row)
+
+  # if the csv is not none
+  if mycsv != None:
+    with open(csv_filename, 'wb') as writefile:
+      writer = csv.writer(writefile)
+      output = smashControls.HeaderWriter('SOILTEMP').write_header_template()
+      writer.writerow(output)
+      for row in new_rows:
+        writer.writerow(row)
   del C
 
-elif args.crud == "CREATE" and args.attribute in ["SOILWC", "SWC", "soiltemp","swc","MS04323"] and args.startdate == None and args.enddate == None:
+elif args.crud == "CREATE" and args.attribute in ["SOILWC", "SWC","swc","MS04323"] and args.startdate == None and args.enddate == None:
 
-  # create a list of last updates
-  B = smashControls.DBControl(server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("SOILWC")
-  print sd, ed
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
+
+  try:
+    sd, ed = B.check_out_one_attribute("SOILWC")
+  except KeyError:
+    print "Soil Water Content is already up to date, please specify a range"
   C = smashWorkers.SoilWaterContent(sd, ed, server)
   nr = C.condense_data()
-  for row in nr:
+  new_rows = []
+  # prints only the station of interest
+  if station != None:
+  
+    for each_list in nr:
+      if each_list[2] == station:
+        print each_list
+        new_rows.append(each_list)
+      else:
+        pass
+  else:
+    for row in nr:
       print row
+      new_rows.append(row)
+
+  # if the csv is not none
+  if mycsv != None:
+    with open(csv_filename, 'wb') as writefile:
+      writer = csv.writer(writefile)
+      output = smashControls.HeaderWriter('SOILWC').write_header_template()
+      writer.writerow(output)
+      for row in new_rows:
+        writer.writerow(row)
   del C
 
 elif args.crud == "CREATE" and args.attribute in ["LYS", "SNOWMELT", "lys", "snowmelt", "MS04309"] and args.startdate == None and args.enddate == None:
 
-  # create a list of last updates
-  B = smashControls.DBControl(server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("LYS")
-  print sd, ed
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
+
+  try:
+    sd, ed = B.check_out_one_attribute("LYS")
+  except KeyError:
+    print "Lysimeter is already up to date, please specify a range"
+
   C = smashWorkers.SnowLysimeter(sd, ed, server)
   nr = C.condense_data()
-  for row in nr:
+  new_rows = []
+  # prints only the station of interest
+  if station != None:
+  
+    for each_list in nr:
+      if each_list[2] == station:
+        print each_list
+        new_rows.append(each_list)
+      else:
+        pass
+  else:
+    for row in nr:
       print row
+      new_rows.append(row)
+
+  # if the csv is not none
+  if mycsv != None:
+    with open(csv_filename, 'wb') as writefile:
+      writer = csv.writer(writefile)
+      output = smashControls.HeaderWriter('LYS').write_header_template()
+      writer.writerow(output)
+      for row in new_rows:
+        writer.writerow(row)
   del C
 
 elif args.crud == "CREATE" and args.attribute in ["SNOWDEPTH", "SNOW", "snowdepth","snow","MS04310"] and args.startdate == None and args.enddate == None:
 
-  # create a list of last updates
-  B = smashControls.DBControl(server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("SNOWDEPTH")
-  print sd, ed
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
+
+  try:
+    sd, ed = B.check_out_one_attribute("SNOWDEPTH")
+  except Exception:
+    print "Snowdepth is already up to date, please specify a range"
+  
   C = smashWorkers.SnowDepth(sd, ed, server)
   nr = C.condense_data()
-  for row in nr:
+  new_rows = []
+  # prints only the station of interest
+  if station != None:
+  
+    for each_list in nr:
+      if each_list[2] == station:
+        print each_list
+        new_rows.append(each_list)
+      else:
+        pass
+  else:
+    for row in nr:
       print row
-  del C
+      new_rows.append(row)
 
-else: 
-  pass
+  # if the csv is not none
+  if mycsv != None:
+    with open(csv_filename, 'wb') as writefile:
+      writer = csv.writer(writefile)
+      try:
+        output = smashControls.HeaderWriter('SNOW').write_header_template()
+        writer.writerow(output)
+      except Exception:
+        pass
+      for row in new_rows:
+        writer.writerow(row)
+  del C
 
 ### CREATION METHODS FOR A SPECIFIC RANGE ###
 
@@ -881,25 +1067,64 @@ if args.crud == "CREATE" and args.startdate != None and args.enddate != None:
 
     C = smashWorkers.SnowDepth(sd, ed, server)
     nr = C.condense_data()
-    # prints only the station of interest
+    new_rows = []
+
+    # perhaps only one station?
     if station != None:
       for each_list in nr:
         if each_list[2] == station:
           print each_list
+          new_rows.append(each_list)
         else:
           pass
-    else:
-      print nr
-    for row in nr:
-      print row
+      else:
+        for row in nr:
+          print row
+          new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('SNOW').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
 
   elif args.attribute in ["LYS", "SNOWMELT", "lys", "snowmelt", "MS04309"]:
 
     C = smashWorkers.SnowLysimeter(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+      else:
+        for row in nr:
+          print row
+          new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('LYS').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
 
   elif args.attribute in ["AIRTEMP", "airtemp", "MS04301"]:
@@ -922,7 +1147,7 @@ if args.crud == "CREATE" and args.startdate != None and args.enddate != None:
         print nr
 
     # if csv is not none, write csv
-    if args.csv[0] == "TRUE":
+    if mycsv != None:
       with open(csv_filename, 'wb') as writefile:
         writer = csv.writer(writefile)
         writer.writerow(['DBCODE', 'ENTITY', 'STATION', 'AIRTEMP_METHOD', 'HEIGHT', 'QC_LEVEL', 'DATE', 'AIRTEMP_MEAN_DAY', 'AIRTEMP_MEAN_FLAG', 'AIRTEMP_MAX_DAY', 'AIRTEMP_MAX_FLAG','AIRTEMP_MAXTIME', 'AIRTEMP_MIN_DAY', 'AIRTEMP_MIN_FLAG', 'AIRTEMP_MINTIME'])
@@ -936,87 +1161,376 @@ if args.crud == "CREATE" and args.startdate != None and args.enddate != None:
 
     C = smashWorkers.SoilWaterContent(sd, ed, server)
     nr = C.condense_data()
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('SOILWC').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["SOILTEMP", "soiltemp", "MS04321"]:
 
     C = smashWorkers.SoilTemperature(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('SOILTEMP').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["WSPD_PRO", "wspd_pro", "WIND","wind", "PROP", "prop", "MS04304"]:
 
     C = smashWorkers.Wind(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('WSPD_PRO').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["WSPD_PRO2", "wspd_pro2", "WIND2","wind2", "PROP2", "prop2", "MS04304"]:
 
     C = smashWorkers.Wind2(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('WSPD_PRO').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["NR", "net", "radiation", "netrad", "NETRAD", "MS04325"]:
 
     C = smashWorkers.NetRadiometer(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('NR').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["VPD2", "vpd2", "MS04308"]:
 
     C = smashWorkers.VPD2(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('VPD').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["WSPD_SNC", "SONIC", "sonic", "wspd_snc" "MS04334"]:
 
     C = smashWorkers.Sonic(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('WSPD_SNC').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["SOLAR", "solar", "MS04305"]:
 
     C = smashWorkers.Solar(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('SOLAR').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["DEWPT", "dewpt", "MS04307"]:
 
     C = smashWorkers.DewPoint(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('DEWPT').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
   elif args.attribute in ["PRECIP", "precip", "MS04303"]:
 
     C = smashWorkers.Precipitation(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        output = smashControls.HeaderWriter('PRECIP').write_header_template()
+        writer.writerow(output)
+        
+        for row in new_rows:
+          print row
+          writer.writerow(row)
+    
     del C
 
   elif args.attribute in ["RELHUM", "relhum", "MS04302"]:
 
     C = smashWorkers.RelHum(sd, ed, server)
     nr = C.condense_data()
-    for row in nr:
-      print row
+    new_rows = []
+
+    # perhaps only one station?
+    if station != None:
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        try:
+          output = smashControls.HeaderWriter('RELHUM').write_header_template()
+          writer.writerow(output)
+        except Exception:
+          pass
+        for row in new_rows:
+          writer.writerow(row)
     del C
+    del new_rows
+    del nr
 
 ### READ METHODS ###
 
@@ -1030,10 +1544,8 @@ if args.crud == "READ" and args.attribute == "ALLHR":
   U.process_db()
   print "see error.csv for a list of non-agreeing method codes"
 
-
-
 ### DELETION METHODS ###
-if args.crud == 'DELETE' and args.station == None:
+if args.crud == 'DELETE':
 
   print(" Deleting all data from LTERLogger_Pro for your attribute! ")
 
@@ -1043,6 +1555,9 @@ if args.crud == 'DELETE' and args.station == None:
   else:
 
     deleteable = args.attribute[0]
+
+    sd = args.startdate[0]
+    ed = args.enddate[0]
 
     if deleteable == "AIRTEMP" or deleteable == "MS04301":
         full_name = "LTERLogger_Pro.dbo.MS04301"
@@ -1068,10 +1583,39 @@ if args.crud == 'DELETE' and args.station == None:
         full_name = "LTERLogger_Pro.dbo.MS04322"
     elif deletable == "LYS" or deleteable == "MS04309":
         full_name = "LTERLogger_Pro.dbo.MS04309"
+    elif deletable == "VPD" or deletable == "VPD2" or deletable == "MS04308":
+        full_name = "LTERLogger_Pro.dbo.MS04308"
+    elif deletable == "DEWPT" or deletable == "MS04307":
+        full_name = "LTERLogger_Pro.dbo.MS04307"
     else:
         print("need to create a method to delete {}".format(deleteable))
 
-    query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\'"
+    if args.enddate == None:
+      
+      if station == None:
+
+        query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\'"
+        print "you have deleted from %s following %s" %(full_name, args.startdate[0])
+
+      elif station != None:
+
+        query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and date < \'" + args.enddate[0] + "\' and sitecode like \'" + station "\'"
+
+        print "you have deleted from %s following %s on the station %s" %(full_name, args.startdate[0], station, args.enddate[0])
+    
+    elif args.enddate != None:
+      
+      if station == None:
+
+        query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and date < \'" + args.enddate[0] + "\'"
+
+        print "you have deleted from %s following %s" %(full_name, args.startdate[0], args.enddate[0])
+
+      elif station != None:
+
+        query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and sitecode like \'" + station "\'"
+
+        print "you have deleted from %s following %s on the station %s" %(full_name, args.startdate[0], station, args.enddate[0])
 
     conn = fc.micro_conn("SHELDON")
 
@@ -1080,355 +1624,349 @@ if args.crud == 'DELETE' and args.station == None:
     cur.execute(query)
 
     conn.commit()
-
-    print "you have deleted from %s following %s" %(full_name, args.startdate[0])
-
-elif args.crud == "DELETE" and args.station != None:
-  station = args.station[0]
-
-  if args.attribute == None:
-    print("I cannot process this command without an attribute to delete. Try again :)")
-
-  else:
-
-    print "DELETING FOR STATION: %s" %(station)
-    deleteable = args.attribute[0]
-
-    if deleteable == "AIRTEMP" or deletable == "MS04301":
-        full_name = "LTERLogger_Pro.dbo.MS04301"
-    elif deleteable == "RELHUM" or deleteable == "MS04302":
-        full_name = "LTERLogger_Pro.dbo.MS04302"
-    elif deleteable == "WSPD_PRO" or deleteable == "MS04304":
-        full_name = "LTERLogger_Pro.dbo.MS04304"
-    elif deleteable == "SOLAR" or deleteable == "MS04305":
-        full_name = "LTERLogger_Pro.dbo.MS04305"
-    elif deleteable == "PRECIP" or deleteable == "MS04303":
-        full_name = "LTERLogger_Pro.dbo.MS04303"
-    elif deleteable == "NR" or deleteable == "MS04325":
-        full_name = "LTERLogger_Pro.dbo.MS04325"
-    elif deleteable == "WSPD_SNC" or deleteable == "MS04324":
-        full_name = "LTERLogger_Pro.dbo.MS04324"
-    elif deleteable == "SOILWC" or deleteable == "MS04323":
-        full_name = "LTERLogger_Pro.dbo.MS04323"
-    elif deleteable == "SOILTEMP" or deleteable == "MS04321":
-        full_name = "LTERLogger_Pro.dbo.MS04321"
-    elif deleteable == "PAR" or deleteable == "MS04322":
-        full_name = "LTERLogger_Pro.dbo.MS04322"
-    elif deletable == "LYS" or deleteable == "MS04309":
-        full_name = "LTERLogger_Pro.dbo.MS04309"
-    else:
-        print("need to create a method to delete {}".format(deleteable))
-
-    query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and sitecode like \'" + station + "\'"
-
-    conn = fc.micro_conn("SHELDON")
-
-    cur = conn.cursor()
-
-    cur.execute(query)
-
-    conn.commit()
-
-    print "you have deleted from %s following %s on the station %s" %(full_name, args.startdate[0], station)
-
 
 ### UPDATE METHODS ####
 
 if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  print("you have chosen the UPDATE method. To create CSV's, use the CREATE method. This allows you to seek time ranges which have already been created without disturbing data!")
+
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   # AIR TEMPERATURE
-  
-  sd, ed = B.check_out_one_attribute("AIRTEMP")
+  try:
+    sd, ed = B.check_out_one_attribute("AIRTEMP")
 
-  if sd != ed:
-    C = smashWorkers.AirTemperature(sd, ed, server)
-    nr = C.condense_data()
-    print "finished creating AIRTEMP from %s to %s" %(sd, ed)
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+    if sd != ed:
+      C = smashWorkers.AirTemperature(sd, ed, server)
+      nr = C.condense_data()
+      print "finished creating AIRTEMP from %s to %s" %(sd, ed)
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      print "checking that the methods are updated"
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "database updated from %s to %s for AIRTEMP" %(sd, ed)
+      del C
+      del D
+
     else:
-      pass
-    print "checking that the methods are updated"
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "database updated from %s to %s for AIRTEMP" %(sd, ed)
-    del C
-    del D
-
-  else:
-    print "database for AIRTEMP is already up to date"
+      print "database for AIRTEMP is already up to date"
+  except Exception:
+    print "exception thrown for airtemp"
 
   # RELHUM
+  try:
+    sd, ed = B.check_out_one_attribute("RELHUM")
 
+    if sd != ed:
+      C = smashWorkers.RelHum(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating RELHUM from %s to %s" %(sd, ed)
+      del C
+      del D
 
-  sd, ed = B.check_out_one_attribute("RELHUM")
-
-  if sd != ed:
-    C = smashWorkers.RelHum(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
     else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating RELHUM from %s to %s" %(sd, ed)
-    del C
-    del D
-
-  else:
-    print "database for RELHUM is already up to date!"
+      print "database for RELHUM is already up to date!"
+  except Exception:
+    print "exception thrown for relhum"
 
   # VPD
-  sd, ed = B.check_out_one_attribute("VPD2")
+  try:
+    sd, ed = B.check_out_one_attribute("VPD2")
 
-  if sd != ed:
-    C = smashWorkers.VPD2(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+    if sd != ed:
+      C = smashWorkers.VPD2(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating VPD2 from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating VPD2 from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for VPD is already up to date!"
+      print "database for VPD is already up to date!"
+  except Exception:
+    print "exception thrown on VPD"
 
   # Dew point
-  sd, ed = B.check_out_one_attribute("DEWPT")
+  try:
+    sd, ed = B.check_out_one_attribute("DEWPT")
 
-  if sd != ed:
-    C = smashWorkers.DewPoint(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+    if sd != ed:
+      C = smashWorkers.DewPoint(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating DEWPT from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating DEWPT from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for Dewpoint is already up to date!"
+      print "database for Dewpoint is already up to date!"
+  except Exception:
+    print "exception thrown on dewpoint"
 
-
-  # Net Radiometer
-
-  
-  sd, ed = B.check_out_one_attribute("NR")
-  if sd != ed:
-    C = smashWorkers.NetRadiometer(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+  try:
+    # Net Radiometer  
+    sd, ed = B.check_out_one_attribute("NR")
+    if sd != ed:
+      C = smashWorkers.NetRadiometer(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating NR from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating NR from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for Net Radiometer is already up to date!"
+      print "database for Net Radiometer is already up to date!"
+  except Exception:
+    print "exception thrown on net radiometer"
 
-  # SOLAR
-  sd, ed = B.check_out_one_attribute("SOLAR")
+  try:
+    # SOLAR
+    sd, ed = B.check_out_one_attribute("SOLAR")
 
-  if sd != ed:
-    C = smashWorkers.Solar(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
-    else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating SOLAR from %s to %s" %(sd, ed)
-    del C
-    del D
-  else: 
-    print "database for solar is already up to date!"
+    if sd != ed:
+      C = smashWorkers.Solar(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating SOLAR from %s to %s" %(sd, ed)
+      del C
+      del D
+    else: 
+      print "database for solar is already up to date!"
+  except Exception:
+    print "Exception thrown on solar"
 
   # SONIC
-  if sd != ed: 
-    sd, ed = B.check_out_one_attribute("WSPD_SNC")
-    C = smashWorkers.Sonic(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+  try:
+    if sd != ed: 
+      sd, ed = B.check_out_one_attribute("WSPD_SNC")
+      C = smashWorkers.Sonic(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating WSPD_SNC from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating WSPD_SNC from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for SOLAR is already up to date!"
+      print "database for SOLAR is already up to date!"
+  except Exception:
+    print "Exception thrown on sonic"
 
   # PROP
-  sd, ed = B.check_out_one_attribute("WSPD_PRO")
-  if sd != ed:
-    C = smashWorkers.Wind(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+  try:
+    sd, ed = B.check_out_one_attribute("WSPD_PRO")
+    if sd != ed:
+      C = smashWorkers.Wind(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating WSPD_PRO from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating WSPD_PRO from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for PROP is already up to date!"
-
-  # # PROP2
-  # sd, ed = B.check_out_one_attribute("WSPD_PRO2")
-  # if sd != ed:
-  #   C = smashWorkers.Wind2(sd, ed, server)
-  #   nr = C.condense_data()
-  #   print "checking that the methods are updated"
-  #   D = smashBosses.UpdateBoss(C, nr)
-  #   if args.station != None:
-  #     D.only_one_station(args.station[0])
-  #   else:
-  #     pass
-  #   D.update_the_db_methods()
-  #   D.update_the_db()
-  #   print "finished creating WSPD_PRO2 from %s to %s" %(sd, ed)
-  #   del C
-  #   del D
-  # else:
-  #   print "database for PROP is already up to date!"
+      print "database for PROP is already up to date!"
+  except Exception:
+    print "using the other prop method!"
+    # PROP2
+    sd, ed = B.check_out_one_attribute("WSPD_PRO2")
+    if sd != ed:
+      C = smashWorkers.Wind2(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating WSPD_PRO2 from %s to %s" %(sd, ed)
+      del C
+      del D
+    else:
+      print "database for PROP is already up to date!"
 
   # SOIL TEMP
-  sd, ed = B.check_out_one_attribute("SOILTEMP")
-  if sd != ed:
-    C = smashWorkers.SoilTemperature(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    #D.update_the_db_methods()
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+  try:
+    sd, ed = B.check_out_one_attribute("SOILTEMP")
+    if sd != ed:
+      C = smashWorkers.SoilTemperature(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      #D.update_the_db_methods()
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db()
+      print "finished creating SOILTEMP from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-    D.update_the_db()
-    print "finished creating SOILTEMP from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for Soil Temp is already up to date!"
+      print "database for Soil Temp is already up to date!"
+  except Exception:
+    print "exception thrown on soil temp"
 
 
   # SOIL WC
-  sd, ed = B.check_out_one_attribute("SOILWC")
-  if sd != ed:
-    C = smashWorkers.SoilWaterContent(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+  try:
+    sd, ed = B.check_out_one_attribute("SOILWC")
+    if sd != ed:
+      C = smashWorkers.SoilWaterContent(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      #D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating SOILWC from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-    #D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating SOILWC from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for soil WC is already up to date!"
+      print "database for soil WC is already up to date!"
+  except Exception:
+    print "exception thown on soil wc"
+  
+  try:
+    # PRECIP
+    sd, ed = B.check_out_one_attribute("PRECIP")
 
-  # PRECIP
-  sd, ed = B.check_out_one_attribute("PRECIP")
+    if sd != ed:
+      C = smashWorkers.Precipitation(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
 
-  if sd != ed:
-    C = smashWorkers.Precipitation(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating PRECIP from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating PRECIP from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for PRECIP is already up to date!"
+      print "database for PRECIP is already up to date!"
+  except Exception:
+    print "exception thrown on precip"
 
   # # SOLAR - PAR
-  sd, ed = B.check_out_one_attribute("PAR")
-  if sd != ed:
-    C = smashWorkers.PhotosyntheticRad(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
-    else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating SOLAR from %s to %s" %(sd, ed)
-    del C
-    del D
-  else: 
-    print "PAR is already up to date!"
+  try:
+    sd, ed = B.check_out_one_attribute("PAR")
+    if sd != ed:
+      C = smashWorkers.PhotosyntheticRad(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating SOLAR from %s to %s" %(sd, ed)
+      del C
+      del D
+    else: 
+      print "PAR is already up to date!"
+  except Exception:
+    print "exception thrown on PAR"
 
   # SNOW LYSIMETER
-
-  sd, ed = B.check_out_one_attribute("LYS")
-  if sd != ed:
-    C = smashWorkers.SnowLysimeter(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+  try:
+    sd, ed = B.check_out_one_attribute("LYS")
+    if sd != ed:
+      C = smashWorkers.SnowLysimeter(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating SNOW LYSIMETER from %s to %s" %(sd, ed)
+      del C
     else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating SNOW LYSIMETER from %s to %s" %(sd, ed)
-    del C
-  else:
-    print "database for lysimeter is already up to date!"
+      print "database for lysimeter is already up to date!"
+  except Exception:
+    print "exception thrown on Lysimeter"
     
-  print("Updates come from the source of {}".format(args.server))
+  print("DONE! Updates come from the source of {}".format(args.server))
 
 
 if args.crud == "UPDATE" and args.attribute in ["AIRTEMP","MS04301"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("AIRTEMP")
 
@@ -1455,8 +1993,14 @@ if args.crud == "UPDATE" and args.attribute in ["AIRTEMP","MS04301"] and args.st
 
 elif args.crud == "UPDATE" and args.attribute in ["RELHUM","MS04302"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("RELHUM")
 
@@ -1478,8 +2022,14 @@ elif args.crud == "UPDATE" and args.attribute in ["RELHUM","MS04302"] and args.s
 
 elif args.crud == "UPDATE" and args.attribute in ["PRECIP","MS04303"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("PRECIP")
 
@@ -1501,8 +2051,14 @@ elif args.crud == "UPDATE" and args.attribute in ["PRECIP","MS04303"] and args.s
 
 elif args.crud == "UPDATE" and args.attribute in ["DEWPT","MS04307"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("DEWPT")
   C = smashWorkers.DewPoint(sd, ed, server)
@@ -1518,8 +2074,14 @@ elif args.crud == "UPDATE" and args.attribute in ["DEWPT","MS04307"] and args.st
 
 elif args.crud == "UPDATE" and args.attribute in ["VPD2", "MS04308"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("VPD2")
   C = smashWorkers.VPD2(sd, ed, server)
@@ -1535,8 +2097,14 @@ elif args.crud == "UPDATE" and args.attribute in ["VPD2", "MS04308"] and args.st
 
 elif args.crud == "UPDATE" and args.attribute in ["SOLAR", "MS04305"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("SOLAR")
   C = smashWorkers.Solar(sd, ed, server)
@@ -1553,8 +2121,14 @@ elif args.crud == "UPDATE" and args.attribute in ["SOLAR", "MS04305"] and args.s
 
 elif args.crud == "UPDATE" and args.attribute in ["SOILTEMP", "MS04321"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("SOILTEMP")
   C = smashWorkers.SoilTemperature(sd, ed, server)
@@ -1570,8 +2144,14 @@ elif args.crud == "UPDATE" and args.attribute in ["SOILTEMP", "MS04321"] and arg
 
 elif args.crud == "UPDATE" and args.attribute in ["SOILWC", "MS04323"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("SOILWC")
   C = smashWorkers.SoilTemperature(sd, ed, server)
@@ -1587,8 +2167,14 @@ elif args.crud == "UPDATE" and args.attribute in ["SOILWC", "MS04323"] and args.
 
 elif args.crud == "UPDATE" and args.attribute in ["NR", "MS04325"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("NR")
   C = smashWorkers.NetRadiometer(sd, ed, server)
@@ -1604,8 +2190,14 @@ elif args.crud == "UPDATE" and args.attribute in ["NR", "MS04325"] and args.star
 
 elif args.crud == "UPDATE" and args.attribute in ["WSPD_PRO", "MS04304"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("WSPD_PRO")
   C = smashWorkers.Wind(sd, ed, server)
@@ -1621,8 +2213,14 @@ elif args.crud == "UPDATE" and args.attribute in ["WSPD_PRO", "MS04304"] and arg
 
 elif args.crud == "UPDATE" and args.attribute in ["WSPD_SNC","MS04334"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("WSPD_SNC")
   C = smashWorkers.Sonic(sd, ed, server)
@@ -1638,8 +2236,14 @@ elif args.crud == "UPDATE" and args.attribute in ["WSPD_SNC","MS04334"] and args
 
 elif args.crud == "UPDATE" and args.attribute in ["LYS","MS04309"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("LYS")
   C = smashWorkers.Sonic(sd, ed, server)
@@ -1652,19 +2256,6 @@ elif args.crud == "UPDATE" and args.attribute in ["LYS","MS04309"] and args.star
   print "database updated from %s to %s for Snowmelt" %(sd, ed)
   del C
   del D
-
-### CSV
-
-  def csvwrite(args,nr):
-    filename = args.attribute + '_daily_updated_on_' + datetime.datetime.strftime(datetime.datetime.now(), '%Y%m%d')
-   
-    with open(filename, 'wb') as csvfile:
-      writer = csv.writer(csvfile)
-
-      for row in nr:
-        writer.writerow(row)
-
-    print "finished! with %s" %(args.attribute)
 
 ### UPDATE METHODS IF WE HAVE START AND END DATES:
 
@@ -1675,8 +2266,7 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
   sd = args.startdate
   ed = args.enddate
 
-  # AIR TEMPERATURE
-  
+  # AIR TEMPERATURE  
 
   if sd != ed:
     C = smashWorkers.AirTemperature(sd, ed, server)
@@ -1822,42 +2412,44 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
     print "database for SOLAR is already up to date!"
 
   # PROP
-  sd, ed = B.check_out_one_attribute("WSPD_PRO")
-  if sd != ed:
-    C = smashWorkers.Wind(sd, ed, server)
-    nr = C.condense_data()
-    print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
+  try:
+    sd, ed = B.check_out_one_attribute("WSPD_PRO")
+    if sd != ed:
+      C = smashWorkers.Wind(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating WSPD_PRO from %s to %s" %(sd, ed)
+      del C
+      del D
     else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "finished creating WSPD_PRO from %s to %s" %(sd, ed)
-    del C
-    del D
-  else:
-    print "database for PROP is already up to date!"
-
-  # # PROP2
-  # sd, ed = B.check_out_one_attribute("WSPD_PRO2")
-  # if sd != ed:
-  #   C = smashWorkers.Wind2(sd, ed, server)
-  #   nr = C.condense_data()
-  #   print "checking that the methods are updated"
-  #   D = smashBosses.UpdateBoss(C, nr)
-  #   if args.station != None:
-  #     D.only_one_station(args.station[0])
-  #   else:
-  #     pass
-  #   D.update_the_db_methods()
-  #   D.update_the_db()
-  #   print "finished creating WSPD_PRO2 from %s to %s" %(sd, ed)
-  #   del C
-  #   del D
-  # else:
-  #   print "database for PROP is already up to date!"
+      print "database for PROP is already up to date!"
+  except Exception:
+    print "had to use prop2"
+    # PROP2
+    sd, ed = B.check_out_one_attribute("WSPD_PRO2")
+    if sd != ed:
+      C = smashWorkers.Wind2(sd, ed, server)
+      nr = C.condense_data()
+      print "checking that the methods are updated"
+      D = smashBosses.UpdateBoss(C, nr)
+      if args.station != None:
+        D.only_one_station(args.station[0])
+      else:
+        pass
+      D.update_the_db_methods()
+      D.update_the_db()
+      print "finished creating WSPD_PRO2 from %s to %s" %(sd, ed)
+      del C
+      del D
+    else:
+      print "database for PROP is already up to date!"
 
   # SOIL TEMP
   sd, ed = B.check_out_one_attribute("SOILTEMP")
@@ -1962,8 +2554,14 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
 
 if args.crud == "UPDATE" and args.attribute in ["AIRTEMP","MS04301"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
 
   sd, ed = B.check_out_one_attribute("AIRTEMP")
 
@@ -1988,202 +2586,202 @@ if args.crud == "UPDATE" and args.attribute in ["AIRTEMP","MS04301"] and args.st
   else:
     print "database is already up to date!"   
 
-elif args.crud == "UPDATE" and args.attribute in ["RELHUM","MS04302"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["RELHUM","MS04302"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("RELHUM")
+#   sd, ed = B.check_out_one_attribute("RELHUM")
 
-  if sd != ed:
+#   if sd != ed:
 
-    C = smashWorkers.RelHum(sd, ed, server)
-    nr = C.condense_data()
-    print "finished creating RELHUM from %s to %s" %(sd, ed)
-    D = smashBosses.UpdateBoss(C, nr)
-    print "checking that the methods are updated"
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "database updated from %s to %s for RELHUM" %(sd, ed)
-    del C
-    del D
+#     C = smashWorkers.RelHum(sd, ed, server)
+#     nr = C.condense_data()
+#     print "finished creating RELHUM from %s to %s" %(sd, ed)
+#     D = smashBosses.UpdateBoss(C, nr)
+#     print "checking that the methods are updated"
+#     D.update_the_db_methods()
+#     D.update_the_db()
+#     print "database updated from %s to %s for RELHUM" %(sd, ed)
+#     del C
+#     del D
 
-  else:
-    pass
+#   else:
+#     pass
 
-elif args.crud == "UPDATE" and args.attribute in ["PRECIP","MS04303"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["PRECIP","MS04303"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("PRECIP")
+#   sd, ed = B.check_out_one_attribute("PRECIP")
 
-  if sd != ed:
+#   if sd != ed:
 
-    C = smashWorkers.Precipitation(sd, ed, server)
-    nr = C.condense_data()
-    print "finished creating PRECIP from %s to %s" %(sd, ed)
-    D = smashBosses.UpdateBoss(C, nr)
-    print "checking that the methods are updated"
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "database updated from %s to %s for PRECIP" %(sd, ed)
-    del C
-    del D
+#     C = smashWorkers.Precipitation(sd, ed, server)
+#     nr = C.condense_data()
+#     print "finished creating PRECIP from %s to %s" %(sd, ed)
+#     D = smashBosses.UpdateBoss(C, nr)
+#     print "checking that the methods are updated"
+#     D.update_the_db_methods()
+#     D.update_the_db()
+#     print "database updated from %s to %s for PRECIP" %(sd, ed)
+#     del C
+#     del D
 
-  else:
-    pass
+#   else:
+#     pass
 
-elif args.crud == "UPDATE" and args.attribute in ["DEWPT","MS04307"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["DEWPT","MS04307"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("DEWPT")
-  C = smashWorkers.DewPoint(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating Dewpoint from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Dewpoint" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("DEWPT")
+#   C = smashWorkers.DewPoint(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating Dewpoint from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Dewpoint" %(sd, ed)
+#   del C
+#   del D
 
-elif args.crud == "UPDATE" and args.attribute in ["VPD2", "MS04308"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["VPD2", "MS04308"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("VPD2")
-  C = smashWorkers.VPD2(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating calculated Vapor Pressure Defecit from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Vapor Pressure Defecit" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("VPD2")
+#   C = smashWorkers.VPD2(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating calculated Vapor Pressure Defecit from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Vapor Pressure Defecit" %(sd, ed)
+#   del C
+#   del D
 
-elif args.crud == "UPDATE" and args.attribute in ["SOLAR", "MS04305"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["SOLAR", "MS04305"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("SOLAR")
-  C = smashWorkers.Solar(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating Solar Radiation from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Solar Radiation" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("SOLAR")
+#   C = smashWorkers.Solar(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating Solar Radiation from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Solar Radiation" %(sd, ed)
+#   del C
+#   del D
 
 
-elif args.crud == "UPDATE" and args.attribute in ["SOILTEMP", "MS04321"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["SOILTEMP", "MS04321"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("SOILTEMP")
-  C = smashWorkers.SoilTemperature(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating Soil Temperature from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  #D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Soil Temperature" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("SOILTEMP")
+#   C = smashWorkers.SoilTemperature(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating Soil Temperature from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   #D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Soil Temperature" %(sd, ed)
+#   del C
+#   del D
 
-elif args.crud == "UPDATE" and args.attribute in ["SOILWC", "MS04323"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["SOILWC", "MS04323"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("SOILWC")
-  C = smashWorkers.SoilTemperature(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating Soil Water Content from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  #D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Soil Water Content" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("SOILWC")
+#   C = smashWorkers.SoilTemperature(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating Soil Water Content from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   #D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Soil Water Content" %(sd, ed)
+#   del C
+#   del D
 
-elif args.crud == "UPDATE" and args.attribute in ["NR", "MS04325"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["NR", "MS04325"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("NR")
-  C = smashWorkers.NetRadiometer(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating Net Radiometer from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  #D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Net Radiometer" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("NR")
+#   C = smashWorkers.NetRadiometer(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating Net Radiometer from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   #D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Net Radiometer" %(sd, ed)
+#   del C
+#   del D
 
-elif args.crud == "UPDATE" and args.attribute in ["WSPD_PRO", "MS04304"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["WSPD_PRO", "MS04304"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("WSPD_PRO")
-  C = smashWorkers.Wind(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating Net Radiometer from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  #D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Net Radiometer" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("WSPD_PRO")
+#   C = smashWorkers.Wind(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating Net Radiometer from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   #D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Net Radiometer" %(sd, ed)
+#   del C
+#   del D
 
-elif args.crud == "UPDATE" and args.attribute in ["WSPD_SNC","MS04334"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["WSPD_SNC","MS04334"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("WSPD_SNC")
-  C = smashWorkers.Sonic(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating Sonic from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  #D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Sonic" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("WSPD_SNC")
+#   C = smashWorkers.Sonic(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating Sonic from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   #D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Sonic" %(sd, ed)
+#   del C
+#   del D
 
-elif args.crud == "UPDATE" and args.attribute in ["LYS","MS04309"] and args.startdate == None and args.enddate == None:
+# elif args.crud == "UPDATE" and args.attribute in ["LYS","MS04309"] and args.startdate == None and args.enddate == None:
 
-  B = smashControls.DBControl(args.server)
-  B.build_queries()
+#   B = smashControls.DBControl(args.server)
+#   B.build_queries()
 
-  sd, ed = B.check_out_one_attribute("LYS")
-  C = smashWorkers.Sonic(sd, ed, server)
-  nr = C.condense_data()
-  print "finished creating Snowmelt from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
-  print "checking that the methods are updated"
-  #D.update_the_db_methods()
-  D.update_the_db()
-  print "database updated from %s to %s for Snowmelt" %(sd, ed)
-  del C
-  del D
+#   sd, ed = B.check_out_one_attribute("LYS")
+#   C = smashWorkers.Sonic(sd, ed, server)
+#   nr = C.condense_data()
+#   print "finished creating Snowmelt from %s to %s" %(sd, ed)
+#   D = smashBosses.UpdateBoss(C, nr)
+#   print "checking that the methods are updated"
+#   #D.update_the_db_methods()
+#   D.update_the_db()
+#   print "database updated from %s to %s for Snowmelt" %(sd, ed)
+#   del C
+#   del D

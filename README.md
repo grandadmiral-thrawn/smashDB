@@ -1,34 +1,38 @@
-smasher
+SMASHER
 ========
 
-v 0.0.4
+v 0.0.7
 
-smasher is a command line tool for updating LTERLogger_pro, our MSSQL 1st level provisional server. It can also update MS043, the production level annual server. 
+SMASHER is a command line tool for updating LTERLogger_pro, our MSSQL 1st QC level provisional server. It can also get updates from MS043, the production level annual server. 
 
-- smasher will work for attributes of AIRTEMP, RELHUM, DEWPT, VPD, SOLAR, WSPD_SNC, WSPD_PRO, NR, LYS, PRECIP, PAR, SOILTEMP, SNOWDEPTH (pending), LIGHT (pending) and SOILWC.
+- SMASHER will work for attributes of AIRTEMP, RELHUM, DEWPT, VPD, SOLAR, WSPD_SNC, WSPD_PRO, NR, LYS, PRECIP, PAR, SOILTEMP, SNOWDEPTH (pending), LIGHT (pending) and SOILWC. It has methods for doing VPD from a calculation. These are technically called in the smashWorker.VPD2 class, not the smashWorker.VPD class. It has methods for the two forms of WSPD_PRO, one with the 5 minute maxes and one without.
 
-- for wind, smasher uses daily methods which respect the standard deviations and means of the day directionally; i.e. it decomposes and computes a mean resultant wind for the propellor anemometer, and uses the Yamartino method to get a coordinate-appropriate standard deviation.
+- for wind, SMASHER uses daily methods which respect the standard deviations and means of the day directionally; i.e. It decomposes and computes a mean resultant wind for the propellor anemometer, and uses the Yamartino method to get a coordinate-appropriate standard deviation.
 
-- smasher does not perform flagging on the high resolution data. smasher simply "smashes" high resolution flags into the daily aggregate.
+- SMASHER does not perform flagging on the high resolution data. SMASHER simply "smashes" high resolution flags into the daily aggregate.
 
-- smasher can compute the daily VPD from the daily AIRTEMP and RELHUM, or it can take the high resolution values. when it computes VPD, it also computes SATVP and VAPDEF. 
+- SMASHER can compute the daily VPD from the daily AIRTEMP and RELHUM, or it can take the high resolution values. when it computes VPD, it also computes SATVP and VAPDEF. 
 
-- smasher knows when to assign net radiometer to the net radiometer table and sonic wind to the sonic wind table. 
+- SMASHER knows when to assign net radiometer to the net radiometer table and sonic wind to the sonic wind table. 
 
-- smasher when processing 5 minute maxes and mins in air temp and dew point, will first look for the daily max or min from a measured max or min for the five minute interval. if that column is null all day, it will then look to the mean to find the max or min for the day based on the extreme values about the mean. 
+- SMASHER gets unhappy when you call VANMET VARMET or VARMET VANMET. It will grumble at you. 
 
-smasher is a product of Fox Peterson, Hans Luh, and Don Henshaw.
+- SMASHER will try to handle as many exceptions as it can by substituting null objects. However, if the exceptions get out of hand, it will stop and give you an error message. The batch versions (CREATE ALL, UPDATE ALL, DELETE ALL) are designed to run through every table and handle the errors that I could forsee, but there is of course the possibility of errors I did not forsee.
 
-Using smasher.
+- SMASHER when processing 5 minute maxes and mins in air temp and dew point, will first look for the daily max or min from a measured max or min for the five minute interval. if that column is null all day, it will then look to the mean to find the max or min for the day based on the extreme values about the mean. 
+
+SMASHER is a product of Fox Peterson, Hans Luh, and Don Henshaw. It prefers Python 2.7.
+
+Using SMASHER.
 ===============
 
 Using smasher is super easy.
 
-First, download this repo!
+First, clone this repo!
 
 [super awesome smasher repo](https://github.com/dataRonin/smashDB.git)
 
-okay you're ready.
+okay, you're ready to smash
 
 --------
 
@@ -68,12 +72,27 @@ or
         python smasher.py CREATE SHELDON MS04305 --startdate '2015-01-01 00:00:00' --enddate '2015-01-10 00:00:00'
 
 
-You can also call CREATE on ALL or BIG4.
+You can also call CREATE on ALL.
 
 ALL will run all the attributes, telling you when each is done
 
-BIG4 will run AIRTEMP, RELHUM, DEWPT, and VPD2. If you call VPD, it will try to get the VPD high-resolution data which we are no longer collecting. VPD2 will compute VPD and the other attributes from the raw AIRTEMP and RELHUM.
+If you call VPD, it will try to get the VPD high-resolution data which we are no longer collecting. VPD2 will compute VPD and the other attributes from the raw AIRTEMP and RELHUM.
 
+If you just want to create one station, call
+
+        python smasher.py CREATE SHELDON SOLAR  --startdate '2015-01-01 00:00:00' --enddate '2015-01-10 00:00:00' --station CENMET
+
+You can use the start/end date with the station, or just call it by itself
+
+        python smasher.py CREATE SHELDON SOLAR --station CENMET
+
+If that station doesn't have the attribute, no problem! You just won't get anything back.
+
+If you want to print an approved structure for CSV, add on the flag --csv TRUE to the end of your call
+
+    python smasher.py CREATE SHELDON SOLAR  --startdate '2015-01-01 00:00:00' --enddate '2015-01-10 00:00:00' --station CENMET --csv TRUE
+
+You can call --csv for any CREATE except "ALL". That would be a monster.
 
 
 ------
@@ -97,11 +116,15 @@ For example:
 
 Be sure to use the double-dashed flags for station and startdate to indicate their placement in the command.
 
+You can also delete for a range. THIS IS NOT RECOMMENDED. You are not protected in this program against creating duplicates, or leaving gaps. It is not hard to write to the end. You have been warned!
+
+        python smasher.py DELETE SHELDON SOLAR --startdate '2015-04-15 00:00:00' --enddate '2015-04-20 00:00:00'
 
 ------
 
 use the UPDATE method to update the database LTERLogger_pro 
 
+Note that you cannot both UPDATE and make CSVs. CSVs are in the CREATE method. This is to keep you from accidentally updating the database when you just want to get some daily data from it that you may already have. However, in general, you:
 
 Call UPDATE the same way you called CREATE, for example: 
 
@@ -197,20 +220,47 @@ In the HR data, errorlog_hr.csv looks like this:
 ------
 
 
-how stuff works in smasher.
+how stuff works in SMASHER.
 -----------
 
-The fundamental unit of smasher is the Worker classes. The Worker classes are named for what attribute they compute and flag, such as AirTemperature, DewPoint, or VPD. All worker classes are in the file smashWorkers.py.  Also in smashWorkers are a DateRange class (to make sure that dates are in a range structure) and a class to encapsulate how to get methods from the method_history.
+The fundamental unit of smasher is the smashWorker classes. The Worker classes are named for what attribute they compute and flag, such as AirTemperature, DewPoint, or VPD. They are all in CamelCase and are generally the full word for the attribute they represent. You can actually call them as individuals, also, with something like:
 
-The condense_data() method in each Worker class contains the physical functions used to condense the data. If you need to change the math fundamentally, this is where to do it.
+        B = smashWorkers.AirTemperature(startdate, enddate, server)
 
+All worker classes are in the file smashWorkers.py.  Also in smashWorkers are a DateRange class (to make sure that dates are in a range structure) and a class to encapsulate how to get methods from the method_history and method_history_daily (MethodReader). You should not run SMASHER without both a start and end date. 
 
-The Workers are controlled by the Controls classes, found in smashControls.py. The Controls dictate date ranges, method ranges, etc., that can be used in the API. DBControl, for example, is used to find the recentest end date in the database in order to perform the minimum update. MethodControl is used to find the methods for the READ function. HRMethodControl finds the High-Resolution methods for the READ function. The controls are used to reduce the amount of data we need to process on each operation.
+The condense_data() method in each Worker class contains the physical functions used to condense the data. If you need to change the algorithms for aggregation, they are all in the condense_data() functions. Each Worker has its own condense_data() function, even if that is a lot of repeated code, so that it can be flexible in the future as loggers change. 
+
+Some workers, like AirTemperature, are smart to handle the "new style" data with five-minute maxes. WSPD_PRO and VPD are not so smart, and have VPD2 and WSPD_PRO2 "Friends" that handle the new style. They will usually be called by default. Since most of VPD has changed, VPD2 is the default, but since not most of WSPD_PRO has changed, WSPD_PRO is the default.
+
+The Workers are controlled by the Controls classes, found in smashControls.py. The Controls dictate date ranges, method ranges, etc., that can be used in the API. DBControl, for example, is used to find the recentest end date in the database in order to perform the minimum update.MethodControl is used to find the methods for the READ function. HRMethodControl finds the High-Resolution methods for the READ function. The controls are used to reduce the amount of data we need to process on each operation.
 
 The Bosses class right now only contains the update boss. Originally this was a larger structure. UpdateBoss is used to write values back to the database. UpdateBoss does some final checks on methods and writes the insert statements using the information schema. It makes sure everyone behaves.
 
+The smasher API is how you work with SMASHER in the minimum typing way. Call it from the command line and you should be up and running. It might be kind of hard to install python at first, but we can help you get through that. If you call python on the windows you need to make sure you know where your .exe is, and please DO NOT use the system python. :)
 
-The smasher API is how you work with smasher in the minimum way. Call it from the command line and you should be up and running. It might be kind of hard to install python at first, but we can help you get through that.
+----
 
+Recent updates to SMASHER!
+---------
 
+- totals/means now correctly assign the midnight value to the prior day.
 
+- VPD calculations have been clarified with better names
+
+- things like airtemp that may use older loggers pull in various date stamps. This may need to be expanded later.
+
+- default values for height and method were added to deal with inconsistencies or added sites. They are taken in the smashWorkers function.
+
+        height_and_method_getter(probe_code, daterange)
+
+* gets the right probe code for daily from the table
+* if it can't find it, it gives a warning and a height of 100, a method of prefix + 999 and a sitecode of "ANYMET"
+
+- "F" and "H" flags are given for 15-minute and Hourly values that are acceptable
+
+- DBControl can now take an argument of station to smartly get the date ranges for each station (useful for updates or creates)
+
+- The CREATE method now allows you to use the --csv TRUE flag to create a csv with an obvious name. You can make a --csv TRUE csv with the --station WHATEVER or with all stations. You can make a CSV only if you are doing one attribute. If you are doing more than one you need to do each CSV separately. This is for your own good. You can write a loop if you want to have more csvs. Something like "for attribute in list_of_attributes; do_things(); condense_data(); write_rows_to_csv;" etc.
+
+- All workers write errors in gathering or condensing data to myWhateverTheNameIs.log. These are overwritten each time you run the program on that attribute so if you need them, you will want to get them before re-running. They will show up where you download this program (directory-wise)

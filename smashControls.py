@@ -495,7 +495,9 @@ class DBControl(object):
                     enddate = datetime.datetime.strftime(converted_hr, '%Y-%m-%d %H:%M:%S')
 
                     if daily_table not in self.lookup:
+
                         self.lookup[daily_table] = {'startdate': startdate, 'enddate': enddate}
+                    
                     elif daily_table in self.lookup:
                         print 'this table is already in the lookup'
 
@@ -689,6 +691,9 @@ class DBControl(object):
         elif attribute == "DEWPT":
             startdate_out = self.lookup['MS04307']['startdate']
             enddate_out = self.lookup['MS04307']['enddate']
+        elif attribute == "LYS":
+            startdate_out = self.lookup['MS04309']['startdate']
+            enddate_out = self.lookup['MS04309']['enddate']
         elif attribute == "WSPD_SNC":
             startdate_out = self.lookup['MS04324']['startdate']
             enddate_out = self.lookup['MS04324']['enddate']

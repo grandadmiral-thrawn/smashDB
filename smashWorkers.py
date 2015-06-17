@@ -3311,7 +3311,7 @@ class Precipitation(object):
                 except Exception:
                     this_sitecode = "ANYMET"
 
-            print row
+            #print row
         except Exception:
             print "exception thrown"
         
