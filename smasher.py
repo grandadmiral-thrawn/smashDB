@@ -76,10 +76,11 @@ print("~ Creating CSV?: {}".format(args.csv))
 # station and server names
 server = args.server
 
-if args.station != None or args.station != []:
-  station = args.station[0]
-else:
+if args.station == None or args.station == []:
   station = None
+else:
+  station = args.station[0]
+
 
 # csv name, need to separate the arg here
 if args.csv == None or args.csv == []:
@@ -1599,7 +1600,7 @@ if args.crud == 'DELETE':
 
       elif station != None:
 
-        query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and date < \'" + args.enddate[0] + "\' and sitecode like \'" + station "\'"
+        query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and date < \'" + args.enddate[0] + "\' and sitecode like \'" + station + "\'"
 
         print "you have deleted from %s following %s on the station %s" %(full_name, args.startdate[0], station, args.enddate[0])
     
@@ -1609,11 +1610,11 @@ if args.crud == 'DELETE':
 
         query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and date < \'" + args.enddate[0] + "\'"
 
-        print "you have deleted from %s following %s" %(full_name, args.startdate[0], args.enddate[0])
+        print "you have deleted from %s following %s and before %s" %(full_name, args.startdate[0], args.enddate[0])
 
       elif station != None:
 
-        query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and sitecode like \'" + station "\'"
+        query = "delete from " + full_name + " where date >= \'" + args.startdate[0] + "\' and sitecode like \'" + station + "\'"
 
         print "you have deleted from %s following %s on the station %s" %(full_name, args.startdate[0], station, args.enddate[0])
 
