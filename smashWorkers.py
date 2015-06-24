@@ -41,17 +41,22 @@ class MethodTableReader(object):
         
         self.cursor_sheldon.execute(query)
         
-        try:
-            for row in cursor_sheldon:
+        for row in cursor_sheldon:
+            
+            try:  
                 this_height = int(row[0])
+            except Exception:
+                this_height = 100
+
+            try:
                 this_method = str(row[1])
+            except Exception:
+                this_method = probe_code[0:3] + '999'
+            try:
                 this_sitecode = str(row[2])
-        except exception:
-            print "cannot find a value for %s in method history daily" %(probe_code)
-            this_height = 100
-            this_method = probe_code[0:3] + '999'
-            this_sitecode = str(row[2])
-        
+            except Exception:
+                this_sitecode = 'ANYMET'
+
         return this_height, this_method, this_sitecode
 
 class LogIssues(object):
@@ -158,8 +163,11 @@ class AirTemperature(object):
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        #query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' order by date_bgn and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
+        # this method will get the first method code from where the probe is in range. for longer probes this makes sense since writing them to the updater will run a method checker later.
+        query = "SELECT top 1 height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] +"\' order by date_bgn desc"
+
         cursor_sheldon.execute(query)
         
         for row in cursor_sheldon:
@@ -167,6 +175,7 @@ class AirTemperature(object):
                 this_height = int(row[0])
             except Exception:
                 this_height = 100
+            
             try:    
                 this_method = str(row[1])
             except Exception:
@@ -177,6 +186,7 @@ class AirTemperature(object):
             except Exception:
                 this_sitecode = "ANYMET"
 
+        print "chosen: %s, %s, %s for %s " %(this_height, this_method, this_sitecode, probe_code)
         return this_height, this_method, this_sitecode
 
     def attack_data(self):
@@ -190,18 +200,9 @@ class AirTemperature(object):
         for row in self.cursor:
             
             # get only the day from the incoming result row    
-            try:
-                dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-            except Exception:
-                
-                try:
-                    dt_old = datetime.datetime.strptime(str(row[0]), '%m/%d/%Y %H:%M')
-                except Exception:
-                    
-                    try:
-                        dt_old = datetime.datetime.strptime(str(row[0]).rstrip('0').rstrip('.'), '%Y-%m-%d %H:%M:%S')
-                    except Exception:
-                        print "could not resolve the date time!"
+
+            dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+            
 
             # resolve the midnight point to the next day
             if dt_old.hour == 0 and dt_old.minute == 0:
@@ -250,6 +251,7 @@ class AirTemperature(object):
                         od[probe_code][dt]['minflag'].append(str(row[5]))
                         od[probe_code][dt]['maxval'].append(str(row[6]))
                         od[probe_code][dt]['maxflag'].append(str(row[7]))
+                    
                     except Exception:
                         od[probe_code][dt]['minval'].append(str(row[2]))
                         od[probe_code][dt]['minflag'].append(str(row[3]))
@@ -282,12 +284,17 @@ class AirTemperature(object):
             
         # iterate over each probe-code that was collected
         for probe_code in self.od.keys():
+
             print "calculating now ...%s" %(probe_code)
 
             if "AIRR" not in probe_code and probe_code != "AIRCEN08":
-
-                # get the height, method_code, and sitecode from the height_and_method_getter function  
-                height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                try:
+                    # get the height, method_code, and sitecode from the height_and_method_getter function  
+                    height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                
+                except Exception:
+                    #import pdb; pdb.set_trace()
+                    height, method_code, site_code = 350, 'AIR243','CENMET'
 
             elif "AIRR" in probe_code:
                 # height is 150m?, method is AIR999, site is REFS plus last two digits of probe_code
@@ -295,6 +302,9 @@ class AirTemperature(object):
 
             elif probe_code == "AIRCEN08":
                 height, method_code, site_code = 350, 'AIR243','CENMET'
+
+            else:
+                height, method_code, site_code = 100, 'AIR999', 'ANYMET'
 
             # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
             valid_dates = sorted(self.od[probe_code].keys())
@@ -317,13 +327,14 @@ class AirTemperature(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
                 # if it's not 288, 96, or 24
-                if num_total_obs not in [288, 96, 24] and each_date != self.daterange.dr[0]:
+                if num_total_obs not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]:
 
                     # notify the number of observations is incorrect
                     error_string2 = "Incomplete or overfilled day, %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
                     # print error_string2
                     mylog.write('incompleteday', error_string2)
 
+                    my_new_rows.append(['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source + "_incomplete_day"])
                     continue
 
                 else:
@@ -436,7 +447,7 @@ class AirTemperature(object):
 
                         else:
                             error_string3 = "error in max_valid_obs for %s on %s" %(probe_code, each_date)
-                            #print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
+                            print "error in max_valid_obs for %s on %s" %(probe_code, each_date)
                             mylog.write('max_value_error', error_string3)
 
                 # DAILY MAX TIME OF AIR TEMPERATURE
@@ -449,10 +460,10 @@ class AirTemperature(object):
                     try:
                         max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
                         max_valid_time = max_valid_time[0]
-                    except ValueError:
+                    except Exception:
                         # check to see if the the whole day was missing, if so, set it to none
                         if mean_valid_obs == None:
-                            max_valid_time = None
+                            max_valid_time = "None"
 
                         else: 
                             error_string4 = "error in max_valid_time for %s on %s" %(probe_code, each_date)
@@ -472,6 +483,7 @@ class AirTemperature(object):
                             min_valid_obs = None
                         else:
                             error_string5 = "error in min_valid_obs for %s on %s" %(probe_code, each_date)
+                            print error_string5
                             mylog.write('min_value_error',error_string5)
 
                 # MINIMUM TIME AIR TEMPERATURE
@@ -482,9 +494,9 @@ class AirTemperature(object):
                     try:
                         min_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
                         min_valid_time = min_valid_time[0]
-                    except ValueError:
+                    except Exception:
                         if mean_valid_obs == None:
-                            min_valid_time = None
+                            min_valid_time = "None"
                         else:
                             error_string6 = "error in min_valid_time for %s on %s" %(probe_code, each_date)
                             mylog.write('mintimeerror', error_string6)
@@ -509,11 +521,13 @@ class AirTemperature(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 #try:
-                newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time, '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time, '%H%M'), "NA", source]
-                
+                try:
+                #print each_date
+                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time, '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time, '%H%M'), "NA", source]
+
                 # in the missing day case, we print out a version with Nones filled in for missing values
-                #except IndexError:
-                #    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
+                except Exception:
+                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
                 #print newrow
                 my_new_rows.append(newrow)
@@ -573,8 +587,12 @@ class RelHum(object):
         humanrange = self.daterange.human_readable()
 
         # query the DB for the right height and method
-        query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
+        #query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end <= \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
         
+        # this method will get the first method code from where the probe is in range. for longer probes this makes sense since writing them to the updater will run a method checker later.
+        query = "SELECT top 1 height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] +"\' order by date_bgn desc"
+
+
         cursor_sheldon.execute(query)
             
         for row in cursor_sheldon:
@@ -593,7 +611,6 @@ class RelHum(object):
             except Exception:
                 this_sitecode = "ANYMET"
             
-        
         return this_height, this_method, this_sitecode
     
     def attack_data(self):
@@ -662,6 +679,9 @@ class RelHum(object):
             elif "RELR" in probe_code:
                 # height is 150m?, method is AIR999, site is REFS plus last two digits of probe_code
                 height, method_code, site_code = 150, "REL999", "REFS"+probe_code[-4:-2]
+
+            else:
+                height, method_code, site_code = 100, "REL999", "ANYMET"
 
             # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
             valid_dates = sorted(self.od[probe_code].keys())
@@ -746,7 +766,7 @@ class RelHum(object):
                 except ValueError:
                     # check to see if the the whole day was missing, if so, set max valid obs and max valid time to none
                     if mean_valid_obs == None:
-                        max_valid_time = None
+                        max_valid_time = "None"
                     else: 
                         error_string4 = "error in max_valid_time for %s on %s" %(probe_code, each_date)
                         mylog.write("max_time_error", error_string4)
@@ -781,7 +801,7 @@ class RelHum(object):
                 
                 except ValueError:
                     if mean_valid_obs == None:
-                        min_valid_time = None
+                        min_valid_time = "None"
                     else:
                         error_string7 = "error in min_valid_time for %s on %s" %(probe_code, each_date)
                         mylog.write("mintimeerror", error_string7)
@@ -4702,11 +4722,13 @@ class Wind(object):
                 num_missing_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_fval'] if x == 'E'])
+                
 
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean mag
                 num_missing_obs_mag = len([x for x in self.od[probe_code][each_date]['mag_fval'] if x == 'M' or x == 'I'])
                 num_questionable_obs_mag = len([x for x in self.od[probe_code][each_date]['mag_fval'] if x == 'Q' or x == 'O'])
                 num_estimated_obs_mag = len([x for x in self.od[probe_code][each_date]['mag_fval'] if x == 'E'])
+
 
                 # get the number of each flag present- i.e. count M's, I's, Q's, O's, E's, etc. - for the daily mean dir
                 num_missing_obs_dir = len([x for x in self.od[probe_code][each_date]['dir_fval'] if x == 'M' or x == 'I'])
@@ -4741,7 +4763,6 @@ class Wind(object):
                     daily_flag_mag = 'A'
                 else:
                     daily_flag_mag = 'Q'
-
 
                 # daily flag, wind dir: if missing relative to total > 20 % missing, if missing + questionable relative to total > 5%, questionable, if estimated relative to total > 5%, estimated, if estimated + missing + questionable < 5 %, accepted, otherwise, questionable.
                 if num_missing_obs_dir/num_total_obs_dir >= 0.2:
@@ -4778,7 +4799,6 @@ class Wind(object):
                     # magnitude and speed are therefore also M
                     daily_flag_spd = "M"
                     
-
                 if num_valid_obs_spd != 0:
                 # compute the daily resultant--- this one is a true joy.
                 
@@ -4861,6 +4881,23 @@ class Wind(object):
                 # If no flag has been assigned
                 if max_flag[0] =="":
                     max_flag = ["A"]
+                else:
+                    pass
+
+
+                # throw b or n flag if speed or mag is less than detection limits
+                
+                if daily_spd_valid_obs < 1.0 and daily_spd_valid_obs > 0.3:
+                    daily_flag_spd = "B"
+                elif daily_spd_valid_obs <= 0.3:
+                    daily_flag_spd = "N"
+                else:
+                    pass
+                
+                if daily_mag_results < 1.0 and daily_mag_results > 0.3:
+                    daily_flag_mag = "B"
+                elif daily_spd_valid_obs <= 0.3:
+                    daily_flag_mag = "N"
                 else:
                     pass
 
@@ -5218,6 +5255,22 @@ class Wind2(object):
                 # If no flag has been assigned
                 if max_flag[0] =="":
                     max_flag = ["A"]
+                else:
+                    pass
+
+                # throw b or n flag if speed or mag is less than detection limits
+                
+                if daily_spd_valid_obs < 1.0 and daily_spd_valid_obs > 0.3:
+                    daily_flag_spd = "B"
+                elif daily_spd_valid_obs <= 0.3:
+                    daily_flag_spd = "N"
+                else:
+                    pass
+                
+                if daily_mag_results < 1.0 and daily_mag_results > 0.3:
+                    daily_flag_mag = "B"
+                elif daily_spd_valid_obs <= 0.3:
+                    daily_flag_mag = "N"
                 else:
                     pass
 
