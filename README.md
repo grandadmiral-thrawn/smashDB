@@ -1,11 +1,11 @@
 SMASHER
 ========
 
-v 0.0.7
+v 0.0.8
 
 SMASHER is a command line tool for updating LTERLogger_pro, our MSSQL 1st QC level provisional server. It can also get updates from MS043, the production level annual server. 
 
-- SMASHER will work for attributes of AIRTEMP, RELHUM, DEWPT, VPD, SOLAR, WSPD_SNC, WSPD_PRO, NR, LYS, PRECIP, PAR, SOILTEMP, SNOWDEPTH (pending), LIGHT (pending) and SOILWC. It has methods for doing VPD from a calculation. These are technically called in the smashWorker.VPD2 class, not the smashWorker.VPD class. It has methods for the two forms of WSPD_PRO, one with the 5 minute maxes and one without.
+- SMASHER will work for attributes of AIRTEMP, RELHUM, DEWPT, VPD, SOLAR, WSPD_SNC, WSPD_PRO, NR, LYS, PRECIP, PAR, SOILTEMP, SNOWDEPTH (pending), and SOILWC. It has methods for doing VPD from a calculation. These are technically called in the smashWorker.VPD2 class, not the smashWorker.VPD class. It has methods for the two forms of WSPD_PRO, one with the 5 minute maxes and one without.
 
 - for wind, SMASHER uses daily methods which respect the standard deviations and means of the day directionally; i.e. It decomposes and computes a mean resultant wind for the propellor anemometer, and uses the Yamartino method to get a coordinate-appropriate standard deviation.
 
@@ -229,7 +229,25 @@ The fundamental unit of smasher is the smashWorker classes. The Worker classes a
 
 All worker classes are in the file smashWorkers.py.  Also in smashWorkers are a DateRange class (to make sure that dates are in a range structure) and a class to encapsulate how to get methods from the method_history and method_history_daily (MethodReader). You should not run SMASHER without both a start and end date. 
 
+Here's an example of a call to make a smashWorker for AirTemperature on STEWARTIA for quite some time:
+
+        A = smashWorkers.AirTemperature('2014-01-01 00:00:00','2015-07-01 00:00:00','STEWARTIA')
+
 The condense_data() method in each Worker class contains the physical functions used to condense the data. If you need to change the algorithms for aggregation, they are all in the condense_data() functions. Each Worker has its own condense_data() function, even if that is a lot of repeated code, so that it can be flexible in the future as loggers change. 
+
+
+For example, what if we condensed that old AirTemperature? (Note, although it doesn't matter, it's good practice in smasher to call your condensed data "nr" -- new rows -- this makes it easy to remember if the data has been aggregated and encoded to ASCII)
+
+        nr = A.condense_data()
+
+We will now see several outputs telling us what method, site, and height codes got assigned to the data. We'll then get the raw data and a log file back.
+
+These raw data are the "nr" variable- note they are rows, ready to be csv-written!
+
+
+        ['MS043', 1, 'PRIMET', 'AIR243', 350, '1D', 'AIRPRI08', '2015-03-08 00:00:00', 6.535, 'A', 17.5, 'A', '1415', -0.4, 'A', '0700', 'NA', 'STEWARTIA_FSDBDATA_MS04311']
+        ['MS043', 1, 'PRIMET', 'AIR243', 350, '1D', 'AIRPRI08', '2015-03-09 00:00:00', 6.824, 'A', 18.3, 'A', '1515', 0.1, 'A', '0705', 'NA', 'STEWARTIA_FSDBDATA_MS04311']
+
 
 Some workers, like AirTemperature, are smart to handle the "new style" data with five-minute maxes. WSPD_PRO and VPD are not so smart, and have VPD2 and WSPD_PRO2 "Friends" that handle the new style. They will usually be called by default. Since most of VPD has changed, VPD2 is the default, but since not most of WSPD_PRO has changed, WSPD_PRO is the default.
 
@@ -244,23 +262,34 @@ The smasher API is how you work with SMASHER in the minimum typing way. Call it 
 Recent updates to SMASHER!
 ---------
 
-- totals/means now correctly assign the midnight value to the prior day.
+- PRE V. 0.0.8: totals/means now correctly assign the midnight value to the prior day.
 
-- VPD calculations have been clarified with better names
+- PRE V. 0.0.8: VPD calculations have been clarified with better names
 
-- things like airtemp that may use older loggers pull in various date stamps. This may need to be expanded later.
+- PRE V. 0.0.8: things like airtemp that may use older loggers pull in various date stamps. This may need to be expanded later.
 
-- default values for height and method were added to deal with inconsistencies or added sites. They are taken in the smashWorkers function.
+- PRE V. 0.0.8: default values for height and method were added to deal with inconsistencies or added sites. They are taken in the smashWorkers function.
 
         height_and_method_getter(probe_code, daterange)
 
-* gets the right probe code for daily from the table
-* if it can't find it, it gives a warning and a height of 100, a method of prefix + 999 and a sitecode of "ANYMET"
+- PRE V. 0.0.8: gets the right probe code for daily from the table
+    
+    * if it can't find it, it gives a warning and a height of 100, a method of prefix + 999 and a sitecode of "ANYMET"
 
-- "F" and "H" flags are given for 15-minute and Hourly values that are acceptable
+- PRE V. 0.0.8: "F" and "H" flags are given for 15-minute and Hourly values that are acceptable
 
-- DBControl can now take an argument of station to smartly get the date ranges for each station (useful for updates or creates)
+- PRE V. 0.0.8: DBControl can now take an argument of station to smartly get the date ranges for each station (useful for updates or creates)
 
-- The CREATE method now allows you to use the --csv TRUE flag to create a csv with an obvious name. You can make a --csv TRUE csv with the --station WHATEVER or with all stations. You can make a CSV only if you are doing one attribute. If you are doing more than one you need to do each CSV separately. This is for your own good. You can write a loop if you want to have more csvs. Something like "for attribute in list_of_attributes; do_things(); condense_data(); write_rows_to_csv;" etc.
+- PRE V. 0.0.8: The CREATE method now allows you to use the --csv TRUE flag to create a csv with an obvious name. You can make a --csv TRUE csv with the --station WHATEVER or with all stations. You can make a CSV only if you are doing one attribute. If you are doing more than one you need to do each CSV separately. This is for your own good. You can write a loop if you want to have more csvs. Something like "for attribute in list_of_attributes; do_things(); condense_data(); write_rows_to_csv;" etc.
 
-- All workers write errors in gathering or condensing data to myWhateverTheNameIs.log. These are overwritten each time you run the program on that attribute so if you need them, you will want to get them before re-running. They will show up where you download this program (directory-wise)
+- PRE V. 0.0.8: All workers write errors in gathering or condensing data to myWhateverTheNameIs.csv. This is a reversion back from having the logs stored in .log files. .log files are not universally supported and also, writing to .csv is easier to read out. 
+
+- V. 0.0.8 : The way of assigning method has been fixed. I found that in assigning method to old, long data streams, the condition of the date range being bigger than a whole method range would mean no method was found. In the new system, we look for the most recent method that the current date is bigger than. It takes a little more time, but it doesn't screw up as much.
+
+- V. 0.0.8 : Light has been removed for being useless.
+
+- V. 0.0.8. : Some comments that are generic I have moved here:
+
+    * This code means that the date format is %Y-%m-%d %H:%M:%S, which is what the database likes to eat:
+
+        humanrange = self.daterange.human_readable()

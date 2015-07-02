@@ -91,9 +91,9 @@ elif args.csv != None:
 ### CSV NAMING ###
 
 if mycsv == "TRUE" and station != None:
-  csv_filename = 'daily_smash_for_' + args.attribute + station + '_updated_on_' + datetime.datetime.strftime(datetime.datetime.now(),'%Y%m%d') + '.csv' 
+  csv_filename = 'daily_smash_for_' + server + '_' + args.attribute + '_' + station + '_updated_on_' + datetime.datetime.strftime(datetime.datetime.now(),'%Y%m%d') + '.csv' 
 elif mycsv == "TRUE" and station == None:
-  csv_filename = 'daily_smash_for_' + args.attribute + '_updated_on_' + datetime.datetime.strftime(datetime.datetime.now(),'%Y%m%d') + '.csv' 
+  csv_filename = 'daily_smash_for_' + server + '_' + args.attribute + '_updated_on_' + datetime.datetime.strftime(datetime.datetime.now(),'%Y%m%d') + '.csv' 
 else:
   pass
 
@@ -1144,8 +1144,9 @@ if args.crud == "CREATE" and args.startdate != None and args.enddate != None:
           pass
     else:
       for row in nr:
-        new_rows.append(each_list)
-        print nr
+        print row
+        new_rows.append(row)
+
 
     # if csv is not none, write csv
     if mycsv != None:
