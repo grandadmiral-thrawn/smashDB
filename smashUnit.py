@@ -266,23 +266,6 @@ class testMainLoop(unittest.TestCase):
         del A
 
 
-class VPDTest(unittest.TestCase):
-
-    def test_VPD2(self):
-        A = smashWorkers.VPD2('2013-01-01 00:00:00', '2015-01-05 00:00:00', 'STEWARTIA')
-        if not A.od.keys():
-            self.assertFalse()
-
-# if __name__ == "__main__":
-#     testSuite = unittest.TestLoader().loadTestsFromTestCase(testMainLoop)
-#     # def testWorkers(self):
-#     #     A = smashWorkers.AirTemperature(self.sd, self.edu, self.server)
-#     #     nr = A.condense_data()
-#     #     assertIsInstance(nr, )
-
-
-
-
 if __name__ == "__main__":
     unittest.main()
 

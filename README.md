@@ -288,8 +288,22 @@ Recent updates to SMASHER!
 
 - V. 0.0.8 : Light has been removed for being useless.
 
-- V. 0.0.8. : Some comments that are generic I have moved here:
+- V. 0.0.8 : Some comments that are generic I have moved here:
 
     * This code means that the date format is %Y-%m-%d %H:%M:%S, which is what the database likes to eat:
 
         humanrange = self.daterange.human_readable()
+
+- V 0.0.8 : Basic functional tests in smashUnit.py all passing. Tests ranges, fallbacks, and both database connections. Was failing before trying to call a record of NR and Sonic outside of range. This is the error when outside of range is called:
+
+        ======================================================================
+        ERROR: test_longterm_nr (__main__.testMainLoop)
+        ----------------------------------------------------------------------
+        Traceback (most recent call last):
+          File "smashUnit.py", line 249, in test_longterm_nr
+            nr = A.condense_data()
+          File "/Users/dataRonin/Documents/april2015/smash/smashWorkers.py", line 4008, in condense_data
+            height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+        TypeError: 'NoneType' object is not iterable
+
+

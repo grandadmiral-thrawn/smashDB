@@ -34,7 +34,7 @@ DELETE - Duplicate rows
 
 """
 
-parser = argparse.ArgumentParser(description="SMASHER tool for FSDB summaries. Use the SMASHER bosses within a bash file or on the API to conduct controlled summaries. SMASHER bosses are superclasses with controlled operations and vocabularies. SMASHER controls are switch statements designed to drive SMASHER bosses. SMASHER workers are microprocesses designed to work with high-resolution data in the FSDB structure.")
+parser = argparse.ArgumentParser(description="SMASHER tool for FSDB summaries. Use the basic CRUD operations to run various workflows. CREATE, READ, UPDATE, DELETE. Each will call a smart combination of SMASHWORKERS that can attack and aggregate the databases you desire. SMASHER workers are microprocesses designed to work with high-resolution data in the FSDB structure. Please READ THE DOCS for more information.")
 
 # which function you are running -- REQUIRED!
 parser.add_argument('crud')
@@ -52,7 +52,7 @@ parser.add_argument('--startdate', '-sd', nargs = 1, required = False, help = " 
 parser.add_argument('--enddate', '-ed', nargs = 1, required = False, help = " the last date, as a date-string in form YYYY-MM-DD HH:MM:SS, that you want to process ")
 
 # station
-parser.add_argument('--station', nargs = 1, required=False, help = "used with the update method to only do one station")
+parser.add_argument('--station', nargs = 1, required=False, help = "used with the update method to only do one sitecode/station")
 
 # csv
 parser.add_argument('--csv', nargs = 1, required = False, help = "used with the create or update methods to generate a csv output")
@@ -69,7 +69,7 @@ print("~ Server: {}".format(args.server))
 
 print("~ Start Date: {}".format(args.startdate))
 print("~ End Date: {}".format(args.enddate))
-print("~ Station: {}".format(args.station))
+print("~ Sitecodr or Station: {}".format(args.station))
 print("~ Creating CSV?: {}".format(args.csv))
 
 
@@ -108,7 +108,7 @@ if args.crud == "CREATE" and args.attribute == "ALL" and args.startdate == None 
     # if no station is specified, do this for all data
     B.build_queries()
   
-  # otherwise, just do it for the specific station
+  # otherwise, just do it for the specific station/sitecode
   else:
     B = smashControls.DBControl(server, station)
     B.build_queries_station()
