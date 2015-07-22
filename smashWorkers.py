@@ -2502,11 +2502,11 @@ class SoilTemperature(object):
                 # DAILY MAX FLAG SOIL TEMPERATURE
                 if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
-                    max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
+                    max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs][0]
                 else:
                     # check to see if the whole day was missing, if so, set to "M"
                     if mean_valid_obs is None:
-                        max_flag = ["M"]
+                        max_flag = "M"
                     
                     else:
                         error_string5 = "error in max_valid_flag for %s on %s" %(probe_code, each_date)
@@ -2537,14 +2537,14 @@ class SoilTemperature(object):
                 # DAILY MINIMUM FLAG SOIL TEMPERATURE
                 if mean_valid_obs is not None:
 
-                    min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                    min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs][0]
                 
                 else:
                     error_string8= "min flag is none on %s, %s" %(probe_code, each_date)
                     mylog.write("minflagerror",error_string8)
                     
                     if mean_valid_obs == None:
-                        min_flag = ["M"]
+                        min_flag = "M"
                     
                     else:
                         print("error in minimum flagging for %s on %s") %(probe_code, each_date)
@@ -2553,7 +2553,7 @@ class SoilTemperature(object):
                 # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
                 try:
                     if min_flag[0].strip() == "": 
-                        min_flag = [df]
+                        min_flag = df
                     else:
                         pass
 
@@ -2564,14 +2564,14 @@ class SoilTemperature(object):
 
                 try: 
                     if max_flag[0].strip() =="":
-                        max_flag = [df]
+                        max_flag = df
                     else:
                         pass
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == None:
-                        max_flag = ["M"]
+                        max_flag = "M"
 
                 if mean_valid_obs == None:
                     daily_flag == "M"
@@ -2586,10 +2586,21 @@ class SoilTemperature(object):
                 else:
                     print("no server given")
 
+                if max_flag == None or max_flag == "None":
+                    max_flag = daily_flag
+                else:
+                    pass
+
+                if min_flag == None or min_flag == "None":
+                    min_flag = daily_flag
+                else:
+                    pass
+
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
+                   
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
                     newrow = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
@@ -2832,11 +2843,11 @@ class SoilWaterContent(object):
                 # DAILY MAX FLAG SOIL WC
                 if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
-                    max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
+                    max_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs][0]
                 else:
                     # check to see if the whole day was missing, if so, set to "M"
                     if mean_valid_obs is None:
-                        max_flag = ["M"]
+                        max_flag = "M"
                     
                     else:
                         error_string5 = "error in max_valid_flag for %s on %s" %(probe_code, each_date)
@@ -2867,14 +2878,14 @@ class SoilWaterContent(object):
                 # DAILY MINIMUM FLAG SOIL WC
                 if mean_valid_obs is not None:
 
-                    min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs]
+                    min_flag = [self.od[probe_code][each_date]['fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == min_valid_obs][0]
                 
                 else:
                     error_string8= "min flag is none on %s, %s" %(probe_code, each_date)
                     mylog.write("min_flag_error",error_string8)
                     
                     if mean_valid_obs == None:
-                        min_flag = ["M"]
+                        min_flag = "M"
                     
                     else:
                         error_string9 = "minimum flagging throws an unknown error for %s on %s" %(probe_code, each_date)
@@ -2884,7 +2895,7 @@ class SoilWaterContent(object):
                 # final exception handles for flags-- take care of the "" for mins and maxes, and for the whole missing days. 
                 try:
                     if min_flag[0].strip() == "": 
-                        min_flag = [df]
+                        min_flag = df
                     else:
                         pass
 
@@ -2895,14 +2906,14 @@ class SoilWaterContent(object):
 
                 try: 
                     if max_flag[0].strip() =="":
-                        max_flag = [df]
+                        max_flag = df
                     else:
                         pass
                 
                 except IndexError:
                     # the maximum flag may not come out if all the values are missing... 
                     if mean_valid_obs == None:
-                        max_flag = ["M"]
+                        max_flag = "M"
 
                 if mean_valid_obs == None:
                     daily_flag == "M"
@@ -2917,9 +2928,19 @@ class SoilWaterContent(object):
                 else:
                     print("no server given")
 
+                if max_flag == None or max_flag == "None":
+                    max_flag = daily_flag
+                else:
+                    pass
+
+                if min_flag == None or min_flag == "None":
+                    min_flag = daily_flag
+                else:
+                    pass
+
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:

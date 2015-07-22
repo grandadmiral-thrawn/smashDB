@@ -128,34 +128,43 @@ Note that you cannot both UPDATE and make CSVs. CSVs are in the CREATE method. T
 
 Call UPDATE the same way you called CREATE, for example: 
 
-        Foxs-MacBook-Pro:smash dataRonin$ python smasher.py UPDATE SHELDON SOLAR
+        Foxs-MacBook-Pro:smash dataRonin$ python smasher.py UPDATE SHELDON PRECIP
          You are processing using the SMASHER Python toolkit. (c) MIT 2015. You have given the following information: 
 
         ~ Method: UPDATE
-        ~ Attribute: SOLAR
+        ~ Attribute: PRECIP
         ~ Server: SHELDON
         ~ Start Date: None
         ~ End Date: None
-        Finished writing LogFile
-        finished creating Solar Radiation from 2015-04-15 00:00:00 to 2015-04-22 00:00:00
-        Finished writing LogFile
+        ~ Sitecode or Station: None
+        ~ Creating CSV?: None
+        finished creating PRECIP from 2014-01-02 00:00:00 to 2015-06-23 00:00:00
         checking that the methods are updated
-        Updating your methods prior to insertion in the db!
-        This is gonna update the LTERLogger_Pro database
-        database updated from 2015-04-15 00:00:00 to 2015-04-22 00:00:00 for Solar Radiation
+        Updating your heights, depths, and methods prior to insertion in the db!
+        This will update the LTERLogger_Pro database
+        database updated from 2014-01-02 00:00:00 to 2015-06-23 00:00:00 for PRECIP
+        Foxs-MacBook-Pro:smash dataRonin$ 
 
-Your methods will be checked against METHOD_HISTORY_DAILY, just in case.
+This is the simplest update. The Precip function has just recently been added here. 
+Here is what we would see in the database! (just a few rows, descending order). It has not really rained much!
+
+        DBCODE  ENTITY  SITECODE    PRECIP_METHOD   HEIGHT  QC_LEVEL    PROBE_CODE  DATE    PRECIP_TOT_DAY  PRECIP_TOT_FLAG EVENT_CODE  DB_TABLE    ID
+        MS043   3   PRIMET  PPT108  100 2D  PPTPRI01    Jun 21 2015 12:00:00:000AM  0.0 NA      SHELDON_LTERLogger_PRO_MS04313  536
+        MS043   3   PRIMET  PPT108  100 2D  PPTPRI01    Jun 20 2015 12:00:00:000AM  0.0 NA      SHELDON_LTERLogger_PRO_MS04313  535
+        MS043   3   PRIMET  PPT108  100 2D  PPTPRI01    Jun 19 2015 12:00:00:000AM  0.0 NA      SHELDON_LTERLogger_PRO_MS04313  534
+
+For all updates, your methods will be checked against METHOD_HISTORY_DAILY, just in case.
 
 For every attribute, an instance of mylog is generated to print errors. Although the names of the mylog files vary, they are all created in the home directory.
 
-For example, mylog-dewpoint.csv contains:
+For example, mylog\_dewpoint.csv contains:
 
         "ERROR","DESCRIPTION"
         "incompleteday","Incomplete or overfilled day, 2015-04-16 00:00:00, probe DEWCEN04, total number of observations: 21"
         "incompleteday","Incomplete or overfilled day, 2015-04-16 00:00:00, probe DEWCEN01, total number of observations: 21"
 
 
-mylog-soilwc.csv contains:
+mylog\_soilwc.csv contains:
 
         "ERROR","DESCRIPTION"
         "incompleteday","Incomplete or overfilled day:  2015-04-16 00:00:00, probe SWCCEN01, total number of observations: 21"
@@ -163,7 +172,7 @@ mylog-soilwc.csv contains:
         "incompleteday","Incomplete or overfilled day:  2015-04-16 00:00:00, probe SWCCEN02, total number of observations: 21"
         "incompleteday","Incomplete or overfilled day:  2015-04-16 00:00:00, probe SWCCEN04, total number of observations: 21"
 
-mylog-sonic.csv contains
+mylog\_sonic.csv contains
 
         "ERROR","DESCRIPTION"
         "nullday","the total number of observations on 2015-04-20 00:00:00 is 287 and probe WNDPRI02"
@@ -171,7 +180,6 @@ mylog-sonic.csv contains
 
 
 These files don't do anything special, and you can call them whatever you want. You can find them in the top of the condense_data() method in each Worker class.
-
 You can also just update one station, just add the double-dashed station flag to your call.
 
 For example:
@@ -188,11 +196,9 @@ For example:
 
     python smasher.py READ STEWARTIA ALL
 
-This reads all the methods in Stewartia for the daily
+This reads all the methods and date ranges in Stewartia for the daily data. This function is for information. It also generates error logs for when methods in the daily and high resolution table do not match. I'd suggest running this every so often just to make sure things are in line 
 
-An attribute-by-attribute read is pending.
-
-Outputs for errors in the method_code are in errorlog.csv and outputs for the errors in eventcode are in eventlog.csv. eventlog.csv is looking for when the event_code should read "METHOD" but it says something instead of "METHOD"
+Outputs for errors in the method_code are in errorlog.csv and outputs for the errors in eventcode are in eventlog.csv. eventlog.csv is looking for when the event_code should read "METHOD" but it says something instead of "METHOD" (Like maybe "MAINTE" or some other 6 character code)
 
 In the daily data, errorlog.csv looks like this:
 
@@ -281,7 +287,7 @@ Recent updates to SMASHER!
 
 - V.0.0.9 : Precip fixed to not have a duplicate output.
 
-- V.0.0.9 : Bug in PAR date stamp fixed.
+- V.0.0.9 : Bug in PAR date stamp fixed. Also, for some reason the '.' after LTERLogger.dbo. had been removed for a few attributes on the update, so that we fixed also. Right now we don't have a clear update method for FSDBDATA written since this is only going LTERLogger to LTERLogger!
 
 - V.0.0.9 : NR daily table in LTERLogger_pro is different type than in FSDBDATA, added in exception to handle this
 
