@@ -69,7 +69,7 @@ print("~ Server: {}".format(args.server))
 
 print("~ Start Date: {}".format(args.startdate))
 print("~ End Date: {}".format(args.enddate))
-print("~ Sitecodr or Station: {}".format(args.station))
+print("~ Sitecode or Station: {}".format(args.station))
 print("~ Creating CSV?: {}".format(args.csv))
 
 
@@ -80,7 +80,6 @@ if args.station == None or args.station == []:
   station = None
 else:
   station = args.station[0]
-
 
 # csv name, need to separate the arg here
 if args.csv == None or args.csv == []:
@@ -1648,9 +1647,10 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
 
     if sd != ed:
       C = smashWorkers.AirTemperature(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "finished creating AIRTEMP from %s to %s" %(sd, ed)
-      D = smashBosses.UpdateBoss(C, nr)
+      # D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1664,6 +1664,7 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
 
     else:
       print "database for AIRTEMP is already up to date"
+      
   except Exception:
     print "exception thrown for airtemp"
 
@@ -1673,9 +1674,10 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
 
     if sd != ed:
       C = smashWorkers.RelHum(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      #D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1697,9 +1699,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
 
     if sd != ed:
       C = smashWorkers.VPD2(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1720,9 +1722,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
 
     if sd != ed:
       C = smashWorkers.DewPoint(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1742,9 +1744,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     sd, ed = B.check_out_one_attribute("NR")
     if sd != ed:
       C = smashWorkers.NetRadiometer(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1765,9 +1767,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
 
     if sd != ed:
       C = smashWorkers.Solar(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1787,9 +1789,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     if sd != ed: 
       sd, ed = B.check_out_one_attribute("WSPD_SNC")
       C = smashWorkers.Sonic(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1809,9 +1811,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     sd, ed = B.check_out_one_attribute("WSPD_PRO")
     if sd != ed:
       C = smashWorkers.Wind(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1829,9 +1831,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     sd, ed = B.check_out_one_attribute("WSPD_PRO2")
     if sd != ed:
       C = smashWorkers.Wind2(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1849,10 +1851,10 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     sd, ed = B.check_out_one_attribute("SOILTEMP")
     if sd != ed:
       C = smashWorkers.SoilTemperature(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
       #D.update_the_db_methods()
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1872,9 +1874,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     sd, ed = B.check_out_one_attribute("SOILWC")
     if sd != ed:
       C = smashWorkers.SoilWaterContent(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1895,9 +1897,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
 
     if sd != ed:
       C = smashWorkers.Precipitation(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1918,9 +1920,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     sd, ed = B.check_out_one_attribute("PAR")
     if sd != ed:
       C = smashWorkers.PhotosyntheticRad(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1940,9 +1942,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate == None 
     sd, ed = B.check_out_one_attribute("LYS")
     if sd != ed:
       C = smashWorkers.SnowLysimeter(sd, ed, server)
-      nr = C.condense_data()
+      # nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -1975,11 +1977,11 @@ if args.crud == "UPDATE" and args.attribute in ["AIRTEMP","MS04301"] and args.st
   if sd != ed:
 
     C = smashWorkers.AirTemperature(sd, ed, server)
-    nr = C.condense_data()
+    # nr = C.condense_data()
     print "finished creating AIRTEMP from %s to %s" %(sd, ed)
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     print "checking that the methods are updated"
-    D = UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C, nr)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2009,9 +2011,9 @@ elif args.crud == "UPDATE" and args.attribute in ["RELHUM","MS04302"] and args.s
   if sd != ed:
 
     C = smashWorkers.RelHum(sd, ed, server)
-    nr = C.condense_data()
+    # nr = C.condense_data()
     print "finished creating RELHUM from %s to %s" %(sd, ed)
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     print "checking that the methods are updated"
     D.update_the_db_methods()
     D.update_the_db()
@@ -2038,9 +2040,9 @@ elif args.crud == "UPDATE" and args.attribute in ["PRECIP","MS04303"] and args.s
   if sd != ed:
 
     C = smashWorkers.Precipitation(sd, ed, server)
-    nr = C.condense_data()
+    # nr = C.condense_data()
     print "finished creating PRECIP from %s to %s" %(sd, ed)
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     print "checking that the methods are updated"
     D.update_the_db_methods()
     D.update_the_db()
@@ -2064,9 +2066,9 @@ elif args.crud == "UPDATE" and args.attribute in ["DEWPT","MS04307"] and args.st
 
   sd, ed = B.check_out_one_attribute("DEWPT")
   C = smashWorkers.DewPoint(sd, ed, server)
-  nr = C.condense_data()
+  # nr = C.condense_data()
   print "finished creating Dewpoint from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   D.update_the_db_methods()
   D.update_the_db()
@@ -2087,9 +2089,9 @@ elif args.crud == "UPDATE" and args.attribute in ["VPD2", "MS04308"] and args.st
 
   sd, ed = B.check_out_one_attribute("VPD2")
   C = smashWorkers.VPD2(sd, ed, server)
-  nr = C.condense_data()
+  # nr = C.condense_data()
   print "finished creating calculated Vapor Pressure Defecit from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   D.update_the_db_methods()
   D.update_the_db()
@@ -2110,9 +2112,32 @@ elif args.crud == "UPDATE" and args.attribute in ["SOLAR", "MS04305"] and args.s
 
   sd, ed = B.check_out_one_attribute("SOLAR")
   C = smashWorkers.Solar(sd, ed, server)
-  nr = C.condense_data()
+  # nr = C.condense_data()
   print "finished creating Solar Radiation from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
+  print "checking that the methods are updated"
+  D.update_the_db_methods()
+  D.update_the_db()
+  print "database updated from %s to %s for Solar Radiation" %(sd, ed)
+  del C
+  del D
+
+elif args.crud == "UPDATE" and args.attribute in ["PAR", "MS04322"] and args.startdate == None and args.enddate == None:
+
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
+
+  sd, ed = B.check_out_one_attribute("PAR")
+  C = smashWorkers.PhotosyntheticRad(sd, ed, server)
+  # nr = C.condense_data()
+  print "finished creating Solar Radiation from %s to %s" %(sd, ed)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   D.update_the_db_methods()
   D.update_the_db()
@@ -2134,9 +2159,9 @@ elif args.crud == "UPDATE" and args.attribute in ["SOILTEMP", "MS04321"] and arg
 
   sd, ed = B.check_out_one_attribute("SOILTEMP")
   C = smashWorkers.SoilTemperature(sd, ed, server)
-  nr = C.condense_data()
+  # nr = C.condense_data()
   print "finished creating Soil Temperature from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   #D.update_the_db_methods()
   D.update_the_db()
@@ -2157,13 +2182,36 @@ elif args.crud == "UPDATE" and args.attribute in ["SOILWC", "MS04323"] and args.
 
   sd, ed = B.check_out_one_attribute("SOILWC")
   C = smashWorkers.SoilTemperature(sd, ed, server)
-  nr = C.condense_data()
+  # nr = C.condense_data()
   print "finished creating Soil Water Content from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   #D.update_the_db_methods()
   D.update_the_db()
   print "database updated from %s to %s for Soil Water Content" %(sd, ed)
+  del C
+  del D
+
+elif args.crud == "UPDATE" and args.attribute in ["SONIC", "WSPD_SNC", "MS04324"] and args.startdate == None and args.enddate == None:
+
+  if station == None:
+    # create a list of last updates
+    B = smashControls.DBControl(server)
+    B.build_queries()
+
+  elif station != None:
+    B = smashControls.DBControl(server, station)
+    B.build_queries_station()
+
+  sd, ed = B.check_out_one_attribute("SONIC")
+  C = smashWorkers.Sonic(sd, ed, server)
+  # nr = C.condense_data()
+  print "finished creating Sonic Anemometer from %s to %s" %(sd, ed)
+  D = smashBosses.UpdateBoss(C)
+  print "checking that the methods are updated"
+  #D.update_the_db_methods()
+  D.update_the_db()
+  print "database updated from %s to %s for Sonic Anemometer" %(sd, ed)
   del C
   del D
 
@@ -2180,9 +2228,9 @@ elif args.crud == "UPDATE" and args.attribute in ["NR", "MS04325"] and args.star
 
   sd, ed = B.check_out_one_attribute("NR")
   C = smashWorkers.NetRadiometer(sd, ed, server)
-  nr = C.condense_data()
+  # nr = C.condense_data()
   print "finished creating Net Radiometer from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   #D.update_the_db_methods()
   D.update_the_db()
@@ -2203,9 +2251,9 @@ elif args.crud == "UPDATE" and args.attribute in ["WSPD_PRO", "MS04304"] and arg
 
   sd, ed = B.check_out_one_attribute("WSPD_PRO")
   C = smashWorkers.Wind(sd, ed, server)
-  nr = C.condense_data()
+  #nr = C.condense_data()
   print "finished creating Net Radiometer from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   #D.update_the_db_methods()
   D.update_the_db()
@@ -2226,9 +2274,9 @@ elif args.crud == "UPDATE" and args.attribute in ["WSPD_SNC","MS04334"] and args
 
   sd, ed = B.check_out_one_attribute("WSPD_SNC")
   C = smashWorkers.Sonic(sd, ed, server)
-  nr = C.condense_data()
+  #nr = C.condense_data()
   print "finished creating Sonic from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   #D.update_the_db_methods()
   D.update_the_db()
@@ -2249,9 +2297,9 @@ elif args.crud == "UPDATE" and args.attribute in ["LYS","MS04309"] and args.star
 
   sd, ed = B.check_out_one_attribute("LYS")
   C = smashWorkers.Sonic(sd, ed, server)
-  nr = C.condense_data()
+  #nr = C.condense_data()
   print "finished creating Snowmelt from %s to %s" %(sd, ed)
-  D = smashBosses.UpdateBoss(C, nr)
+  D = smashBosses.UpdateBoss(C)
   print "checking that the methods are updated"
   #D.update_the_db_methods()
   D.update_the_db()
@@ -2272,9 +2320,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
 
   if sd != ed:
     C = smashWorkers.AirTemperature(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "finished creating AIRTEMP from %s to %s" %(sd, ed)
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2296,9 +2344,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
 
   if sd != ed:
     C = smashWorkers.RelHum(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2317,9 +2365,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
 
   if sd != ed:
     C = smashWorkers.VPD2(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2337,9 +2385,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
 
   if sd != ed:
     C = smashWorkers.DewPoint(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2359,9 +2407,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
   sd, ed = B.check_out_one_attribute("NR")
   if sd != ed:
     C = smashWorkers.NetRadiometer(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2379,9 +2427,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
 
   if sd != ed:
     C = smashWorkers.Solar(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2398,9 +2446,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
   if sd != ed: 
     sd, ed = B.check_out_one_attribute("WSPD_SNC")
     C = smashWorkers.Sonic(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2418,9 +2466,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
     sd, ed = B.check_out_one_attribute("WSPD_PRO")
     if sd != ed:
       C = smashWorkers.Wind(sd, ed, server)
-      nr = C.condense_data()
+      #nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -2438,9 +2486,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
     sd, ed = B.check_out_one_attribute("WSPD_PRO2")
     if sd != ed:
       C = smashWorkers.Wind2(sd, ed, server)
-      nr = C.condense_data()
+      #nr = C.condense_data()
       print "checking that the methods are updated"
-      D = smashBosses.UpdateBoss(C, nr)
+      D = smashBosses.UpdateBoss(C)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
@@ -2457,10 +2505,10 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
   sd, ed = B.check_out_one_attribute("SOILTEMP")
   if sd != ed:
     C = smashWorkers.SoilTemperature(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
     #D.update_the_db_methods()
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2477,9 +2525,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
   sd, ed = B.check_out_one_attribute("SOILWC")
   if sd != ed:
     C = smashWorkers.SoilWaterContent(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2497,9 +2545,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
 
   if sd != ed:
     C = smashWorkers.Precipitation(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2517,9 +2565,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
   sd, ed = B.check_out_one_attribute("PAR")
   if sd != ed:
     C = smashWorkers.PhotosyntheticRad(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2537,9 +2585,9 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
   sd, ed = B.check_out_one_attribute("LYS")
   if sd != ed:
     C = smashWorkers.SnowLysimeter(sd, ed, server)
-    nr = C.condense_data()
+    #nr = C.condense_data()
     print "checking that the methods are updated"
-    D = smashBosses.UpdateBoss(C, nr)
+    D = smashBosses.UpdateBoss(C)
     if args.station != None:
       D.only_one_station(args.station[0])
     else:
@@ -2554,39 +2602,39 @@ if args.crud == "UPDATE" and args.attribute == "ALL" and args.startdate != None 
   print("Updates come from the source of {}".format(args.server))
 
 
-if args.crud == "UPDATE" and args.attribute in ["AIRTEMP","MS04301"] and args.startdate == None and args.enddate == None:
+# if args.crud == "UPDATE" and args.attribute in ["AIRTEMP","MS04301"] and args.startdate == None and args.enddate == None:
 
-  if station == None:
-    # create a list of last updates
-    B = smashControls.DBControl(server)
-    B.build_queries()
+#   if station == None:
+#     # create a list of last updates
+#     B = smashControls.DBControl(server)
+#     B.build_queries()
 
-  elif station != None:
-    B = smashControls.DBControl(server, station)
-    B.build_queries_station()
+#   elif station != None:
+#     B = smashControls.DBControl(server, station)
+#     B.build_queries_station()
 
-  sd, ed = B.check_out_one_attribute("AIRTEMP")
+#   sd, ed = B.check_out_one_attribute("AIRTEMP")
 
-  if sd != ed:
+#   if sd != ed:
 
-    C = smashWorkers.AirTemperature(sd, ed, server)
-    nr = C.condense_data()
-    print "finished creating AIRTEMP from %s to %s" %(sd, ed)
-    D = smashBosses.UpdateBoss(C, nr)
-    print "checking that the methods are updated"
-    D = UpdateBoss(C, nr)
-    if args.station != None:
-      D.only_one_station(args.station[0])
-    else:
-      pass
-    D.update_the_db_methods()
-    D.update_the_db()
-    print "database updated from %s to %s for AIRTEMP" %(sd, ed)
-    del C
-    del D
+#     C = smashWorkers.AirTemperature(sd, ed, server)
+#     # nr = C.condense_data()
+#     print "finished creating AIRTEMP from %s to %s" %(sd, ed)
+#     D = smashBosses.UpdateBoss(C)
+#     print "checking that the methods are updated"
+#     D = UpdateBoss(C, nr)
+#     if args.station != None:
+#       D.only_one_station(args.station[0])
+#     else:
+#       pass
+#     D.update_the_db_methods()
+#     D.update_the_db()
+#     print "database updated from %s to %s for AIRTEMP" %(sd, ed)
+#     del C
+#     del D
 
-  else:
-    print "database is already up to date!"   
+#   else:
+#     print "database is already up to date!"   
 
 # elif args.crud == "UPDATE" and args.attribute in ["RELHUM","MS04302"] and args.startdate == None and args.enddate == None:
 

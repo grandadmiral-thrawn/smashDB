@@ -1,7 +1,7 @@
 SMASHER
 ========
 
-v 0.0.8
+v 0.0.9
 
 SMASHER is a command line tool for updating LTERLogger_pro, our MSSQL 1st QC level provisional server. It can also get updates from MS043, the production level annual server. 
 
@@ -253,6 +253,19 @@ Some workers, like AirTemperature, are smart to handle the "new style" data with
 
 The Workers are controlled by the Controls classes, found in smashControls.py. The Controls dictate date ranges, method ranges, etc., that can be used in the API. DBControl, for example, is used to find the recentest end date in the database in order to perform the minimum update.MethodControl is used to find the methods for the READ function. HRMethodControl finds the High-Resolution methods for the READ function. The controls are used to reduce the amount of data we need to process on each operation.
 
+
+SmashControls
+-----------
+
+The DBControl class provides reference to the database you will be updating about what the most recent start and end dates are. If for some reason the smash control fails, it may be due to MS04325/MS04335 not being collected in the high resolution files. For now we default assume they are collected. If not, a set of lists exists to query without them. A class of DBControl has an attribute "lookup" which stores these start and end dates by probe.
+
+The build_queries_station() and build_queries() methods introspect the daily and high resolution tables to figure out what needs to be updated. This protects us from writing duplicate values. These methods figure out what was the last day and add one to it, so that the next day must occur after it. When using station you get finer control, in case not all stations were updated at the same time.
+
+The MethodControl and HRMethodControl classes help to update the methods for the entire database based on what is in the methods tables. They aren't integrated into the main smasher, but are useful for background work.
+
+SmashBosses
+------------
+
 The Bosses class right now only contains the update boss. Originally this was a larger structure. UpdateBoss is used to write values back to the database. UpdateBoss does some final checks on methods and writes the insert statements using the information schema. It makes sure everyone behaves.
 
 The smasher API is how you work with SMASHER in the minimum typing way. Call it from the command line and you should be up and running. It might be kind of hard to install python at first, but we can help you get through that. If you call python on the windows you need to make sure you know where your .exe is, and please DO NOT use the system python. :)
@@ -261,6 +274,16 @@ The smasher API is how you work with SMASHER in the minimum typing way. Call it 
 
 Recent updates to SMASHER!
 ---------
+
+- V. 0.0.9 : fixed problem in Solar where multiple daily maximum values were generating multiple daily maximum flags; fixed problem in DewPoint where missing dew point maxes on new loggers were causing the whole row to get written as a null.
+
+- V. 0.0.9 : fixed the DBControl, which was rolling the Date value in a mass update across the table methods, invariably leaving out LYS. Now the values are deleted with each cycle, and when a value is not present for the most recent, "now" is taken as the most recent.
+
+- V.0.0.9 : Precip fixed to not have a duplicate output.
+
+- V.0.0.9 : Bug in PAR date stamp fixed.
+
+- V.0.0.9 : NR daily table in LTERLogger_pro is different type than in FSDBDATA, added in exception to handle this
 
 - PRE V. 0.0.8: totals/means now correctly assign the midnight value to the prior day.
 

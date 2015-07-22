@@ -73,7 +73,7 @@ class MethodControl(object):
                     table = self.lu[qual]
 
                 
-                # if not listed, list in th eoutput 
+                # if not listed, list in the output 
                 if table not in od:
                     od[table] =[(probe_code, dt1, dt2, method_code, height, depth)]
                 elif table in od:
@@ -92,7 +92,6 @@ class MethodControl(object):
                     if self.server == 'STEWARTIA':
 
                         newquery = "select probe_code, date, " + special + " from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
-
 
                         self.cursor2.execute(newquery)
 
@@ -438,60 +437,95 @@ class DBControl(object):
         if args and args != []:
             self.station = args[0]
         
-        # until we switch to LTERLogger_pro use this one:
+        try: 
+            ## These lists have MS04335; fits Stewartia and other SHELDON server 
+            self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324','MS04325']
+            self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334','MS04335']
 
-        # self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324']
+        except Exception:
+            try:
+                ## These lists don't have MS04335; one of the SHELDON servers doesnt have it on it (new?)
+                self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324']
+                self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334']
+            except Exception:
+                print "Please check which tables are available using a query into the database.information_schema.tables structure"
 
-        # self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334']
-
-        self.daily_table_list = ['MS04301','MS04302','MS04303','MS04304','MS04305','MS04307','MS04308','MS04309','MS04321','MS04322','MS04323','MS04324','MS04325']
-        
-        self.hr_table_list = ['MS04311','MS04312','MS04313','MS04314','MS04315','MS04317','MS04318','MS04319','MS04331','MS04332','MS04333','MS04334','MS04335']
-
+        ## Holds a reference of the valid start and end dates based on the most recent update in the db
         self.lookup = {}
 
     def build_queries(self):
-        """ check the existing dates and output last values for each table"""
+        """ check the existing dates and outputs values for each table. Handles errors like this: (1) checks to be sure that the table isn't already up to date, which would mean an error; skips it if this is the case, (2) tries a few date formats that we've encountered to be sure it's not misreading. Uses a new format if this is the case. (3) if the daily table is blank, it finds the first day in the HR table and uses that to start the daily (rolling forward a day to get the first FULL day). """
         
         # zip together the two tables
         iTables = itertools.izip(self.daily_table_list, self.hr_table_list)
         if self.server == "SHELDON":
             
-            # for the two tables, check the last input value
+            # for the two tables, check the most recent input value on both the daily and high resolution tables
             for daily_table, hr_table in iTables:
 
-                last_daily = self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " order by date desc")
+                self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " order by date desc")
+                returned_value = self.cursor.fetchone()
 
-                # get the day of that value
-                for row in self.cursor:
+                # if there's nothing in the daily table, it will return a None to the fetch one query; however, it doesn't return at all using the row iteration method!
+                if returned_value != None:
 
                     try:
-                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-                    except ValueError:
-                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d')
+                        daily = returned_value[0]
                         
+                    except Exception:
+                        # This has never been called, but just in case, I am putting this here so we can debug
+                        print "some error has been found on :"
+                        print returned_value
+                        print "entering debug mode : "
+                        import pdb; pdb.set_trace()
+
+                    try:
+                        converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+                    
+                    except AttributeError:
+                        # ms04325 has only the date without the same seconds format
+                        cd1 = datetime.datetime.strptime(daily, '%Y-%m-%d')
+                        converted_d = datetime.datetime(cd1.year, cd1.month, cd1.day)
+
+                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found as the last update in " + daily_table 
+
+                elif returned_value == None:
+
+                    # if the daily table is totally blank we'll need to rebuild the whole thing from the hr table
+                    self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " order by date_time asc")
+                        
+                    returned_value = self.cursor.fetchone()
+
+                    try:
+                        daily = returned_value[0]
+
+                    except ValueError:
+                        print "an error! see: "
+                        print returned_value[0]
+                        print " entering debug mode : "
+                        import pdb; pdb.set_trace()
+
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+                    
+                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was taken from the HR table to start " + daily_table 
+                    
+                # because we haven't updated the daily table as recently as the hr table has been updated we can assume that the last_hr value follows after the daily value
+                self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " order by date_time desc")
 
-                # checking the last on high res, in theory it should be after the daily
-                last_hr = self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " order by date_time desc")
-
-
-                for row in self.cursor:
-                    high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-
-                    converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
-
-                # no matter which database, we want to compare to be sure that the converted hr comes after the daily so we can see how much to grab
+                new_returned_value = self.cursor.fetchone()
+                
+                high_res = new_returned_value[0]
+                converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
 
                 if converted_hr > converted_d:
 
                     # add a day to the last daily record for where we will start from 
                     daily_data_plus_one = converted_d + datetime.timedelta(days = 1)
 
-                    # the start date is the first day we have still in our daily data plus one
+                    # the new start date is the first day we have in our daily data (plus one)
                     startdate = datetime.datetime.strftime(daily_data_plus_one, '%Y-%m-%d %H:%M:%S')
 
-                    # the end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
+                    # the new end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
                     enddate = datetime.datetime.strftime(converted_hr, '%Y-%m-%d %H:%M:%S')
 
                     if daily_table not in self.lookup:
@@ -499,211 +533,392 @@ class DBControl(object):
                         self.lookup[daily_table] = {'startdate': startdate, 'enddate': enddate}
                     
                     elif daily_table in self.lookup:
-                        print 'this table is already in the lookup'
+
+                        print 'Warning : ' + daily_table + ' has already been processed in the lookup'
 
                 elif converted_hr <= converted_d:
-
-                    print(daily_table + " is already up to date")
+                    print(daily_table + " is already up to date with its HR counterpart")
+                
+                del converted_hr
+                del converted_d
+                del daily
+                del high_res
+                del returned_value
+                del new_returned_value
 
         elif self.server == "STEWARTIA":
 
-            # for the two tables, check the last input value
+            # for the two tables, check the most recent input value on both the daily and high resolution tables
             for daily_table, hr_table in iTables:
 
-                last_daily = self.cursor.execute("select top 1 date from FSDBDATA.dbo." + daily_table + " order by date desc")
+                self.cursor.execute("select top 1 date from FSDBDATA.dbo." + daily_table + " order by date desc")
+                returned_value = self.cursor.fetchone()
 
-                # get the day of that value
-                for row in self.cursor:
+                if returned_value != None:
+
                     try:
-                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+                        daily = returned_value[0]
+                        
+                    except Exception:
+                        print "some error has been found on :"
+                        print returned_value
+                        print "entering debug mode :"
+                        import pdb; pdb.set_trace()
+
+                    try:
+                        converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+                    except AttributeError:
+                        # ms04325 has only the date without the same seconds format
+                        cd1 = datetime.datetime.strptime(daily, '%Y-%m-%d')
+                        converted_d = datetime.datetime(cd1.year, cd1.month, cd1.day)
+
+                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found successfully from " + daily_table
+
+                elif returned_value == None:
+
+                    # if the daily table is totally blank we'll need to rebuild the whole thing from the hr table
+                    self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " order by date_time asc")
+                        
+                    returned_value = self.cursor.fetchone()
+
+                    try:
+                        daily = returned_value[0]
+
                     except ValueError:
-                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d')
-                    
+                        print "an error! see: "
+                        print returned_value[0]
+                        
+                    print daily
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+                    
+                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was taken to start " + daily_table + "from the HR table"
+                    
+                # because we haven't updated the daily table as recently as the hr table has been updated we can assume that the last_hr value follows after the daily value
+                self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " order by date_time desc")
 
-                # checking the last on high res, in theory it should be after the daily
-                last_hr = self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " order by date_time desc")
-
-
-                for row in self.cursor:
-                    high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-                    converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
-
-
-                # no matter which database, we want to compare to be sure that the converted hr comes after the daily so we can see how much to grab
+                new_returned_value = self.cursor.fetchone()
+                
+                high_res = new_returned_value[0]
+                converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
 
                 if converted_hr > converted_d:
 
                     # add a day to the last daily record for where we will start from 
                     daily_data_plus_one = converted_d + datetime.timedelta(days = 1)
 
-                    # the start date is the first day we have still in our daily data plus one
+                    # the new start date is the first day we have in our daily data (plus one)
                     startdate = datetime.datetime.strftime(daily_data_plus_one, '%Y-%m-%d %H:%M:%S')
 
-                    # the end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
+                    # the new end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
                     enddate = datetime.datetime.strftime(converted_hr, '%Y-%m-%d %H:%M:%S')
 
                     if daily_table not in self.lookup:
+
                         self.lookup[daily_table] = {'startdate': startdate, 'enddate': enddate}
+                    
                     elif daily_table in self.lookup:
-                        print 'this table is already in the lookup'
+
+                        print 'Warning: ' + daily_table + ' has already been processed in the lookup'
 
                 elif converted_hr <= converted_d:
-
-                    pass
+                    print(daily_table + " is already up to date with its high resolution counterpart")
+                
+                del converted_hr
+                del converted_d
+                del daily
+                del high_res
+                del returned_value
+                del new_returned_value
 
     def build_queries_station(self):
         """ check the existing dates and output last values for each table"""
         
-        # zip together the two tables
+         # zip together the two tables
         iTables = itertools.izip(self.daily_table_list, self.hr_table_list)
         if self.server == "SHELDON":
             
-            # for the two tables, check the last input value
+            # for the two tables, check the most recent input value on both the daily and high resolution tables
             for daily_table, hr_table in iTables:
 
-                last_daily = self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " where sitecode like \'" + self.station + "\' order by date desc")
+                self.cursor.execute("select top 1 date from LTERLogger_pro.dbo." + daily_table + " where sitecode like \'" + self.station + "\' order by date desc")
+                returned_value = self.cursor.fetchone()
 
-                # get the day of that value
-                for row in self.cursor:
+                if returned_value != None:
+                    try:
+                        print " processing table : " + daily_table + " and station : " + self.station
+                        daily = returned_value[0]
+                        
+                    except Exception:
+                        print "some error has been found on :"
+                        print returned_value
+                        print "entering debug mode : "
+                        import pdb; pdb.set_trace()
+                    
+                    try:
+                        converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+                    
+                    except AttributeError:
+                        # ms04325 has only the date without the same seconds format
+                        cd1 = datetime.datetime.strptime(daily, '%Y-%m-%d')
+                        converted_d = datetime.datetime(cd1.year, cd1.month, cd1.day)
+
+                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found from " + daily_table
+
+                elif returned_value == None:
+
+                    # if the daily table is totally blank we'll need to rebuild the whole thing from the hr table
+                    self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time asc")
+                        
+                    returned_value = self.cursor.fetchone()
 
                     try:
-                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-                    
+                        print "we have to get the daily from the hr table which is " + hr_table + " and the returned value is "
+                        print returned_value
+                        daily = returned_value[0]
+
                     except ValueError:
-                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d')
+                        print "a value error! see: "
+                        print returned_value[0]
+
+                    except TypeError: 
+                        print "it's likely we dont have that attribute for the site you want, let's check..."
+
+                        self.cursor.execute("select distinct sitecode from LTERLogger_pro.dbo." + hr_table)
+
+                        list_of_sites = []
+                        for row in self.cursor:
+                            list_of_sites.append(str(row[0]))
+
+                        if self.station in list_of_sites:
+                            print "no, actually we have that site"
+                            stop_processing = raw_input("type DEBUG to enter debug mode or CTRL + C to stop the process otherwise we will continue")
+
+                            if stop_processing == "DEBUG":
+                                import pdb; pdb.set_trace()
+
+                            else:
+                                print "continuing the processing, but skipping this table of : " + hr_table
+                                continue
+
+                        elif self.station not in list_of_sites:
+                            print "... nope, we don't have the attribute in table " + hr_table + " on " + self.station + ", sorry!"
+                            continue
                         
+                    print daily
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+                    
+                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the hr table"
+                    
+                # because we haven't updated the daily table as recently as the hr table has been updated we can assume that the last_hr value follows after the daily value
+                self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time desc")
 
-                # checking the last on high res, in theory it should be after the daily
-                last_hr = self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time desc")
+                new_returned_value = self.cursor.fetchone()
+                
+                if new_returned_value != None:
+                    high_res = new_returned_value[0]
+                elif new_returned_value == None:
+                    print "there is an error pulling the high res data in station-specific " + hr_table
 
-
-                for row in self.cursor:
-                    high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-
-                    converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
-
-                # no matter which database, we want to compare to be sure that the converted hr comes after the daily so we can see how much to grab
+                converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
 
                 if converted_hr > converted_d:
 
                     # add a day to the last daily record for where we will start from 
                     daily_data_plus_one = converted_d + datetime.timedelta(days = 1)
 
-                    # the start date is the first day we have still in our daily data plus one
+                    # the new start date is the first day we have in our daily data (plus one)
                     startdate = datetime.datetime.strftime(daily_data_plus_one, '%Y-%m-%d %H:%M:%S')
 
-                    # the end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
+                    # the new end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
                     enddate = datetime.datetime.strftime(converted_hr, '%Y-%m-%d %H:%M:%S')
 
                     if daily_table not in self.lookup:
+
                         self.lookup[daily_table] = {'startdate': startdate, 'enddate': enddate}
+                    
                     elif daily_table in self.lookup:
-                        print 'this table is already in the lookup'
+
+                        print 'this ' + daily_table + ' has already been processed in the lookup'
 
                 elif converted_hr <= converted_d:
-
-                    print(daily_table + " is already up to date")
+                    print(daily_table + " is already up to date with its high resolution counterpart")
+                
+                del converted_hr
+                del converted_d
+                del daily
+                del high_res
+                del returned_value
+                del new_returned_value
 
         elif self.server == "STEWARTIA":
-
-            # for the two tables, check the last input value
+            
+            # for the two tables, check the most recent input value on both the daily and high resolution tables
             for daily_table, hr_table in iTables:
 
-                last_daily = self.cursor.execute("select top 1 date from FSDBDATA.dbo." + daily_table + " where sitecode like \'" + self.station + "\' order by date desc")
+                self.cursor.execute("select top 1 date from FSDBDATA.dbo." + daily_table + " where sitecode like \'" + self.station + "\' order by date desc")
+                returned_value = self.cursor.fetchone()
 
-                # get the day of that value
-                for row in self.cursor:
+                if returned_value != None:
                     try:
-                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-                    except ValueError:
-                        daily = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d')
+                        print "the table in question is " + daily_table + " and the returned value is "
+                        print returned_value
+                        daily = returned_value[0]
+                        
+                    except Exception:
+                        print "some error has been found on :"
+                        print returned_value
                     
+                    try:
+                        converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+                    
+                    except AttributeError:
+                        # ms04325 has only the date without the same seconds format
+                        cd1 = datetime.datetime.strptime(daily, '%Y-%m-%d')
+                        converted_d = datetime.datetime(cd1.year, cd1.month, cd1.day)
+
+                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the daily table"
+
+                elif returned_value == None:
+
+                    # if the daily table is totally blank we'll need to rebuild the whole thing from the hr table
+                    self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time asc")
+                        
+                    returned_value = self.cursor.fetchone()
+
+                    try:
+                        print "In this case, we have to get the daily lower date bound from the HR table which is " + hr_table + "; the returned value is "
+                        print returned_value
+                        daily = returned_value[0]
+
+                    except ValueError:
+                        print "a value error! see: "
+                        print returned_value[0]
+
+                    except TypeError: 
+                        print "it's likely we dont have that attribute for the site you want, let's check..."
+
+                        self.cursor.execute("select distinct sitecode from FSDBDATA.dbo." + hr_table)
+
+                        list_of_sites = []
+                        for row in self.cursor:
+                            list_of_sites.append(str(row[0]))
+
+                        if self.station in list_of_sites:
+                            print "no, actually we have that site"
+                            stop_processing = raw_input("type DEBUG to enter debug mode or CTRL + C to stop the process otherwise we will continue")
+
+                            if stop_processing == "DEBUG":
+                                import pdb; pdb.set_trace()
+
+                            else:
+                                print "continuing the processing, but skipping this table of : " + hr_table
+                                continue
+
+                        elif self.station not in list_of_sites:
+                            print "... nope, we don't have the attribute in table " + hr_table + " on " + self.station + ", sorry!"
+                            continue
+                        
+                    print daily
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
+                    
+                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the hr table"
+                    
+                # because we haven't updated the daily table as recently as the hr table has been updated we can assume that the last_hr value follows after the daily value
+                self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time desc")
 
-                # checking the last on high res, in theory it should be after the daily
-                last_hr = self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time desc")
+                new_returned_value = self.cursor.fetchone()
+                
+                if new_returned_value != None:
+                    high_res = new_returned_value[0]
+                elif new_returned_value == None:
+                    print "there is an error pulling the high-res data in station-specific " + hr_table
 
-
-                for row in self.cursor:
-                    high_res = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-                    converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
-
-
-                # no matter which database, we want to compare to be sure that the converted hr comes after the daily so we can see how much to grab
+                converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
 
                 if converted_hr > converted_d:
 
                     # add a day to the last daily record for where we will start from 
                     daily_data_plus_one = converted_d + datetime.timedelta(days = 1)
 
-                    # the start date is the first day we have still in our daily data plus one
+                    # the new start date is the first day we have in our daily data (plus one)
                     startdate = datetime.datetime.strftime(daily_data_plus_one, '%Y-%m-%d %H:%M:%S')
 
-                    # the end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
+                    # the new end date is the last complete day in our high res data - we stop at the zeroeth hour- because remember on the last go-round we ended with < the zeroth hour, so it will be ok.
                     enddate = datetime.datetime.strftime(converted_hr, '%Y-%m-%d %H:%M:%S')
 
                     if daily_table not in self.lookup:
+
                         self.lookup[daily_table] = {'startdate': startdate, 'enddate': enddate}
+                    
                     elif daily_table in self.lookup:
-                        print 'this table is already in the lookup'
+
+                        print 'this ' + daily_table + ' has already been processed in the lookup'
 
                 elif converted_hr <= converted_d:
-
-                    pass
+                    print(daily_table + " is already up to date with its high resolution counterpart")
+                
+                del converted_hr
+                del converted_d
+                del daily
+                del high_res
+                del returned_value
+                del new_returned_value
 
     def check_out_one_attribute(self, attribute):
-
-        if attribute == "AIRTEMP":
+        """ For any given attribute check to see if it has been included in the lookup yet"""
+        if attribute == "AIRTEMP" or attribute == "MS04301":
             startdate_out = self.lookup['MS04301']['startdate']
             enddate_out = self.lookup['MS04301']['enddate']
-        elif attribute == "RELHUM":
+
+        elif attribute == "RELHUM" or attribute=="MS04302":
             startdate_out = self.lookup['MS04302']['startdate']
             enddate_out = self.lookup['MS04302']['enddate']
-        elif attribute == "PRECIP":
+
+        elif attribute == "PRECIP" or attribute=="MS04303":
             startdate_out = self.lookup['MS04303']['startdate']
             enddate_out = self.lookup['MS04303']['enddate']
-        elif attribute == "WSPD_PRO":
+
+        elif attribute == "WSPD_PRO" or attribute=="MS04304" or attribute =="WSPD_PRO2":
             startdate_out = self.lookup['MS04304']['startdate']
             enddate_out = self.lookup['MS04304']['enddate']
-        elif attribute == "WSPD_PRO2":
-            startdate_out = self.lookup['MS04304']['startdate']
-            enddate_out = self.lookup['MS04304']['enddate']
-        elif attribute == "SOLAR":
+
+        elif attribute == "SOLAR" or attribute=="MS04305":
             startdate_out = self.lookup['MS04305']['startdate']
             enddate_out = self.lookup['MS04305']['enddate']
-        elif attribute == "LYS":
+
+        elif attribute == "LYS" or attribute== "MS04309":
             startdate_out = self.lookup['MS04309']['startdate']
             enddate_out = self.lookup['MS04309']['enddate']
-        elif attribute == "SNOWDEPTH":
+
+        elif attribute == "SNOWDEPTH" or attribute == "MS04310":
             startdate_out = self.lookup['MS04310']['startdate']
             enddate_out = self.lookup['MS04310']['enddate']
-        elif attribute == "NR":
+
+        elif attribute == "NR" or attribute == "MS04325":
             startdate_out = self.lookup['MS04325']['startdate']
             enddate_out = self.lookup['MS04325']['enddate']
-        elif attribute == "VPD":
+
+        elif attribute == "VPD" or attribute == "VPD2" or attribute=="MS04308":
             startdate_out = self.lookup['MS04308']['startdate']
             enddate_out = self.lookup['MS04308']['enddate']
-        elif attribute == "VPD2":
-            startdate_out = self.lookup['MS04308']['startdate']
-            enddate_out = self.lookup['MS04308']['enddate']
-        elif attribute == "DEWPT":
+
+        elif attribute == "DEWPT" or attribute == "MS04307":
             startdate_out = self.lookup['MS04307']['startdate']
             enddate_out = self.lookup['MS04307']['enddate']
-        elif attribute == "LYS":
-            startdate_out = self.lookup['MS04309']['startdate']
-            enddate_out = self.lookup['MS04309']['enddate']
-        elif attribute == "WSPD_SNC":
+
+        elif attribute == "WSPD_SNC" or attribute=="MS04324" or attribute=="SONIC":
             startdate_out = self.lookup['MS04324']['startdate']
             enddate_out = self.lookup['MS04324']['enddate']
-        elif attribute == "PAR":
+
+        elif attribute == "PAR" or attribute == "MS04322":
             startdate_out = self.lookup['MS04322']['startdate']
             enddate_out = self.lookup['MS04322']['enddate']
-        elif attribute == "SOILWC":
+
+        elif attribute == "SOILWC" or attribute=="MS04323":
             startdate_out = self.lookup['MS04323']['startdate']
             enddate_out = self.lookup['MS04323']['enddate']
-        elif attribute == "SOILTEMP":
+
+        elif attribute == "SOILTEMP" or attribute=="MS04321":
             startdate_out = self.lookup['MS04321']['startdate']
             enddate_out = self.lookup['MS04321']['enddate']
 
