@@ -487,7 +487,7 @@ class DBControl(object):
                         cd1 = datetime.datetime.strptime(daily, '%Y-%m-%d')
                         converted_d = datetime.datetime(cd1.year, cd1.month, cd1.day)
 
-                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found as the last update in " + daily_table 
+                    # print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found as the last update in " + daily_table 
 
                 elif returned_value == None:
 
@@ -507,7 +507,7 @@ class DBControl(object):
 
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
                     
-                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was taken from the HR table to start " + daily_table 
+                    # print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was taken from the HR table to start " + daily_table 
                     
                 # because we haven't updated the daily table as recently as the hr table has been updated we can assume that the last_hr value follows after the daily value
                 self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " order by date_time desc")
@@ -515,6 +515,7 @@ class DBControl(object):
                 new_returned_value = self.cursor.fetchone()
                 
                 high_res = new_returned_value[0]
+                
                 converted_hr = datetime.datetime(high_res.year, high_res.month, high_res.day)
 
                 if converted_hr > converted_d:
@@ -572,7 +573,7 @@ class DBControl(object):
                         cd1 = datetime.datetime.strptime(daily, '%Y-%m-%d')
                         converted_d = datetime.datetime(cd1.year, cd1.month, cd1.day)
 
-                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found successfully from " + daily_table
+                    # print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found successfully from " + daily_table
 
                 elif returned_value == None:
 
@@ -588,10 +589,10 @@ class DBControl(object):
                         print "an error! see: "
                         print returned_value[0]
                         
-                    print daily
+                    
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
                     
-                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was taken to start " + daily_table + "from the HR table"
+                    # print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was taken to start " + daily_table + "from the HR table"
                     
                 # because we haven't updated the daily table as recently as the hr table has been updated we can assume that the last_hr value follows after the daily value
                 self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " order by date_time desc")
@@ -662,7 +663,7 @@ class DBControl(object):
                         cd1 = datetime.datetime.strptime(daily, '%Y-%m-%d')
                         converted_d = datetime.datetime(cd1.year, cd1.month, cd1.day)
 
-                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found from " + daily_table
+                    # print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " was found from " + daily_table
 
                 elif returned_value == None:
 
@@ -707,7 +708,7 @@ class DBControl(object):
                     print daily
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
                     
-                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the hr table"
+                    # print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the hr table"
                     
                 # because we haven't updated the daily table as recently as the hr table has been updated we can assume that the last_hr value follows after the daily value
                 self.cursor.execute("select top 1 date_time from LTERLogger_pro.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time desc")
@@ -760,14 +761,15 @@ class DBControl(object):
 
                 if returned_value != None:
                     try:
-                        print "the table in question is " + daily_table + " and the returned value is "
-                        print returned_value
+                        # print "the table in question is " + daily_table + " and the returned value is "
+                        # print returned_value
                         daily = returned_value[0]
                         
                     except Exception:
                         print "some error has been found on :"
                         print returned_value
-                    
+                        print "entering debug mode :"
+                        import pdb; pdb.set_trace()
                     try:
                         converted_d = datetime.datetime(daily.year, daily.month, daily.day)
                     
@@ -776,7 +778,7 @@ class DBControl(object):
                         cd1 = datetime.datetime.strptime(daily, '%Y-%m-%d')
                         converted_d = datetime.datetime(cd1.year, cd1.month, cd1.day)
 
-                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the daily table"
+                    # print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the daily table"
 
                 elif returned_value == None:
 
@@ -786,13 +788,15 @@ class DBControl(object):
                     returned_value = self.cursor.fetchone()
 
                     try:
-                        print "In this case, we have to get the daily lower date bound from the HR table which is " + hr_table + "; the returned value is "
-                        print returned_value
+                        # print "In this case, we have to get the daily lower date bound from the HR table which is " + hr_table + "; the returned value is "
+                        # print returned_value
                         daily = returned_value[0]
 
                     except ValueError:
                         print "a value error! see: "
                         print returned_value[0]
+                        print "entering debug mode: "
+                        import pdb; pdb.set_trace()
 
                     except TypeError: 
                         print "it's likely we dont have that attribute for the site you want, let's check..."
@@ -821,7 +825,7 @@ class DBControl(object):
                     print daily
                     converted_d = datetime.datetime(daily.year, daily.month, daily.day)
                     
-                    print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the hr table"
+                    #print datetime.datetime.strftime(converted_d, '%Y-%m-%d') + " as found from the hr table"
                     
                 # because we haven't updated the daily table as recently as the hr table has been updated we can assume that the last_hr value follows after the daily value
                 self.cursor.execute("select top 1 date_time from FSDBDATA.dbo." + hr_table + " where sitecode like \'" + self.station + "\' order by date_time desc")
@@ -866,6 +870,7 @@ class DBControl(object):
 
     def check_out_one_attribute(self, attribute):
         """ For any given attribute check to see if it has been included in the lookup yet"""
+        
         if attribute == "AIRTEMP" or attribute == "MS04301":
             startdate_out = self.lookup['MS04301']['startdate']
             enddate_out = self.lookup['MS04301']['enddate']

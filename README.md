@@ -281,6 +281,12 @@ The smasher API is how you work with SMASHER in the minimum typing way. Call it 
 Recent updates to SMASHER!
 ---------
 
+UNIT TESTS ARE BEING DEVELOPED!
+
+SMASHUNIT CONTAINS THE UNIT TESTS!
+
+THEY ARE NOT COMPLETE YET!
+
 - V. 0.0.9 : fixed problem in Solar where multiple daily maximum values were generating multiple daily maximum flags; fixed problem in DewPoint where missing dew point maxes on new loggers were causing the whole row to get written as a null.
 
 - V. 0.0.9 : fixed the DBControl, which was rolling the Date value in a mass update across the table methods, invariably leaving out LYS. Now the values are deleted with each cycle, and when a value is not present for the most recent, "now" is taken as the most recent.

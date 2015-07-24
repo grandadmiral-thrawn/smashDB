@@ -179,6 +179,7 @@ class UpdateBoss(object):
         # the simplest case of data such as airtemp, relhum, dewpoint, soil temp, and soil wc
         if self.table in ["MS04301", "MS04302", "MS04307", "MS04321", "MS04323"]:
         
+            # 'MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table +" (" + column_string + ")  VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %s, %d, %s, %s, %s, %s)", new_tuples)
 
             conn.commit()
