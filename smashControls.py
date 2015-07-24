@@ -15,20 +15,28 @@ class MethodControl(object):
         # connect to the right server
         self.cursor = fc.form_connection('SHELDON')
         self.cursor2 = fc.form_connection('STEWARTIA')
+        
         self.server = server
         self.stations = ['CENMET','PRIMET','VANMET','UPLMET','VARMET','CS2MET','H15MET']
 
+        ## COMMENT THIS IN FOR MS043: look up  table for the daily method
+        # self.lu = {'AIR':'MS04301', 'REL': 'MS04302', 'DEW': 'MS04307', 'VPD': 'MS04308','RAD': 'MS04305', 'SOI': 'MS04321', 'PAR': 'MS04322', 'WND': 'MS04304', 'PPT': 'MS04303', 'SWC': 'MS04323', 'LYS':'MS04309', 'SNO':'MS04310'}
+
         # look up  table for the daily method
-        self.lu = {'AIR':'MS04301', 'REL': 'MS04302', 'DEW': 'MS04307', 'VPD': 'MS04308','RAD': 'MS04305', 'SOI': 'MS04321', 'PAR': 'MS04322', 'WND': 'MS04304', 'PPT': 'MS04303', 'SWC': 'MS04323', 'LYS':'MS04309', 'SNO':'MS04310'}
+        self.lu = {'AIR':'MS00101', 'REL': 'MS00102', 'DEW': 'MS00107', 'VPD': 'MS00108','RAD': 'MS00105', 'SOI': 'MS00121', 'PAR': 'MS00122', 'WND': 'MS00104', 'PPT': 'MS00103', 'SWC': 'MS00123', 'LYS':'MS00109', 'SNO':'MS00110'}
+
+        ## COMMENT THIS IN FOR MS001:  name of the method column
+        # self.special = {'MS04301': 'AIRTEMP_METHOD', 'MS04302': 'RELHUM_METHOD', 'MS04307':'DEWPT_METHOD', 'MS04308': 'VPD_METHOD','MS04305': 'SOLAR_METHOD', 'MS04325': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS04322':'PAR_METHOD', 'MS04304':'WIND_METHOD', 'MS04303': 'PRECIP_METHOD', 'MS04323': 'SOILWC_METHOD', 'MS04309':'SNOWMELT_METHOD','MS04324': 'WIND_METHOD', 'MS04310':'SNOW_METHOD'}
 
         # name of the method column
-        self.special = {'MS04301': 'AIRTEMP_METHOD', 'MS04302': 'RELHUM_METHOD', 'MS04307':'DEWPT_METHOD', 'MS04308': 'VPD_METHOD','MS04305': 'SOLAR_METHOD', 'MS04325': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS04322':'PAR_METHOD', 'MS04304':'WIND_METHOD', 'MS04303': 'PRECIP_METHOD', 'MS04323': 'SOILWC_METHOD', 'MS04309':'SNOWMELT_METHOD','MS04324': 'WIND_METHOD', 'MS04310':'SNOW_METHOD'}
+        self.special = {'MS00101': 'AIRTEMP_METHOD', 'MS00102': 'RELHUM_METHOD', 'MS00107':'DEWPT_METHOD', 'MS00108': 'VPD_METHOD','MS00105': 'SOLAR_METHOD', 'MS00125': 'SOLAR_METHOD', 'MS00121': 'SOILTEMP_METHOD', 'MS00122':'PAR_METHOD', 'MS00104':'WIND_METHOD', 'MS00103': 'PRECIP_METHOD', 'MS00123': 'SOILWC_METHOD', 'MS00109':'SNOWMELT_METHOD','MS00124': 'WIND_METHOD', 'MS00110':'SNOW_METHOD'}
+
 
     # query database
     def process_db(self):
 
         # write to the error log if the method is not consistent
-        with open('errorlog.csv', 'wb') as writefile, open('eventlog.csv','wb') as writefile2, open('heightlog.csv','wb') as writefile3:
+        with open('errorlog_ms001.csv', 'wb') as writefile, open('eventlog_ms001.csv','wb') as writefile2, open('heightlog_ms001.csv','wb') as writefile3:
 
             writer = csv.writer(writefile)
             writer2 = csv.writer(writefile2)
@@ -59,11 +67,13 @@ class MethodControl(object):
 
                 # if the probe code is for the sonic wind go to table 24
                 if probe_code in ['WNDPRI02', 'WNDVAN02', 'WNDCEN02']:
-                    table = 'MS04324'
-                
+                    # table = 'MS04324'
+                    table = 'MS00124'
+
                 # if the probe code is for net radiometer, go to table 25
                 elif probe_code in ['RADPRI02', 'RADVAN02']:
-                    table = 'MS04325'
+                    # table = 'MS04325'
+                    table = 'MS00125'
 
                 # if the qualifier is soil moisture potential or snow depth we don't know how to do it righ tnow
                 elif qual == 'SMP' or qual == "SNO":
@@ -121,16 +131,25 @@ class MethodControl(object):
                                 nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
                                 writer2.writerow(nr2)
 
-                        if each_key == "MS04309":
+                        # if each_key == "MS04309":
+                        
+                        ## COMMENT IN FOR MS00109
+                        if each_key == "MS00109":
                             continue
 
                         # if the key word is "height"
-                        if each_key not in ['MS04321', 'MS04323']:
+                        # if each_key not in ['MS04321', 'MS04323']:
+
+                        ## COMMENT IN FOR MS001:
+                        if each_key not in ['MS00121', 'MS00123']:
                         
                             newquery3 = "select date, height from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
                         
                         # if the key word is depth
-                        elif each_key in ['MS04321', 'MS04323']:
+                        # elif each_key in ['MS04321', 'MS04323']:
+
+                        # COMMENT IN FOR MS001: 
+                        elif each_key in ['MS00121', 'MS00123']:
                          
                             newquery3 = "select date, depth from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
@@ -186,6 +205,7 @@ class MethodControl(object):
 
                         # if the key word is "height"
                         if each_key not in ['MS04321', 'MS04323']:
+
                         
                             newquery3 = "select date, height from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
                         
@@ -219,11 +239,18 @@ class HRMethodControl(object):
         self.cursor2 = fc.form_connection('STEWARTIA')
         self.server = server
         
-        # look up  table for the hr method
-        self.lu = {'AIR':'MS04311', 'REL': 'MS04312', 'DEW': 'MS04317', 'VPD': 'MS04318', 'RAD': 'MS04315', 'SOI': 'MS04331', 'PAR': 'MS04332', 'WND': 'MS04314', 'PPT': 'MS04313', 'SWC': 'MS04333', 'LYS':'MS04319'}
+        ## look up  table for the hr method
+        # self.lu = {'AIR':'MS04311', 'REL': 'MS04312', 'DEW': 'MS04317', 'VPD': 'MS04318', 'RAD': 'MS04315', 'SOI': 'MS04331', 'PAR': 'MS04332', 'WND': 'MS04314', 'PPT': 'MS04313', 'SWC': 'MS04333', 'LYS':'MS04319'}
+        ## COMMENT IN FOR MS001: 
+        self.lu = {'AIR':'MS00111', 'REL': 'MS00112', 'DEW': 'MS00117', 'VPD': 'MS00118', 'RAD': 'MS00115', 'SOI': 'MS00131', 'PAR': 'MS00132', 'WND': 'MS00114', 'PPT': 'MS00113', 'SWC': 'MS00133', 'LYS':'MS00119',
+        'ATM': 'MS00136'}
 
+        ##  name of the method column
+        # self.special = {'MS04311': 'AIRTEMP_METHOD', 'MS04312': 'RELHUM_METHOD', 'MS04317':'DEWPT_METHOD', 'MS04318': 'VPD_METHOD','MS04335': 'SOLAR_METHOD', 'MS04315': 'SOLAR_METHOD', 'MS04331': 'SOILTEMP_METHOD', 'MS04332':'PAR_METHOD', 'MS04314':'WIND_METHOD', 'MS04334':'WIND_METHOD', 'MS04313': 'PRECIP_METHOD', 'MS04333': 'SOILWC_METHOD', 'MS04319':'SNOWMELT_METHOD','MS04334': 'WIND_METHOD'}
         # name of the method column
-        self.special = {'MS04311': 'AIRTEMP_METHOD', 'MS04312': 'RELHUM_METHOD', 'MS04317':'DEWPT_METHOD', 'MS04318': 'VPD_METHOD','MS04335': 'SOLAR_METHOD', 'MS04315': 'SOLAR_METHOD', 'MS04331': 'SOILTEMP_METHOD', 'MS04332':'PAR_METHOD', 'MS04314':'WIND_METHOD', 'MS04334':'WIND_METHOD', 'MS04313': 'PRECIP_METHOD', 'MS04333': 'SOILWC_METHOD', 'MS04319':'SNOWMELT_METHOD','MS04334': 'WIND_METHOD'}
+        self.special = {'MS00111': 'AIRTEMP_METHOD', 'MS00112': 'RELHUM_METHOD', 'MS00117':'DEWPT_METHOD', 'MS00118': 'VPD_METHOD','MS00135': 'SOLAR_METHOD', 'MS00115': 'SOLAR_METHOD', 'MS00131': 'SOILTEMP_METHOD', 'MS00132':'PAR_METHOD', 'MS00114':'WIND_METHOD', 'MS00134':'WIND_METHOD', 'MS00113': 'PRECIP_METHOD', 'MS00133': 'SOILWC_METHOD', 'MS00119':'SNOWMELT_METHOD','MS00134': 'WIND_METHOD','MS00136': 'ATMPRESS_METHOD'}
+
+
 
     # query database
     def process_db(self):
@@ -263,14 +290,17 @@ class HRMethodControl(object):
 
                 # if the probe code is for the sonic wind go to table 24
                 if probe_code in ['WNDPRI02', 'WNDVAN02', 'WNDCEN02']:
-                    table = 'MS04334'
-                
+                    # table = 'MS04334'
+                    table = 'MS00134'
+
+
                 # if the probe code is for net radiometer, go to table 25
                 elif probe_code in ['RADPRI02', 'RADVAN02']:
-                    table = 'MS04335'
+                    # table = 'MS04335'
+                    table = 'MS00135'
 
                 # if the qualifier is soil moisture potential or snow depth we don't know how to do it righ tnow
-                elif qual == 'SMP' or qual == "SNO":
+                elif qual == 'SMP' or qual == "SNO" or qual == "LYS":
                     continue
 
                 else:
@@ -332,34 +362,44 @@ class HRMethodControl(object):
                                 nr2 = [each_item[0], datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S'), str(row[0])]
                                 writer2.writerow(nr2)
 
-                        # third test for height and depth-- first, skip lysimeter
-                        if each_key == "MS04319":
+                        ##  third test for height and depth-- first, skip lysimeter
+                        # if each_key == "MS04319":
+                        ## COMMENT IN FOR MS001
+                        if each_key == "MS00119":
                             continue
 
-                        # if the key word is "height"
-                        if each_key not in ['MS04331', 'MS04333']:
-                        
-                            newquery3 = "select date_time, height from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
-                        
-                        # if the key word is depth
-                        elif each_key in ['MS04331', 'MS04333']:
-                         
-                            newquery3 = "select date_time, depth from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+                        ## if the key word is "height"
+                        # if each_key not in ['MS04331', 'MS04333']:
+                        ## COMMENT IN FOR MS001
+                        try:
+                            if each_key not in ['MS00131', 'MS00133']:
+                                newquery3 = "select date_time, height from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
+                            
+                            ## if the key word is depth
+                            # elif each_key in ['MS04331', 'MS04333']:
+                            ## COMMENT IN FOR MS001
+                            elif each_key in ['MS00131', 'MS00133']:
 
-                        self.cursor2.execute(newquery3)
+                                newquery3 = "select date_time, depth from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
-                        for row in self.cursor2:
+                            self.cursor2.execute(newquery3)
 
-                            if str(row[1]) == each_item[4]:
-                                continue
-                            elif str(row[1]) == each_item[5]:
-                                continue
+                            for row in self.cursor2:
 
-                            elif str(row[1]) != each_item[4] or str(row[1]) != each_item[5]:
+                                if str(row[1]) == each_item[4]:
+                                    continue
+                                elif str(row[1]) == each_item[5]:
+                                    continue
 
-                                #nr3 = 'height_in_db', 'height_in_table', 'depth_in_table' 'probe_code', 'date_in_db'
-                                nr3 = [str(row[1]), each_item[4], each_item[5], each_item[0], str(row[0])]
-                                writer3.writerow(nr3)
+                                elif str(row[1]) != each_item[4] or str(row[1]) != each_item[5]:
+
+                                    #nr3 = 'height_in_db', 'height_in_table', 'depth_in_table' 'probe_code', 'date_in_db'
+                                    nr3 = [str(row[1]), each_item[4], each_item[5], each_item[0], str(row[0])]
+                                    writer3.writerow(nr3)
+
+                        except Exception:
+
+                            continue 
 
                     elif self.server == "SHELDON":
 

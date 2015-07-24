@@ -282,22 +282,45 @@ class MethodBoss(object):
                     'SOILWC': 'MS04323',
                     'PAR': 'MS04322'}
 
+        query_m = {'AIRTEMP': 'MS00101',
+                    'RELHUM': 'MS00102',
+                    'PRECIP': 'MS00103',
+                    'WSPD_PRO': 'MS00104',
+                    'SOLAR': 'MS00105',
+                    'DEWPT': 'MS00107',
+                    'VPD': 'MS00108',
+                    'LYS': 'MS00109',
+                    'NR': 'MS00125',
+                    'WSPD_SNC': 'MS00124',
+                    'SOILTEMP': 'MS00121',
+                    'SOILWC': 'MS00123',
+                    'PAR': 'MS00122'}
 
         cursor = conn.cursor()
         old_cursor = old_conn.cursor()
         
         # collect the distinct probes from your server
         if self.server == "STEWARTIA":
+            
+            ## COMMENT THIS LINE IN FOR MS001
+            # query = "select distinct probe_code from fsdbdata.dbo." + query_m[self.attribute] 
+
+            ## COMMENT THIS LINE IN FOR MS043
             query = "select distinct probe_code from fsdbdata.dbo." + query_d[self.attribute] 
             old_cursor.execute(query)
 
             distinct_probes = []
+            
             for row in old_cursor:
                 distinct_probes.append(str(row[0]))
                 query_string = query_string = "\', \'".join(distinct_probes)
 
         elif self.server == "SHELDON":
+
+            ## COMMENT THIS LINE IN FOR LTERLogger_new
             #query = "select distinct probe_code from lterlogger_new.dbo" + query_d[self.attribute]
+
+            ## COMMENT THIS LINE IN FOR LTERLogger_pro
             query = "select distinct probe_code from lterlogger_pro.dbo" + query_d[self.attribute]
             cursor.execute(query)
 
@@ -318,6 +341,7 @@ class MethodBoss(object):
 
 
         shortened_lookup = {}
+
         # gather the methods by populating a dictionary called "shortened lookup"
         for row in cursor:
             probe_code = str(row[0])
@@ -355,6 +379,7 @@ class MethodBoss(object):
                 
                 # new query to update the lter logger pro
                 new_query = "update LTERLogger_Pro.dbo." + query_d[self.attribute] + " set " + self.attribute + "_METHOD = \'" +  str(each_method) + "\' where probe_code like \'" + each_probe + "\' and Date >= \'" + method_startdate + "\' and Date < \'" + method_enddate + "\'"
+                
                 print new_query
 
                 cursor.execute(new_query) 

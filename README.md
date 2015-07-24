@@ -21,6 +21,8 @@ SMASHER is a command line tool for updating LTERLogger_pro, our MSSQL 1st QC lev
 
 - SMASHER when processing 5 minute maxes and mins in air temp and dew point, will first look for the daily max or min from a measured max or min for the five minute interval. if that column is null all day, it will then look to the mean to find the max or min for the day based on the extreme values about the mean. 
 
+- SMASHER code contains the method and hr method "checkers". To run these checkers, see the section in Using SMASHER about the MethodControl and HRMethodControl
+
 SMASHER is a product of Fox Peterson, Hans Luh, and Don Henshaw. It prefers Python 2.7.
 
 Using SMASHER.
@@ -222,6 +224,38 @@ In the HR data, errorlog_hr.csv looks like this:
 
         VPDCEN04,2014-08-26 00:00:00,2050-12-31 00:00:00,NA    
 
+Using the MethodControl and HRMethodControl
+--------
+
+The SMASHER api also can check the Method and HRMethod against the method_history and method_history_daily tables in LTERLogger_new. 
+
+To check these tables, you will have to go into the Python environment by typing
+
+        python 
+
+
+Then, import the smashControls module with all of its dependencies.
+
+        from smashControls import *
+
+
+Then, call the MethodControl or HRMethodControl class, instantiated on a database. If you want to change databases in STEWARTIA you'll need to make that adjusment in the raw code. There are sections commented COMMENT ME IN FOR MS001 or COMMENT ME IN FOR MS043. The default right now is MS001.
+
+
+        mySmash = MethodControl('STEWARTIA')
+
+        mySmash = MethodControl('SHELDON')
+
+        mySmash = HRMethodControl('STEWARTIA')
+
+        mySmash = HRMethodControl('SHELDON')
+
+
+Once you have the object ready, you can run it like this:
+
+        mySmash.process_db()
+
+The daily (MethodControl) takes about 2 minutes to process. The 5 minute takes about 15 minutes to process (HRMethodControl). Outputs are in eventlog.csv, errorlog.csv, and heightlog.csv.
 
 ------
 
