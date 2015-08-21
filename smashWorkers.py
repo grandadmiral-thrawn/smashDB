@@ -2075,7 +2075,11 @@ class PhotosyntheticRad(object):
         elif self.server == "STEWARTIA":
                 dbname = "FSDBDATA.dbo."
 
-        query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from " + dbname + "MS04332 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
+        try:
+            query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG, PAR_MAX from " + dbname + "MS04332 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
+        
+        except Exception:
+            query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from " + dbname + "MS04332 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
         
         
         self.cursor.execute(query)
@@ -2112,12 +2116,13 @@ class PhotosyntheticRad(object):
         return this_height, this_method, this_sitecode
 
     def attack_data(self):
-        """ gather the daily dewpoint data """
+        """ gather the daily PAR data """
         
         # obtained dictionary dictionary
         od = {}
 
         for row in self.cursor:
+
 
             # get only the day
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
@@ -2125,21 +2130,39 @@ class PhotosyntheticRad(object):
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             
             probe_code = str(row[1])
+            
             if probe_code not in od:
-                # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
-                od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'timekeep':[dt_old]}}
+                
+                try:
+                    # if there is par max
+                    od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'mval': [str(row[4])], timekeep':[dt_old]}}
+                except Exception:
+                    # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
+                    od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'timekeep':[dt_old]}}
 
             elif probe_code in od:
                 
                 if dt not in od[probe_code]:
-                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
-                    od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'timekeep':[dt_old]}
+
+                    try:
+                        # if there is PAR MAX
+                        od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'mval': [str(row[4])] 'timekeep':[dt_old]}
+                    except Exception:
+                        # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
+                        od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'timekeep':[dt_old]}
 
                 elif dt in od[probe_code]:
+
                     # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
                     od[probe_code][dt]['val'].append(str(row[2]))
                     od[probe_code][dt]['fval'].append(str(row[3]))
                     od[probe_code][dt]['timekeep'].append(dt_old)
+
+                    # if there is a max
+                    try:
+                        od[probe_code][dt]['mval'].append(str(row[4]))
+                    except Exception:
+                        pass
 
                 else:
                     pass
@@ -2220,29 +2243,35 @@ class PhotosyntheticRad(object):
                     # if the whole day is missing, then the mean_valid_obs is None
                     mean_valid_obs = None
 
+                try:
+                    # if Max is given in the data
+                    max_valid_obs = round(max[float(x) for x in self.od[probe_code][each_date]['mval'] if x != 'None']),3)
                 # MAX PAR from the data
+                except Exception:
+                    try:
+                        max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
+                    except ValueError:
+                        # check to see if the whole day was missing, if so, set MAX to None
+                        if mean_valid_obs == None:
+                            max_valid_obs = None
+                        else:
+                            error_string2 = "error in max_valid_obs for %s on %s" %(probe_code, each_date)
+                            mylog.write('max_obs_error', error_string2)
+
                 try:
-                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None']),3)
-
-                except ValueError:
-                    # check to see if the whole day was missing, if so, set MAX to None
-                    if mean_valid_obs == None:
-                        max_valid_obs = None
-                    else:
-                        error_string2 = "error in max_valid_obs for %s on %s" %(probe_code, each_date)
-                        mylog.write('max_obs_error', error_string2)
-
-                try:
-                    # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
-                    max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
-
-                except ValueError:
-                    # check to see if the the whole day was missing, if so, set it to none
-                    if mean_valid_obs == None:
-                        max_valid_time = None
-                    else: 
-                        error_string2 = "error in max_valid_time for %s on %s" %(probe_code, each_date)
-                        mylog.write('max_time_error', error_string2)
+                # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
+                    max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['mval']) if j != "None" and round(float(j),3) == max_valid_obs]
+                except Exception:
+                    try:
+                        # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
+                        max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['val']) if j != "None" and round(float(j),3) == max_valid_obs]
+                    except ValueError:
+                        # check to see if the the whole day was missing, if so, set it to none
+                        if mean_valid_obs == None:
+                            max_valid_time = None
+                        else: 
+                            error_string2 = "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                            mylog.write('max_time_error', error_string2)
                 
                 if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
