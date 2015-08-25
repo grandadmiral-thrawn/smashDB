@@ -180,7 +180,6 @@ class AirTemperature(object):
             except Exception:
                 this_sitecode = "ANYMET"
 
-        #print "CHOSEN: %s height, %s method, %s sitecode for %s " %(this_height, this_method, this_sitecode, probe_code)
         return this_height, this_method, this_sitecode
 
     def attack_data(self):
@@ -189,52 +188,44 @@ class AirTemperature(object):
         # obtained dictionary dictionary
         od = {}
 
-        # SELF.CURSOR is always the db you are coming FROM
-        # any other cursors are dbs you are going TO.
         for row in self.cursor:
             
-            # get only the day from the incoming result row    
+            # get only the day from the incoming result row  - this is the original result   
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
             
-            # resolve the midnight point to the next day
+            # resolve the midnight point to the prior day - ie 1/1/2010 00:00:00 is actually 12/31/2014 24:00:00
+
             if dt_old.hour == 0 and dt_old.minute == 0:
                 dt_old = dt_old - datetime.timedelta(days=1)
             else:
                 pass
 
-
-            # extract day info
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
 
-            # extract the probe code
             probe_code = str(row[1])
 
-            # if the probe code is not in the output dictionary, insert it into the output dictionary
             if probe_code not in od:
 
                 try:
-                    # if the probe code isn't there, get the day, val, fval, and store the time which is the closest five minute interval we'll be matching on
+                    # if the probe code hasn't been extracted yet, assign it and all associated values
                     od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}}
 
 
-                # how it was done before... put the min/max/mean all in separate things to be called
                 except Exception:
                     od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[2])], 'minflag': [str(row[3])], 'maxval':[str(row[2])], 'maxflag':[str(row[3])], 'timekeep':[dt_old]}}
 
-            # if we already have the probe code
             elif probe_code in od:
 
-                # if the date isn't there and we dont have one fo the new methods
+                # fail-over to the old method-->
                 if dt not in od[probe_code]:
                     try:
-                        # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
                         od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}
+                    
                     except Exception:
-                        # old style
                         od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[2])], 'minflag': [str(row[3])], 'maxval':[str(row[2])], 'maxflag':[str(row[3])], 'timekeep':[dt_old]}
 
                 elif dt in od[probe_code]:
-                    # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
+                    # if the date time is in the probecode day, then append the new values and f values, with the appropriate columns listed.
                     od[probe_code][dt]['val'].append(str(row[2]))
                     od[probe_code][dt]['fval'].append(str(row[3]))
 
@@ -250,7 +241,7 @@ class AirTemperature(object):
                         od[probe_code][dt]['maxval'].append(str(row[2]))
                         od[probe_code][dt]['maxflag'].append(str(row[3]))
 
-                    # the timekeep attribute holds onto the 5 minute time, so that if it happens to be the max or the min of the day we have it handy
+                    # the timekeep attribute was put in place to mark the max five minute or min five minute interval. It's pretty likely this is not needed in most current uses, but in the case of fail over it is important. 
                     od[probe_code][dt]['timekeep'].append(dt_old)
 
                 else:
@@ -258,7 +249,6 @@ class AirTemperature(object):
             else:
                 pass
         
-        # return the output dictionary keyed on probe and day
         return od
 
     def condense_data(self):
@@ -274,18 +264,14 @@ class AirTemperature(object):
         # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history_daily table.
         cursor_sheldon = fc.form_connection("SHELDON")
             
-        # iterate over each probe-code that was collected
+        # iterate over each probe-code that was collected -- had to hard code a bunch of this for now
         for probe_code in self.od.keys():
 
-            #print "calculating now ...%s" %(probe_code)
-
             if "AIRR" not in probe_code and probe_code != "AIRCEN08":
-                try:
-                    # get the height, method_code, and sitecode from the height_and_method_getter function  
+                try:  
                     height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
                 
                 except Exception:
-                    #import pdb; pdb.set_trace()
                     height, method_code, site_code = 350, 'AIR243','CENMET'
 
             elif "AIRR" in probe_code:
@@ -298,9 +284,15 @@ class AirTemperature(object):
             else:
                 height, method_code, site_code = 100, 'AIR999', 'ANYMET'
 
-            # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
+            # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature - recall that the first date, if started on midnight, will flip into the prior day, and be erroneous
             valid_dates = sorted(self.od[probe_code].keys())
-            
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
+                    
             for each_date in valid_dates:
 
                 # number of observations that aren't "none"
@@ -333,7 +325,7 @@ class AirTemperature(object):
                 else:
                     pass
 
-                # Daily flag naming for acceptable-- if the number of obs is 24, 'H' (hourly), if it's 96, 'F'
+                # Daily flag naming for acceptable values-- if the number of obs is 24, 'H' (hourly), if it's 96, 'F'
 
                 # default condition
                 df = 'A'
@@ -512,7 +504,6 @@ class AirTemperature(object):
                     print("no server given")
 
                 # in the best possible case, we print it out just as it is here: 
-                #try:
                 try:
                 #print each_date
                     newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time, '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time, '%H%M'), "NA", source]
@@ -521,7 +512,6 @@ class AirTemperature(object):
                 except Exception:
                     newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
-                #print newrow
                 my_new_rows.append(newrow)
     
             mylog.dump()
@@ -529,7 +519,8 @@ class AirTemperature(object):
 
 class RelHum(object):
     """ 
-    Generates relative humidity from 5 or 15 or hourly data; no weird methods that I know of
+    Generates relative humidity from 5 or 15 or hourly data; 
+    no weird methods that I know of -- i.e. relhum "max" or "min"
     """
 
     def __init__(self, startdate, enddate, server):
@@ -546,12 +537,10 @@ class RelHum(object):
 
         self.od = self.attack_data()
 
-
     def querydb(self):
         """ queries against the database - now can go to either sheldon or stewartia"""
         
         # human-readable date range for the database
-        # dr = self.human_readable()
         humanrange = self.daterange.human_readable()
 
         if self.server == "SHELDON":
@@ -593,18 +582,17 @@ class RelHum(object):
                 this_sitecode = str(row[2])
             except Exception:
                 this_sitecode = "ANYMET"
-        #print "CHOSEN: %s height, %s method, %s sitecode for %s" %(this_height, this_method, this_sitecode, probe_code)
+
         return this_height, this_method, this_sitecode
     
     def attack_data(self):
         """ gather the daily relative humidity data """
         
-        # obtained dictionary dictionary
         od = {}
 
         for row in self.cursor:
 
-            # get only the day
+            # get only the day, do the resolution of the day onto the 2400 hour
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
 
             if dt_old.hour == 0 and dt_old.minute == 0:
@@ -617,17 +605,14 @@ class RelHum(object):
             probe_code = str(row[1])
 
             if probe_code not in od:
-                # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
                 od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'timekeep':[dt_old]}}
 
             elif probe_code in od:
                 
                 if dt not in od[probe_code]:
-                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
                     od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'timekeep':[dt_old]}
 
                 elif dt in od[probe_code]:
-                    # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
                     od[probe_code][dt]['val'].append(str(row[2]))
                     od[probe_code][dt]['fval'].append(str(row[3]))
                     od[probe_code][dt]['timekeep'].append(dt_old)
@@ -651,23 +636,28 @@ class RelHum(object):
         # make a sheldon cursor
         cursor_sheldon = fc.form_connection("SHELDON")
         
-        # iterate over the returns, getting each probe code - if args are passed, include them also!
+        # each probe code is addressed here
         for probe_code in self.od.keys():
-            #print "calculating now... %s" %(probe_code)
+            
             if "RELR" not in probe_code:
-
                 # get the height, method_code, and sitecode from the height_and_method_getter function  
                 height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
 
             elif "RELR" in probe_code:
-                # height is 150m?, method is AIR999, site is REFS plus last two digits of probe_code
+                # some default settings in case you add a new probe that doesn't work
                 height, method_code, site_code = 150, "REL999", "REFS"+probe_code[-4:-2]
 
             else:
                 height, method_code, site_code = 100, "REL999", "ANYMET"
 
-            # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
+            # valid_dates are the dates we will iterate over to do the computation of daily relhum
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
 
@@ -729,7 +719,6 @@ class RelHum(object):
                     mean_valid_obs = round(float(sum([float(x) for x in self.od[probe_code][each_date]['val'] if x != 'None'])/num_valid_obs),3)
                 
                 except ZeroDivisionError:
-                    # if the whole day is missing, then the mean_valid_obs is None
                     mean_valid_obs = None
 
                 # DAILY MAX RELATIVE HUMIDITY
@@ -953,8 +942,6 @@ class DewPoint(object):
         # obtained dictionary dictionary
         od = {}
 
-        # SELF.CURSOR is always the db you are coming FROM
-        # any other cursors are dbs you are going TO.
         for row in self.cursor:
             
             # get only the day from the incoming result row    
@@ -969,30 +956,27 @@ class DewPoint(object):
             # extract the probe code
             probe_code = str(row[1])
 
-            # if the probe code is not in the output dictionary, insert it into the output dictionary
             if probe_code not in od:
 
                 try:
-                    # if the probe code isn't there, get the day, val, fval, and store the time which is the closest five minute interval we'll be matching on
                     od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}}
                 
                 except Exception:
-                    # old method
                     od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[2])], 'minflag': [str(row[3])], 'maxval':[str(row[2])], 'maxflag':[str(row[3])], 'timekeep':[dt_old]}}
 
-            # if we already have the probe code
             elif probe_code in od:
                 # if the date isn't there and we dont have one fo the new methods
                 if dt not in od[probe_code]:
                     try:
-                        # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
+                        
                         od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[4])], 'minflag': [str(row[5])], 'maxval':[str(row[6])], 'maxflag':[str(row[7])], 'timekeep':[dt_old]}
                     except Exception:
                         # old method
                         od[probe_code][dt] = {'val': [str(row[2])], 'fval': [str(row[3])], 'minval':[str(row[2])], 'minflag': [str(row[3])], 'maxval':[str(row[2])], 'maxflag':[str(row[3])], 'timekeep':[dt_old]}
 
                 elif dt in od[probe_code]:
-                    # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
+                    
+                    # in all these cases, the "try" block is for the "new method" and the exception fails over to the old method
                     od[probe_code][dt]['val'].append(str(row[2]))
                     od[probe_code][dt]['fval'].append(str(row[3]))
 
@@ -1031,20 +1015,24 @@ class DewPoint(object):
         # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history_daily table.
         cursor_sheldon = fc.form_connection("SHELDON")
             
-        # iterate over each probe-code that was collected
         for probe_code in self.od.keys():
 
             if "DEWR" not in probe_code:
-
                 # get the height, method_code, and sitecode from the height_and_method_getter function  
                 height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
 
             elif "DEWR" in probe_code:
-                # height is 150m?, method is DEW999, site is REFS plus last two digits of probe_code
+                # default data
                 height, method_code, site_code = 150, "DEW999", "REFS"+probe_code[-4:-2]
 
             # valid_dates are the dates we will iterate over to do the computation of the daily dew points
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
 
@@ -1056,7 +1044,6 @@ class DewPoint(object):
                 # notify if there are no observations
                 if num_valid_obs == 0:
                     error_string = ("there are only null values on %s for %s") %(each_date, probe_code)
-                    # print(error_string)
                     mylog.write('nullday', error_string)
                 
                 # get the TOTAL number of obs, should be 288, 96, or 24 - includes "missing"- 
@@ -1275,7 +1262,6 @@ class DewPoint(object):
                 except IndexError:
                     newrow = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
-                #print newrow
                 my_new_rows.append(newrow)
     
         mylog.dump()
@@ -1284,7 +1270,7 @@ class DewPoint(object):
 
 class VPD(object):
     """ 
-    Generates VPD daily data, consolidates or adds flags, and does methods
+    Generates VPD daily data, consolidates or adds flags, and does methods -- depricated! Works on the old data sets!
     """
 
     def __init__(self, startdate, enddate, server):
@@ -1292,36 +1278,27 @@ class VPD(object):
 
         import form_connection as fc
 
-        # the server is either "SHELDON" or "STEWARTIA"
         self.cursor = fc.form_connection(server)
 
-        # the date range contains the start date and the end date, 
-        # and a method for making it into a human readable
         self.daterange = DateRange(startdate,enddate)
 
-        # entity is integer
         self.entity = 8
 
-        # server is SHELDON or STEWARTIA
         self.server = server
         
-        # query against the database
         self.querydb()
 
-        # od is the 'obtained dictionary'. it is blank before the query. 
         self.od = {}
 
-        # attack data is a method for condensing the data into a structure for processing
         self.od = self.attack_data()
 
     def querydb(self):
-        """ queries the data base and returns the cursor after population. THIS MAY CAUSE A NATURAL SWITCH BETWEEN LOGGER_PRO and LOGGER_NEW BECAUSE PRO DOESN'T HAVE THE SAME COLUMNS BUT THAT WILL ONLY WORK IN AIRTEMP ATTRIBUTE"""
+        """ warning that this may become flaky in the case where there is airtemp max but not vpd max"""
 
         # human-readable date range for the database
         # dr = self.human_readable()
         humanrange = self.daterange.human_readable()
 
-        # Queries for SHELDON and STEWARTIA
         if self.server == "SHELDON":
                 dbname = "LTERLogger_pro.dbo."
         elif self.server == "STEWARTIA":
@@ -1363,12 +1340,9 @@ class VPD(object):
     def attack_data(self):
         """ gather the daily vpd data """
         
-        # obtained dictionary dictionary
         od = {}
 
         for row in self.cursor:
-
-            # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
 
@@ -1379,17 +1353,14 @@ class VPD(object):
             probe_code = str(row[1])
 
             if probe_code not in od:
-                # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
                 od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'timekeep':[dt_old]}}
 
             elif probe_code in od:
                 
                 if dt not in od[probe_code]:
-                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
                     od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'timekeep':[dt_old]}
 
                 elif dt in od[probe_code]:
-                    # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
                     od[probe_code][dt]['val'].append(str(row[2]))
                     od[probe_code][dt]['fval'].append(str(row[3]))
                     od[probe_code][dt]['timekeep'].append(dt_old)
@@ -1402,7 +1373,8 @@ class VPD(object):
         return od
 
     def condense_data(self):
-        """ Gathers VPD
+        """ 
+        Gathers VPD
         """
         
         # my new rows is the output rows that can be read as csv or into the database
@@ -1425,6 +1397,12 @@ class VPD(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
 
@@ -1610,27 +1588,22 @@ class VPD2(object):
     """
 
     def __init__(self, startdate, enddate, server):
-        """ uses form_connection to communicate with the database; queries for a start and end date and possibly a probe code, generates a date-mapped dictionary. """
+        """ uses form_connection to communicate with the database; 
+        queries for a start and end date and possibly a probe code, 
+        generates a date-mapped dictionary. """
 
         import form_connection as fc
 
-        # the server is either "SHELDON" or "STEWARTIA"
         self.cursor = fc.form_connection(server)
 
-        # the date range contains the start date and the end date, 
-        # and a method for making it into a human readable
         self.daterange = DateRange(startdate,enddate)
 
-        # server is SHELDON or STEWARTIA
         self.server = server
         
-        # query against the database
         self.querydb()
 
-        # od is the 'obtained dictionary'. it is blank before the query. 
         self.od = {}
 
-        # attack data is a method for condensing the data into a structure for processing
         self.od = self.attack_data()
 
     def querydb(self):
@@ -1638,11 +1611,8 @@ class VPD2(object):
         for this VPD we must specify explicitly which probe_codes we want to use
         """
 
-        # human-readable date range for the database
-        # dr = self.human_readable()
         humanrange = self.daterange.human_readable()
 
-        # Queries for SHELDON and STEWARTIA
         if self.server == "SHELDON":
                 dbname = "LTERLogger_pro.dbo."
         
@@ -1651,7 +1621,6 @@ class VPD2(object):
              
         query = "SELECT " + dbname + "MS04311.DATE_TIME, " + dbname +"MS04311.PROBE_CODE, " + dbname + "MS04311.AIRTEMP_MEAN, " + dbname + "MS04311.AIRTEMP_MEAN_FLAG, RH.RELHUM_MEAN, RH.RELHUM_MEAN_FLAG from " + dbname + "MS04311 inner join " + dbname + "MS04312 as RH on " + dbname + "MS04311.date_time = RH.date_time AND " + dbname + "MS04311.HEIGHT = RH.HEIGHT AND " + dbname + "MS04311.SITECODE = RH.SITECODE WHERE " + dbname + "MS04311.DATE_TIME >= \'"  + humanrange[0] +  "\' AND "+ dbname +"MS04311.DATE_TIME < \'" + humanrange[1]+  "\' ORDER BY " + dbname + "MS04311.DATE_TIME ASC"
         
-        # execute the query
         self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
@@ -1687,12 +1656,9 @@ class VPD2(object):
     def attack_data(self):
         """ gather the daily vpd data """
         
-        # obtained dictionary dictionary
         od = {}
 
         for row in self.cursor:
-
-            # get only the day
             
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
 
@@ -1701,7 +1667,6 @@ class VPD2(object):
 
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             
-            # generate a new probe code
             probe_code = 'VPD'+str(row[1])[3:]
 
             # skip values which are from PRIMET aspirated and other aspirated
@@ -1760,6 +1725,12 @@ class VPD2(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
 
