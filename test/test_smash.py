@@ -21,7 +21,11 @@ import form_connection
 
 def test_conn():
     c = form_connection.micro_conn("STEWARTIA")
-    assert(type(c) == types.pymssql.Connection)
+    assert(type(c) != types.StringType)
+
+def test_cur():
+    c = form_connection.form_connection("SHELDON")
+    assert(type(c) != types.StringType)
 
 def test_daterange():
     startdate = '2015-01-01 00:00:00'
@@ -40,4 +44,5 @@ def test_daterange():
 #     smashWorkers.MethodTableReader
 if __name__ == "__main__":
     test_conn()
+    test_cur()
     test_daterange()
