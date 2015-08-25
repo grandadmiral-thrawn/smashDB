@@ -1,6 +1,8 @@
 SMASHER
 ========
 
+[![Build Status](https://travis-ci.org/dataRonin/smashDB.svg)](https://travis-ci.org/dataRonin/smashDB)
+
 v 0.1.1
 
 SMASHER is a command line tool for updating LTERLogger_pro, our MSSQL 1st QC level provisional server. It can also get updates from MS043, the production level annual server. 
