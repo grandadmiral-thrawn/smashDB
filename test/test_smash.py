@@ -49,8 +49,19 @@ def test_Air():
     A = smashWorkers.AirTemperature(sd, ed, "SHELDON")
     assert(A.entity == 1)
     assert(type(A.od.keys())==types.ListType)
-    x = sorted(A.od.keys())[0]
-    assert(x==datetime.datetime.strptime(sd,'%Y-%m-%d %H:%M:%S'))
+    
+    x_1 = 'AIRCEN01'
+
+    if len(sorted(A.od['AIRCEN01'].keys())) > 1:
+        x = sorted(A.od['AIRCEN01'].keys())[1]
+    else:
+        x = sorted(A.od['AIRCEN01'].keys())[0]
+    print x
+
+    print x
+    print sd
+
+    assert(datetime.datetime.strftime(x, '%Y-%m-%d %H:%M:%S')==sd)
 
 def test_Rel():
     sd = '2015-02-01 00:00:00'
@@ -58,8 +69,23 @@ def test_Rel():
     A = smashWorkers.RelHum(sd, ed, "SHELDON")
     assert(A.entity == 2)
     assert(type(A.od.keys())==types.ListType)
-    x = sorted(A.od.keys())[0]
-    assert(x==datetime.datetime.strptime(sd,'%Y-%m-%d %H:%M:%S'))
+    x_1 = 'RELCEN01'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x, '%Y-%m-%d %H:%M:%S')==sd)
+
+def test_Dew():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.DewPoint(sd, ed, "SHELDON")
+    assert(A.entity == 7)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = sorted(A.od.keys())[0]
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
 
 if __name__ == "__main__":
     test_conn()
@@ -67,3 +93,4 @@ if __name__ == "__main__":
     test_daterange()
     test_Air()
     test_Rel()
+    test_Dew()
