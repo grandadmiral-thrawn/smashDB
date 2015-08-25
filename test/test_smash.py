@@ -143,8 +143,8 @@ def test_pre():
     assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
 
 def test_sno():
-    sd = '2015-02-01 00:00:00'
-    ed = '2015-02-02 00:00:00'
+    sd = '2015-04-21 00:00:00'
+    ed = '2015-04-22 00:00:00'
     A = smashWorkers.SnowLysimeter(sd, ed, "SHELDON")
     assert(A.entity == 9)
     assert(type(A.od.keys())==types.ListType)
@@ -154,13 +154,38 @@ def test_sno():
     print sd
     assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
 
-def test_sno():
+def test_solar():
     sd = '2015-02-01 00:00:00'
     ed = '2015-02-02 00:00:00'
     A = smashWorkers.Solar(sd, ed, "SHELDON")
-    assert(A.entity == 9)
+    assert(A.entity == 5)
     assert(type(A.od.keys())==types.ListType)
     x_1 = 'RADCEN01'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+def test_net():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.NetRadiometer(sd, ed, "SHELDON")
+    assert(A.entity == 25)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'RADVAN02'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+
+def test_wind():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.NetRadiometer(sd, ed, "SHELDON")
+    assert(A.entity == 4)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'WNDPRI01'
     x = sorted(A.od[x_1].keys())[1]
     print x
     print sd
@@ -177,3 +202,5 @@ if __name__ == "__main__":
     test_PAR()
     test_SW()
     test_pre()
+    test_solar()
+    test_net()

@@ -847,7 +847,6 @@ class RelHum(object):
             mylog.dump()
         return my_new_rows
 
-
 class DewPoint(object):
     """ 
     Generates dewpoint daily data, consolidates or adds flags, and does methods
@@ -3579,12 +3578,15 @@ class Solar(object):
         # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
        
-            # get the height, method_code, and sitecode from the height_and_method_getter function  
-            # doesn't look like we'll need any exceptions here right now
             height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
 
-            # valid_dates are the dates we will iterate over to do the computation of the daily precip
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
                 # get the number of valid observations
@@ -3873,6 +3875,12 @@ class SnowDepth(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily precip
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
                 # get the number of valid observations
@@ -4123,6 +4131,13 @@ class NetRadiometer(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily precip
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
+
             for each_date in valid_dates:
 
                 # get the number of valid observations
@@ -4490,6 +4505,13 @@ class Wind(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily precip
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
+            
             for each_date in valid_dates:
                 # get the number of valid observations
                 num_valid_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_val'] if x != 'None'])
