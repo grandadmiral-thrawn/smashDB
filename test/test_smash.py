@@ -49,12 +49,21 @@ def test_Air():
     A = smashWorkers.AirTemperature(sd, ed, "SHELDON")
     assert(A.entity == 1)
     assert(type(A.od.keys())==types.ListType)
-    assert(A.od['entity']=='1')
-    
+    x = sorted(A.od.keys())[0]
+    assert(x==datetime.datetime.strptime(sd,'%Y-%m-%d %H:%M:%S'))
 
+def test_Rel():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.RelHum(sd, ed, "SHELDON")
+    assert(A.entity == 2)
+    assert(type(A.od.keys())==types.ListType)
+    x = sorted(A.od.keys())[0]
+    assert(x==datetime.datetime.strptime(sd,'%Y-%m-%d %H:%M:%S'))
 
 if __name__ == "__main__":
     test_conn()
     test_cur()
     test_daterange()
     test_Air()
+    test_Rel()

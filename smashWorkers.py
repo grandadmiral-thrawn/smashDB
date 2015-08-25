@@ -180,7 +180,7 @@ class AirTemperature(object):
             except Exception:
                 this_sitecode = "ANYMET"
 
-        print "CHOSEN: %s height, %s method, %s sitecode for %s " %(this_height, this_method, this_sitecode, probe_code)
+        #print "CHOSEN: %s height, %s method, %s sitecode for %s " %(this_height, this_method, this_sitecode, probe_code)
         return this_height, this_method, this_sitecode
 
     def attack_data(self):
@@ -593,7 +593,7 @@ class RelHum(object):
                 this_sitecode = str(row[2])
             except Exception:
                 this_sitecode = "ANYMET"
-        print "CHOSEN: %s height, %s method, %s sitecode for %s" %(this_height, this_method, this_sitecode, probe_code)
+        #print "CHOSEN: %s height, %s method, %s sitecode for %s" %(this_height, this_method, this_sitecode, probe_code)
         return this_height, this_method, this_sitecode
     
     def attack_data(self):
