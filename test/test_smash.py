@@ -104,10 +104,76 @@ def test_PAR():
     print sd
     assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
 
+def test_ST():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.SoilTemperature(sd, ed, "SHELDON")
+    assert(A.entity == 21)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'SOICEN01'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+
+def test_SW():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.SoilWaterContent(sd, ed, "SHELDON")
+    assert(A.entity == 23)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'SWCPRI01'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+
+def test_pre():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.Precipitation(sd, ed, "SHELDON")
+    assert(A.entity == 3)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'PPTCEN01'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+def test_sno():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.SnowLysimeter(sd, ed, "SHELDON")
+    assert(A.entity == 9)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'LYSCEN01'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+def test_sno():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.Solar(sd, ed, "SHELDON")
+    assert(A.entity == 9)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'RADCEN01'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
 if __name__ == "__main__":
     test_conn()
     test_cur()
     test_daterange()
     test_Air()
     test_Rel()
+    test_ST()
     test_Dew()
+    test_PAR()
+    test_SW()
+    test_pre()

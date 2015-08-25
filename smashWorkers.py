@@ -1599,7 +1599,7 @@ class VPD2(object):
         self.daterange = DateRange(startdate,enddate)
 
         self.entity = 8
-        
+
         self.server = server
         
         self.querydb()
@@ -2334,7 +2334,7 @@ class SoilTemperature(object):
 
         elif self.server == "STEWARTIA":
             dbname = "FSDBDATA.dbo."
-        
+
         query = "SELECT DATE_TIME, PROBE_CODE, SOILTEMP_MEAN, SOILTEMP_MEAN_FLAG from " + dbname + "MS04331 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
         
         self.cursor.execute(query)
@@ -2428,6 +2428,12 @@ class SoilTemperature(object):
                 height, method_code, site_code = 20, "SOI000", "VANMET"
 
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
 
@@ -2443,7 +2449,7 @@ class SoilTemperature(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24] and each_date != self.daterange.dr[0]:
+                if num_total_obs not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]:
 
                     # break on missing dates and continue to the next
 
@@ -2713,8 +2719,8 @@ class SoilWaterContent(object):
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
 
             if dt_old.hour == 0 and dt_old.minute == 0:
-
                 dt_old = dt_old - datetime.timedelta(days=1)
+
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
 
             probe_code = str(row[1])
@@ -2768,7 +2774,14 @@ class SoilWaterContent(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily soil water content
             valid_dates = sorted(self.od[probe_code].keys())
-            
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
+
+
             for each_date in valid_dates:
 
                 # get the number of valid observations - these are observations which are numbers that aren't none
@@ -2970,7 +2983,7 @@ class SoilWaterContent(object):
 class Precipitation(object):
 
     """
-    Daily Precipitation. Now with hackypre, the Pythonic precip algorithm 
+    Daily Precipitation. 
     """
 
     def __init__(self, startdate, enddate, server):
@@ -3114,13 +3127,17 @@ class Precipitation(object):
         
         # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
-       
-            # get the height, method_code, and sitecode from the height_and_method_getter function  
-            # doesn't look like we'll need any exceptions here right now
+
             height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
 
             # valid_dates are the dates we will iterate over to do the computation of the daily precip
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
                 # get the number of valid observations - these are observations which are numbers that aren't none
@@ -3193,7 +3210,6 @@ class Precipitation(object):
                     pass
 
                 newrow = ['MS043',3, site_code, method_code, int(height), "2D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
-
 
 
                 my_new_rows.append(newrow)
@@ -3331,6 +3347,12 @@ class SnowLysimeter(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily precip
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
                 # get the number of valid observations - these are observations which are numbers that aren't none
@@ -3444,11 +3466,14 @@ class Solar(object):
         try:
             # if a solar max is given
             query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG, SOLAR_MAX from " + dbname + "MS04315 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
+
+            self.cursor.execute(query)
+        
         except Exception:
             # otherwise default to no solar max
             query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from " + dbname + "MS04315 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
 
-        self.cursor.execute(query)
+            self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
         """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
