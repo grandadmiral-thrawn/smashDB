@@ -43,10 +43,18 @@ def test_daterange():
     assert(type(a_range) == types.ListType)
     assert(2 == len(a_range))
 
+def test_Air():
+    sd = '2015-01-01 00:00:00'
+    ed = '2015-01-02 00:00:00'
+    A = smashWorkers.AirTemperature(sd, ed, "SHELDON")
+    assert(A.entity == 1)
+    assert(type(A.od.keys())==types.ListType)
+    assert(A.od['entity']=='1')
+    
 
-# def test_method_reader():
-#     smashWorkers.MethodTableReader
+
 if __name__ == "__main__":
     test_conn()
     test_cur()
     test_daterange()
+    test_Air()
