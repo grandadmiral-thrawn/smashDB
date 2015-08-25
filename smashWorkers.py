@@ -1598,6 +1598,8 @@ class VPD2(object):
 
         self.daterange = DateRange(startdate,enddate)
 
+        self.entity = 8
+        
         self.server = server
         
         self.querydb()
@@ -2016,20 +2018,15 @@ class PhotosyntheticRad(object):
         """ uses form_connection to communicate with the database; queries for a start and end date and possibly a probe code, generates a date-mapped dictionary. """
         import form_connection as fc
 
-        # the server is either "SHELDON" or "STEWARTIA"
         self.cursor = fc.form_connection(server)
         self.daterange = DateRange(startdate,enddate)
 
-        # entity is integer
         self.entity = 22
 
-        # server is SHELDON or STEWARTIA
         self.server = server
         
-        # query against the database
         self.querydb()
 
-        # od is the 'obtained dictionary'. it is blank before the query. 
         self.od = {}
 
         # attack data is a method for condensing the data into a structure for processing
@@ -2047,15 +2044,18 @@ class PhotosyntheticRad(object):
 
         elif self.server == "STEWARTIA":
                 dbname = "FSDBDATA.dbo."
+        else:
+            pass
 
         try:
             query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG, PAR_MAX from " + dbname + "MS04332 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
+
+            self.cursor.execute(query)
         
         except Exception:
             query = "SELECT DATE_TIME, PROBE_CODE, PAR_MEAN, PAR_MEAN_FLAG from " + dbname + "MS04332 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
         
-        
-        self.cursor.execute(query)
+            self.cursor.execute(query)
 
     def height_and_method_getter(self, probe_code, cursor_sheldon):
         """ determines the height and method based on the method_history_daily table in LTERLogger_new. If a method is not found, we'll need to pass over it. sheldon cursor is passed in"""
@@ -2096,10 +2096,17 @@ class PhotosyntheticRad(object):
 
         for row in self.cursor:
 
-
-            # get only the day
+            # get only the day from the incoming result row  - this is the original result   
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
-            dt_old = dt_old-datetime.timedelta(days=1)
+            
+            # resolve the midnight point to the prior day - ie 1/1/2010 00:00:00 is actually 12/31/2014 24:00:00
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
+            else:
+                pass
+
+            
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             
             probe_code = str(row[1])
@@ -2165,6 +2172,12 @@ class PhotosyntheticRad(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             # iterate over each of the dates
             for each_date in sorted(self.od[probe_code].keys()):
 

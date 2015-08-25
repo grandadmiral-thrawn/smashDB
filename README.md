@@ -295,6 +295,63 @@ Some workers, like AirTemperature, are smart to handle the "new style" data with
 
 The Workers are controlled by the Controls classes, found in smashControls.py. The Controls dictate date ranges, method ranges, etc., that can be used in the API. DBControl, for example, is used to find the recentest end date in the database in order to perform the minimum update.MethodControl is used to find the methods for the READ function. HRMethodControl finds the High-Resolution methods for the READ function. The controls are used to reduce the amount of data we need to process on each operation.
 
+###How we deal with the incorporation of the new methods
+
+In all these cases, the "try" block is for the "new method" and the exception fails over to the old method. For example, in dew point, the new method has max and min, and it is in different columns form the SQL than in the old methods. So the old methods have columns 2 and 3, which are the five minute means and flags, and the new methods have columns 4,5,6 and 7 which are the max, max time, min, and min time. We build the lookup based on the output\[probecode\]\[datetime\]\[trigger\] and then append to it from wherever we can find.
+        
+
+        od[probe_code][dt]['val'].append(str(row[2]))
+        od[probe_code][dt]['fval'].append(str(row[3]))
+
+        try:
+            od[probe_code][dt]['minval'].append(str(row[4]))
+            od[probe_code][dt]['minflag'].append(str(row[5]))
+            od[probe_code][dt]['maxval'].append(str(row[6]))
+            od[probe_code][dt]['maxflag'].append(str(row[7]))
+        except Exception:
+            od[probe_code][dt]['minval'].append(str(row[2]))
+            od[probe_code][dt]['minflag'].append(str(row[3]))
+            od[probe_code][dt]['maxval'].append(str(row[2]))
+            od[probe_code][dt]['maxflag'].append(str(row[3]))
+
+
+###How we deal with the 2400 being in the previous day
+
+When we are building the output, we take the value and evaluate if it has hour 0 and minute 0. If this is the case, then since the output is going to be written to the "day" in mass, we simply assign it to the previous day's "bin". This is only a problem on the "first day" if you start at midnight, because then you get an extra day. The solution in this case is just to test for if the first day is the first day of the series and the first measurement contains a 0 hour and a 0 minute, and if this is the case skip it. 
+
+Here's the part of the tool that resets the 0 hour and 0 minute to the previous day's bin:
+
+
+        od = {}
+
+        for row in self.cursor:
+            
+            dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
+
+            if dt_old.hour == 0 and dt_old.minute == 0:
+                dt_old = dt_old - datetime.timedelta(days=1)
+
+            dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
+            probe_code = str(row[1])
+
+
+Later when we create the rows to put in SQL and in csv, we test for the first day like this:
+
+        if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                        valid_dates = sorted(self.od[probe_code].keys())[1:]
+                    else:
+                        pass
+
+### Notes on VPD:
+
+The VPD2 method is really the only valid method. The VPD method is using the old VPD set up and I'm keeping it in here in case you need it, but you should only call VPD2 on new data. Smasher interface is configured like this. If you have to debug VPD, don't even look at VPD method, since it is never called.
+
+Also, the new way, we don't use the probes 5-10 anywhere, because they are aspirated, so this is coded in kind of roughly. You might have to change this in the future if you use them for VPD.
+
+        # skip values which are from PRIMET aspirated and other aspirated
+        if probe_code[-2:] in ['05','06','07','08','09','10']:
+            continue
+
 
 SmashControls
 -----------
@@ -316,6 +373,14 @@ The smasher API is how you work with SMASHER in the minimum typing way. Call it 
 
 Recent updates to SMASHER!
 ---------
+
+- V. 0.1.1.: fixed a bug that happens if your start date and time is on the 0th hour of the 0th minute that would generate an extra day of null output:
+
+        ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+                    if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                        valid_dates = sorted(self.od[probe_code].keys())[1:]
+                    else:
+                        pass
 
 - V. 0.1.1 : added PAR MAX method and SOLAR MAX method. Methods will try to execute first, and fail to old method if not present.
 

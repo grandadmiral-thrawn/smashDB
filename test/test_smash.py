@@ -44,20 +44,13 @@ def test_daterange():
     assert(2 == len(a_range))
 
 def test_Air():
-    sd = '2015-01-01 00:00:00'
-    ed = '2015-01-02 00:00:00'
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
     A = smashWorkers.AirTemperature(sd, ed, "SHELDON")
     assert(A.entity == 1)
-    assert(type(A.od.keys())==types.ListType)
-    
-    x_1 = 'AIRCEN01'
-
-    if len(sorted(A.od['AIRCEN01'].keys())) > 1:
-        x = sorted(A.od['AIRCEN01'].keys())[1]
-    else:
-        x = sorted(A.od['AIRCEN01'].keys())[0]
-    print x
-
+    assert(type(A.od.keys())==types.ListType) 
+    x_1 = 'AIRCEN04'
+    x = sorted(A.od[x_1].keys())[1]
     print x
     print sd
 
@@ -69,7 +62,7 @@ def test_Rel():
     A = smashWorkers.RelHum(sd, ed, "SHELDON")
     assert(A.entity == 2)
     assert(type(A.od.keys())==types.ListType)
-    x_1 = 'RELCEN01'
+    x_1 = 'RELCEN04'
     x = sorted(A.od[x_1].keys())[1]
     print x
     print sd
@@ -81,7 +74,31 @@ def test_Dew():
     A = smashWorkers.DewPoint(sd, ed, "SHELDON")
     assert(A.entity == 7)
     assert(type(A.od.keys())==types.ListType)
-    x_1 = sorted(A.od.keys())[0]
+    x_1 = 'DEWCEN04'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+def test_VPD():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.VPD2(sd, ed, "SHELDON")
+    assert(A.entity == 8)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'VPDCEN04'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+def test_PAR():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.PhotosyntheticRad(sd, ed, "STEWARTIA")
+    assert(A.entity == 22)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'PARCEN01'
     x = sorted(A.od[x_1].keys())[1]
     print x
     print sd
