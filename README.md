@@ -1,7 +1,7 @@
 SMASHER
 ========
 
-v 0.0.9
+v 0.1.1
 
 SMASHER is a command line tool for updating LTERLogger_pro, our MSSQL 1st QC level provisional server. It can also get updates from MS043, the production level annual server. 
 
@@ -314,6 +314,8 @@ The smasher API is how you work with SMASHER in the minimum typing way. Call it 
 
 Recent updates to SMASHER!
 ---------
+
+- V. 0.1.1 : added PAR MAX method and SOLAR MAX method. Methods will try to execute first, and fail to old method if not present.
 
 UNIT TESTS ARE BEING DEVELOPED!
 

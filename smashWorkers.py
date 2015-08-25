@@ -25,7 +25,9 @@ class DateRange(object):
         return hr
 
 class MethodTableReader(object):
-
+    """
+    Reads height, method, etc. from method history table
+    """
     def __init__(self, cursor_sheldon):
 
         self.cursor_sheldon = cursor_sheldon
@@ -61,7 +63,7 @@ class MethodTableReader(object):
         return this_height, this_method, this_sitecode
 
 class LogIssues(object):
-    """a dictionary that can be written to a logfile"""
+    """defines a dictionary that can be written to a logfile"""
 
     def __init__(self, filename):
 
@@ -2135,7 +2137,7 @@ class PhotosyntheticRad(object):
                 
                 try:
                     # if there is par max
-                    od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'mval': [str(row[4])], timekeep':[dt_old]}}
+                    od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'mval': [str(row[4])], 'timekeep':[dt_old]}}
                 except Exception:
                     # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
                     od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'timekeep':[dt_old]}}
@@ -2146,7 +2148,7 @@ class PhotosyntheticRad(object):
 
                     try:
                         # if there is PAR MAX
-                        od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'mval': [str(row[4])] 'timekeep':[dt_old]}
+                        od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'mval': [str(row[4])], 'timekeep':[dt_old]}
                     except Exception:
                         # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
                         od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'timekeep':[dt_old]}
@@ -2245,7 +2247,7 @@ class PhotosyntheticRad(object):
 
                 try:
                     # if Max is given in the data
-                    max_valid_obs = round(max[float(x) for x in self.od[probe_code][each_date]['mval'] if x != 'None']),3)
+                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['mval'] if x != 'None']),3)
                 # MAX PAR from the data
                 except Exception:
                     try:
@@ -3455,7 +3457,12 @@ class Solar(object):
         elif self.server == "STEWARTIA":
             dbname = "FSDBDATA.dbo."
 
-        query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from " + dbname + "MS04315 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
+        try:
+            # if a solar max is given
+            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG, SOLAR_MAX from " + dbname + "MS04315 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
+        except Exception:
+            # otherwise default to no solar max
+            query = "SELECT DATE_TIME, PROBE_CODE, SOLAR_TOT, SOLAR_TOT_FLAG, SOLAR_MEAN, SOLAR_MEAN_FLAG from " + dbname + "MS04315 WHERE DATE_TIME >= \'" + humanrange[0] + "\' AND DATE_TIME < \'" + humanrange[1] + "\' ORDER BY DATE_TIME ASC"
 
         self.cursor.execute(query)
 
@@ -3508,14 +3515,24 @@ class Solar(object):
             probe_code = str(row[1])
 
             if probe_code not in od:
-                # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
-                od[probe_code] = {dt:{'tot_val': [str(row[2])], 'tot_fval': [str(row[3])], 'mean_val': [str(row[4])], 'mean_fval': [str(row[5])], 'timekeep':[dt_old]}}
+                try:
+                    # if the probe code isn't there, get the day, total val, total value flag, mean value, mean value flag,  max value, and the the time of the max value
+                    od[probe_code] = {dt:{'tot_val': [str(row[2])], 'tot_fval': [str(row[3])], 'mean_val': [str(row[4])], 'mean_fval': [str(row[5])], 'mval':[str(row[6])],'timekeep':[dt_old]}}
+                except Exception:
+                    # if the probe code isn't there and max is not there, get the day, total val, total value flag, mean value, mean value flag, and store the time to match to the max and min
+                    od[probe_code] = {dt:{'tot_val': [str(row[2])], 'tot_fval': [str(row[3])], 'mean_val': [str(row[4])], 'mean_fval': [str(row[5])], 'timekeep':[dt_old]}}
 
             elif probe_code in od:
                 
                 if dt not in od[probe_code]:
-                    # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
-                    od[probe_code][dt] = {'tot_val': [str(row[2])], 'tot_fval':[str(row[3])], 'mean_val': [str(row[4])], 'mean_fval': [str(row[5])], 'timekeep':[dt_old]}
+                    try:
+                        # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, etc. 
+                        od[probe_code][dt] = {'tot_val': [str(row[2])], 'tot_fval':[str(row[3])], 'mean_val': [str(row[4])], 'mean_fval': [str(row[5])], 'mval':[str(row[6])], 'timekeep':[dt_old]}
+
+                    except Exception:
+                        # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
+                        od[probe_code][dt] = {'tot_val': [str(row[2])], 'tot_fval':[str(row[3])], 'mean_val': [str(row[4])], 'mean_fval': [str(row[5])], 'timekeep':[dt_old]}
+
 
                 elif dt in od[probe_code]:
                     # if the date time is in the probecode day, then append the new vals and fvals, and flip to the new method
@@ -3524,6 +3541,12 @@ class Solar(object):
                     od[probe_code][dt]['mean_val'].append(str(row[4]))
                     od[probe_code][dt]['mean_fval'].append(str(row[5]))
                     od[probe_code][dt]['timekeep'].append(dt_old)
+
+                    # if a five minute max is given for solar
+                    try:
+                        od[probe_code][dt]['mval'].append(str(row[6]))
+                    except Exception:
+                        pass
 
                 else:
                     pass
@@ -3641,30 +3664,36 @@ class Solar(object):
                     
                 # get the max of those observations
                 try:
-                    # max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['mean_val'] if x != 'None']),3)
-                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['mean_val'] if x != 'None']))
-                
-                except ValueError:
-                    # check to see if the whole day was missing, if so, set it to none
-                    if mean_valid_obs == None:
-                        max_valid_obs = None
-                    else:
+                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['mval'] if x != 'None']),3)
+                except Exception:
+                    try:
+                        max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['mean_val'] if x != 'None']),3)
+                    except ValueError:
+                        # check to see if the whole day was missing, if so, set it to none
+                        if mean_valid_obs == None:
+                            max_valid_obs = None
+                        else:
 
-                        error_string3 = "error in max_valid_obs for %s on %s" %(probe_code, each_date)
-                        mylog.write("max_valid_obs_error",error_string3)
+                            error_string3 = "error in max_valid_obs for %s on %s" %(probe_code, each_date)
+                            mylog.write("max_valid_obs_error",error_string3)
                 try:
-                    # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
-                    max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['mean_val']) if j != "None" and round(float(j),3) == max_valid_obs]
+                    # get the time of that maximum, if you have the maximum column, it will be controlled re. flags by the control on max_valid_obs
+                    max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['mval']) if j != "None" and round(float(j),3) == max_valid_obs]
 
-                except ValueError:
-                    # check to see if the the whole day was missing, if so, set it to none
-                    # *** something I was testing, : for index,j in enumerate(self.od[probe_code][each_date]['val']):
-                    #    print index, j ****
-                    if mean_valid_obs == None:
-                        max_valid_time = None
-                    else: 
-                        error_string4 = "error in max_valid_time for %s on %s" %(probe_code, each_date)
-                        mylog.write("max_valid_time_error",error_string4)
+                except Exception:
+                    try:
+                        # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
+                        max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['mean_val']) if j != "None" and round(float(j),3) == max_valid_obs]
+
+                    except ValueError:
+                        # check to see if the the whole day was missing, if so, set it to none
+                        # *** something I was testing, : for index,j in enumerate(self.od[probe_code][each_date]['val']):
+                        #    print index, j ****
+                        if mean_valid_obs == None:
+                            max_valid_time = None
+                        else: 
+                            error_string4 = "error in max_valid_time for %s on %s" %(probe_code, each_date)
+                            mylog.write("max_valid_time_error",error_string4)
                 
                 if mean_valid_obs is not None:
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
