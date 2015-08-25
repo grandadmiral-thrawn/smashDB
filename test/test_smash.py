@@ -25,7 +25,11 @@ def test_conn():
 
 def test_cur():
     c = form_connection.form_connection("SHELDON")
-    assert(type(c) != types.StringType)
+    sql = "select top 1 airtemp_mean from LTERLogger_pro.dbo.MS04311"
+    c.execute(sql)
+    res = c.fetchone()
+    string_res = str(res)
+    assert(type(string_res) == types.StringType)
 
 def test_daterange():
     startdate = '2015-01-01 00:00:00'
