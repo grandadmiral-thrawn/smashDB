@@ -16,6 +16,6 @@ setup(
     url="https://github.com/dataRonin/smasher",
     download_url = "https://github.com/dataRonin/smasher/tarball/0.1.0",
     packages=["smasher"],
-    install_requires=["matplotlib", "numpy", "pandas"],
+    install_requires=["matplotlib", "numpy", "pymssql", "requests"],
     keywords = ["smash", "smashdb", "smashery"]
 )
