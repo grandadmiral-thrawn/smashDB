@@ -76,6 +76,7 @@ print("~ Creating CSV?: {}".format(args.csv))
 # station and server names
 server = args.server
 
+# if no station is given, then we just do the default of anything
 if args.station == None or args.station == []:
   station = None
 else:
@@ -88,7 +89,6 @@ elif args.csv != None:
   mycsv = args.csv[0]
 
 ### CSV NAMING ###
-
 if mycsv == "TRUE" and station != None:
   csv_filename = 'daily_smash_for_' + server + '_' + args.attribute + '_' + station + '_updated_on_' + datetime.datetime.strftime(datetime.datetime.now(),'%Y%m%d') + '.csv' 
 elif mycsv == "TRUE" and station == None:
@@ -883,7 +883,7 @@ elif args.crud == "CREATE" and args.attribute in ["WSPD_PRO2", "wspd_pro2", "WIN
         writer.writerow(row)
   del C
 
-elif args.crud == "CREATE" and args.attribute in ["SOILTEMP", "soiltemp", "MS04321"] and args.startdate == None and args.enddate == None:
+elif args.crud == "CREATE" and args.attribute in ["SOILTEMP", "soiltemp", "MS04321", "MS00121"] and args.startdate == None and args.enddate == None:
 
   if station == None:
     # create a list of last updates
@@ -898,6 +898,7 @@ elif args.crud == "CREATE" and args.attribute in ["SOILTEMP", "soiltemp", "MS043
     sd, ed = B.check_out_one_attribute("SOILTEMP")
   except KeyError:
     print "Soil Temp is already up to date, please specify a range"
+  
   C = smashWorkers.SoilTemperature(sd, ed, server)
   nr = C.condense_data()
   new_rows = []
@@ -1192,7 +1193,7 @@ if args.crud == "CREATE" and args.startdate != None and args.enddate != None:
     del new_rows
     del nr
 
-  elif args.attribute in ["SOILTEMP", "soiltemp", "MS04321"]:
+  elif args.attribute in ["SOILTEMP", "soiltemp", "MS04321", "MS00121"]:
 
     C = smashWorkers.SoilTemperature(sd, ed, server)
     nr = C.condense_data()
@@ -2154,7 +2155,7 @@ elif args.crud == "UPDATE" and args.attribute in ["PAR", "MS04322"] and args.sta
     pass
 
 
-elif args.crud == "UPDATE" and args.attribute in ["SOILTEMP", "MS04321"] and args.startdate == None and args.enddate == None:
+elif args.crud == "UPDATE" and args.attribute in ["SOILTEMP", "MS04321", "MS00121"] and args.startdate == None and args.enddate == None:
 
   if station == None:
     # create a list of last updates

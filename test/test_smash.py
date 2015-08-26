@@ -12,6 +12,7 @@ import itertools
 import sys
 import math
 import types
+import form_connection
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(HERE, os.pardir))
@@ -29,6 +30,7 @@ def test_cur():
     c.execute(sql)
     res = c.fetchone()
     string_res = str(res)
+    print string_res
     assert(type(string_res) == types.StringType)
 
 def test_daterange():
@@ -180,9 +182,9 @@ def test_net():
 
 
 def test_wind():
-    sd = '2015-02-01 00:00:00'
-    ed = '2015-02-02 00:00:00'
-    A = smashWorkers.NetRadiometer(sd, ed, "SHELDON")
+    sd = '2015-05-01 00:00:00'
+    ed = '2015-05-02 00:00:00'
+    A = smashWorkers.Wind2(sd, ed, "SHELDON")
     assert(A.entity == 4)
     assert(type(A.od.keys())==types.ListType)
     x_1 = 'WNDPRI01'
@@ -190,6 +192,31 @@ def test_wind():
     print x
     print sd
     assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+def test_wind2():
+    sd = '2012-02-01 00:00:00'
+    ed = '2012-02-02 00:00:00'
+    A = smashWorkers.Wind(sd, ed, "STEWARTIA")
+    assert(A.entity == 4)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'WNDPRI01'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
+def test_sonic():
+    sd = '2015-02-01 00:00:00'
+    ed = '2015-02-02 00:00:00'
+    A = smashWorkers.Sonic(sd, ed, "SHELDON")
+    assert(A.entity == 24)
+    assert(type(A.od.keys())==types.ListType)
+    x_1 = 'WNDPRI02'
+    x = sorted(A.od[x_1].keys())[1]
+    print x
+    print sd
+    assert(datetime.datetime.strftime(x,'%Y-%m-%d %H:%M:%S')==sd)
+
 
 if __name__ == "__main__":
     test_conn()
@@ -204,3 +231,6 @@ if __name__ == "__main__":
     test_pre()
     test_solar()
     test_net()
+    test_wind()
+    test_wind2()
+    test_sonic()

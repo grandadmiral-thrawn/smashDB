@@ -109,6 +109,7 @@ class UpdateBoss(object):
             # check the length of the rows in the lookup table that share a key with the probe you are on
             try:
                 get_length_of_rows = len(shortened_lookup[row[6]].keys())
+            
             except KeyError:
                 print "the probe %s is not listed" %(row[6])
                 continue
@@ -246,7 +247,9 @@ class UpdateBoss(object):
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES( %s,  %d,  %s, %s,  %d,  %s, %s,  %s,    %d,  %s,  %d,  %s,  %d, %s,  %d, %s,    %d, %s,   %d, %s, %d,   %s,   %d,  %s, %d   %s,  %d, %s,  %s,  %s)",new_tuples)
 
             conn.commit()
-
+        else:
+            print(self.table + " is not in any known data structure - please revise the raw data")
+            
 
 class MethodBoss(object):
     """ uses the file from don for updating the LterLogger_Pro"""
@@ -321,9 +324,15 @@ class MethodBoss(object):
             #query = "select distinct probe_code from lterlogger_new.dbo" + query_d[self.attribute]
 
             ## COMMENT THIS LINE IN FOR LTERLogger_pro
-            query = "select distinct probe_code from lterlogger_pro.dbo" + query_d[self.attribute]
-            cursor.execute(query)
-
+            try:
+                query = "select distinct probe_code from lterlogger_pro.dbo" + query_d[self.attribute]
+                cursor.execute(query)
+            except Exception:
+                if query_d[self.attribute] == "MS00121":
+                    query = "select distinct probe_code from lterlogger_pro.dbo.MS04321"
+                    cursor.execute(query)
+                else:
+                    print("you are looking for a table on sheldon we do not have a method for yet. Please add this method.")
 
             # append distinct probes to a list
             distinct_probes = []
@@ -338,7 +347,6 @@ class MethodBoss(object):
         query = "select probe_code, date_bgn, date_end, method_code, height, depth from LTERLogger_new.dbo.method_history_daily where probe_code in (\'" + query_string +"\') and date_end >= \'" + self.startdate + "\' order by date_bgn asc"
 
         cursor.execute(query)
-
 
         shortened_lookup = {}
 

@@ -25,11 +25,19 @@ class MethodControl(object):
         # look up  table for the daily method
         self.lu = {'AIR':'MS00101', 'REL': 'MS00102', 'DEW': 'MS00107', 'VPD': 'MS00108','RAD': 'MS00105', 'SOI': 'MS00121', 'PAR': 'MS00122', 'WND': 'MS00104', 'PPT': 'MS00103', 'SWC': 'MS00123', 'LYS':'MS00109', 'SNO':'MS00110'}
 
+        if self.server == "SHELDON":
+            self.lu = {'AIR':'MS00101', 'REL': 'MS00102', 'DEW': 'MS00107', 'VPD': 'MS00108','RAD': 'MS00105', 'SOI': 'MS04321', 'PAR': 'MS00122', 'WND': 'MS00104', 'PPT': 'MS00103', 'SWC': 'MS00123', 'LYS':'MS00109', 'SNO':'MS00110'}
+        else:
+            pass
+
         ## COMMENT THIS IN FOR MS001:  name of the method column
         # self.special = {'MS04301': 'AIRTEMP_METHOD', 'MS04302': 'RELHUM_METHOD', 'MS04307':'DEWPT_METHOD', 'MS04308': 'VPD_METHOD','MS04305': 'SOLAR_METHOD', 'MS04325': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS04322':'PAR_METHOD', 'MS04304':'WIND_METHOD', 'MS04303': 'PRECIP_METHOD', 'MS04323': 'SOILWC_METHOD', 'MS04309':'SNOWMELT_METHOD','MS04324': 'WIND_METHOD', 'MS04310':'SNOW_METHOD'}
 
-        # name of the method column
         self.special = {'MS00101': 'AIRTEMP_METHOD', 'MS00102': 'RELHUM_METHOD', 'MS00107':'DEWPT_METHOD', 'MS00108': 'VPD_METHOD','MS00105': 'SOLAR_METHOD', 'MS00125': 'SOLAR_METHOD', 'MS00121': 'SOILTEMP_METHOD', 'MS00122':'PAR_METHOD', 'MS00104':'WIND_METHOD', 'MS00103': 'PRECIP_METHOD', 'MS00123': 'SOILWC_METHOD', 'MS00109':'SNOWMELT_METHOD','MS00124': 'WIND_METHOD', 'MS00110':'SNOW_METHOD'}
+
+        if self.server == "SHELDON":
+            self.special = {'MS00101': 'AIRTEMP_METHOD', 'MS00102': 'RELHUM_METHOD', 'MS00107':'DEWPT_METHOD', 'MS00108': 'VPD_METHOD','MS00105': 'SOLAR_METHOD', 'MS00125': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS00122':'PAR_METHOD', 'MS00104':'WIND_METHOD', 'MS00103': 'PRECIP_METHOD', 'MS00123': 'SOILWC_METHOD', 'MS00109':'SNOWMELT_METHOD','MS00124': 'WIND_METHOD', 'MS00110':'SNOW_METHOD'}
+
 
 
     # query database
@@ -141,7 +149,7 @@ class MethodControl(object):
                         # if each_key not in ['MS04321', 'MS04323']:
 
                         ## COMMENT IN FOR MS001:
-                        if each_key not in ['MS00121', 'MS00123']:
+                        if each_key not in ['MS04321', 'MS00121','MS00123']:
                         
                             newquery3 = "select date, height from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
                         
@@ -149,7 +157,7 @@ class MethodControl(object):
                         # elif each_key in ['MS04321', 'MS04323']:
 
                         # COMMENT IN FOR MS001: 
-                        elif each_key in ['MS00121', 'MS00123']:
+                        elif each_key in ['MS00121', 'MS04321', 'MS00123']:
                          
                             newquery3 = "select date, depth from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
@@ -204,13 +212,13 @@ class MethodControl(object):
                             continue
 
                         # if the key word is "height"
-                        if each_key not in ['MS04321', 'MS04323']:
+                        if each_key not in ['MS04321', 'MS04323','MS00121', 'MS00123']:
 
                         
                             newquery3 = "select date, height from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
                         
                         # if the key word is depth
-                        elif each_key in ['MS04321', 'MS04323']:
+                        elif each_key in ['MS04321', 'MS04323','MS00121','MS00123']:
                          
                             newquery3 = "select date, depth from LTERLogger_pro.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
@@ -963,9 +971,15 @@ class DBControl(object):
             startdate_out = self.lookup['MS04323']['startdate']
             enddate_out = self.lookup['MS04323']['enddate']
 
-        elif attribute == "SOILTEMP" or attribute=="MS04321":
-            startdate_out = self.lookup['MS04321']['startdate']
-            enddate_out = self.lookup['MS04321']['enddate']
+        elif attribute == "SOILTEMP" or attribute=="MS04321" or attribute == "MS00121":
+            try:
+                startdate_out = self.lookup['MS04321']['startdate']
+            except Exception:
+                startdate_out = self.lookup['MS00121']['startdate']
+            try:
+                enddate_out = self.lookup['MS04321']['enddate']
+            except Exception:
+                enddate_out = self.lookup['MS00121']['enddate']
 
         return startdate_out, enddate_out
 

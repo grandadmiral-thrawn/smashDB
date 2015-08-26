@@ -4511,7 +4511,7 @@ class Wind(object):
                 valid_dates = sorted(self.od[probe_code].keys())[1:]
             else:
                 pass
-            
+
             for each_date in valid_dates:
                 # get the number of valid observations
                 num_valid_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_val'] if x != 'None'])
@@ -4736,7 +4736,8 @@ class Wind(object):
         return my_new_rows
 
 class Wind2(object):
-    """ Wind 2 should be used on the new prop wind data where we will have a filed for max at five minues"""
+    """ Wind 2 should be used on the new prop wind data 
+    where we will have a filed for max at five minues"""
 
     def __init__(self, startdate, enddate, server):
 
@@ -4881,6 +4882,13 @@ class Wind2(object):
 
             # valid_dates are the dates we will iterate over to do the computation of the daily precip
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
+
             for each_date in valid_dates:
                 # get the number of valid observations
                 num_valid_obs_spd = len([x for x in self.od[probe_code][each_date]['spd_val'] if x != 'None'])
@@ -5265,6 +5273,12 @@ class Sonic(object):
            
             # valid_dates for sonic wind -- dates from the desired range we can get data from 
             valid_dates = sorted(self.od[probe_code].keys())
+
+            ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
+            if valid_dates[0] == self.daterange.dr[0] - datetime.timedelta(days=1):
+                valid_dates = sorted(self.od[probe_code].keys())[1:]
+            else:
+                pass
             
             for each_date in valid_dates:
 
