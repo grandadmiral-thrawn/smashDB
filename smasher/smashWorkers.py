@@ -2464,21 +2464,21 @@ class SoilTemperature(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]:
-
-                    # break on missing dates and continue to the next
-
-                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
+                if num_total_obs not in [288, 287, 96, 95, 24, 23, 1] and each_date not in self.daterange.dr:
+                    # notify the number of observations is incorrect
+                    error_string2 = "Incomplete or overfilled day, %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
+                    # print error_string2
                     mylog.write('incompleteday', error_string2)
+                    my_new_rows.append(['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server])
                     continue
                 else:
                     pass
 
                 # Daily flag naming for accetable-- if the number of obs is 24, 'H', if it's 96, 'F'
                 df = 'A'
-                if num_total_obs == 24:
+                if num_total_obs == 24 or num_total_obs == 23:
                     df = 'H'
-                elif num_total_obs == 96:
+                elif num_total_obs == 96 or num_total_obs == 95:
                     df = 'F'
                 else:
                     df = 'A'
@@ -2811,12 +2811,13 @@ class SoilWaterContent(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24] and each_date != self.daterange.dr[0]:
+                if num_total_obs not in [288, 287, 95, 23, 96, 24] and each_date != self.daterange.dr:
 
                     # break on missing dates and continue to the next
 
                     error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
                     mylog.write('incompleteday', error_string2)
+                    my_new_rows.append(['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server])
                     continue
                 else:
                     pass
@@ -2824,9 +2825,9 @@ class SoilWaterContent(object):
                 # Daily flag naming for accetable-- if the number of obs is 24, 'H', if it's 96, 'F'
                 df = 'A'
 
-                if num_total_obs == 24:
+                if num_total_obs == 24 or num_total_obs == 23:
                     df = 'H'
-                elif num_total_obs == 96:
+                elif num_total_obs == 96 or num_total_obs == 95:
                     df = 'F'
                 else:
                     df = 'A'
@@ -3167,12 +3168,14 @@ class Precipitation(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]:
+                if num_total_obs not in [288, 96, 287, 23, 95, 24, 1] and each_date != self.daterange.dr[0]:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
 
                     error_string3 = "incomplete or overfilled day: the total number of observations on %s is %s for %s" %(each_date, num_total_obs, probe_code)
                     mylog.write("incomplete_day",error_string3)
+                    newrow = ['MS043',3, site_code, method_code, int(height), "2D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
+                    my_new_rows.append(newrow)
                     continue
 
 
@@ -3293,17 +3296,17 @@ class SnowLysimeter(object):
             
         for row in cursor_sheldon:
             try:
-                this_method = str(row[0])
+                this_method = str(row[1])
             except Exception:
                 this_method = "SNO999"
             try:
-                this_sitecode = str(row[1])
+                this_sitecode = str(row[2])
             except Exception:
                 this_sitecode = "ANYMET"
         return this_method, this_sitecode
 
     def attack_data(self):
-        """ gather the daily precipitation data """
+        """ gather the daily lysimeter data """
         
         # obtained dictionary dictionary
         od = {}
@@ -3352,6 +3355,13 @@ class SnowLysimeter(object):
 
         # make a sheldon cursor
         cursor_sheldon = fc.form_connection("SHELDON")
+
+        if self.server == "STEWARTIA":
+            source = "STEWARTIA_FSDBDATA_MS04319"
+        elif self.server == "SHELDON":
+            source = "SHELDON_LTERLogger_PRO_MS04319"
+        else:
+            print("no server given")
         
         # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
@@ -3359,6 +3369,7 @@ class SnowLysimeter(object):
             # get the height, method_code, and sitecode from the height_and_method_getter function  
             # doesn't look like we'll need any exceptions here right now
             method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+
 
             # valid_dates are the dates we will iterate over to do the computation of the daily precip
             valid_dates = sorted(self.od[probe_code].keys())
@@ -3382,14 +3393,17 @@ class SnowLysimeter(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24] and each_date != self.daterange.dr[0]:
+                if num_total_obs not in [288, 287, 95, 96, 23, 24, 1] and each_date != self.daterange.dr:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
 
                     error_string3 = "incomplete or overfilled day: the total number of observations on %s is %s for %s" %(each_date, num_total_obs, probe_code)
                     mylog.write("incomplete_day",error_string3)
-                    continue
 
+                    newrow = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", "NA", source]
+                    my_new_rows.append(newrow)
+                    
+                    continue
 
                 else:
                     pass
@@ -3431,6 +3445,7 @@ class SnowLysimeter(object):
                 
                 newrow = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
 
+                print newrow
                 
                 my_new_rows.append(newrow)
         mylog.dump()

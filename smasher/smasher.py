@@ -1155,10 +1155,11 @@ if __name__ == "__main__":
             new_rows.append(each_list)
           else:
             pass
-        else:
-          for row in nr:
-            print row
-            new_rows.append(row)
+      else:
+        for row in nr:
+          print row
+          new_rows.append(row)
+
 
       # if the csv is not none
       if mycsv != None:
