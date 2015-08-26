@@ -1,4 +1,3 @@
-form_connection.py
 *.pyc
 daily_*
 *.log
