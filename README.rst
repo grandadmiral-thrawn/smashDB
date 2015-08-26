@@ -81,7 +81,7 @@ Will give you back:
 
 ::
 
-        You are processing using the SMASHER Python toolkit. (c) MIT 2015. You have given the following information: 
+        You are processing using the SMASHER Python toolkit. (c) MIT 2015. You have given the following information:
 
         ~ Method: CREATE
         ~ Attribute: SOLAR
@@ -196,7 +196,7 @@ Call UPDATE the same way you called CREATE, for example:
 ::
 
         Foxs-MacBook-Pro:smash dataRonin$ python smasher.py UPDATE SHELDON PRECIP
-         You are processing using the SMASHER Python toolkit. (c) MIT 2015. You have given the following information: 
+         You are processing using the SMASHER Python toolkit. (c) MIT 2015. You have given the following information:
 
         ~ Method: UPDATE
         ~ Attribute: PRECIP
@@ -210,7 +210,7 @@ Call UPDATE the same way you called CREATE, for example:
         Updating your heights, depths, and methods prior to insertion in the db!
         This will update the LTERLogger_Pro database
         database updated from 2014-01-02 00:00:00 to 2015-06-23 00:00:00 for PRECIP
-        Foxs-MacBook-Pro:smash dataRonin$ 
+        Foxs-MacBook-Pro:smash dataRonin$
 
 This is the simplest update. The Precip function has just recently been
 added here. Here is what we would see in the database! (just a few rows,
@@ -305,8 +305,8 @@ In the daily data, eventlog.csv looks like this:
 ::
 
         probe_code,date_start_table,date_end_table,current_event_code
-        VPDCEN01,2014-08-26 00:00:00,2050-12-31 00:00:00,NA    
-        VPDCEN01,2014-08-26 00:00:00,2050-12-31 00:00:00,NA    
+        VPDCEN01,2014-08-26 00:00:00,2050-12-31 00:00:00,NA
+        VPDCEN01,2014-08-26 00:00:00,2050-12-31 00:00:00,NA
 
 If you want to read the high resolution data, just call READ on ALLHR:
 
@@ -318,7 +318,7 @@ In the HR data, errorlog\_hr.csv looks like this:
 
 ::
 
-        VPDCEN04,2014-08-26 00:00:00,2050-12-31 00:00:00,NA    
+        VPDCEN04,2014-08-26 00:00:00,2050-12-31 00:00:00,NA
 
 Using the MethodControl and HRMethodControl
 -------------------------------------------
@@ -331,7 +331,7 @@ by typing
 
 ::
 
-        python 
+        python
 
 Then, import the smashControls module with all of its dependencies.
 
@@ -485,7 +485,7 @@ previous day's bin:
         od = {}
 
         for row in self.cursor:
-            
+
             dt_old = datetime.datetime.strptime(str(row[0]),'%Y-%m-%d %H:%M:%S')
 
             if dt_old.hour == 0 and dt_old.minute == 0:
@@ -522,6 +522,55 @@ change this in the future if you use them for VPD.
         # skip values which are from PRIMET aspirated and other aspirated
         if probe_code[-2:] in ['05','06','07','08','09','10']:
             continue
+
+
+When you get an error that a CREATE METHOD is already up to date:
+~~~~~~~~~~~~~
+
+That's because it is, and what you need to do is specify a start and end date to observe the data.
+Here's what you might see...
+
+::
+
+      10-162-167-136:smasher dataRonin$ python smasher.py CREATE STEWARTIA AIRTEMP
+       You are processing using the SMASHER Python toolkit. (c) MIT 2015. You have given the following information:
+
+      ~ Method: CREATE
+      ~ Attribute: AIRTEMP
+      ~ Server: STEWARTIA
+      ~ Start Date: None
+      ~ End Date: None
+      ~ Sitecode or Station: None
+      ~ Creating CSV?: None
+      MS04301 is already up to date with its high resolution counterpart
+      MS04321 is already up to date with its high resolution counterpart
+      MS04325 is already up to date with its high resolution counterpart
+      AIRTEMP is already up to date, please specify a range
+      Traceback (most recent call last):
+        File "smasher.py", line 428, in <module>
+          C = smashWorkers.AirTemperature(sd, ed, server)
+      NameError: name 'sd' is not defined
+
+
+Here's how you can resolve it:
+
+::
+
+      NameError: name 'sd' is not defined
+      10-162-167-136:smasher dataRonin$ python smasher.py CREATE STEWARTIA AIRTEMP -sd "2014-01-01 00:00:00" -ed "2014-01-05 00:00:00"
+       You are processing using the SMASHER Python toolkit. (c) MIT 2015. You have given the following information:
+
+      ~ Method: CREATE
+      ~ Attribute: AIRTEMP
+      ~ Server: STEWARTIA
+      ~ Start Date: ['2014-01-01 00:00:00']
+      ~ End Date: ['2014-01-05 00:00:00']
+      ~ Sitecode or Station: None
+      ~ Creating CSV?: None
+      ...We need to use the old syntax for airtemperature on STEWARTIA because STEWARTIA contains not 5 minute maxes
+      ['MS043', 1, 'CENMET', 'AIR327', 350, '1D', 'AIRCEN02', '2014-01-01 00:00:00', 4.892, 'F', 12.7, 'F', '1345', 1.7, 'F', '0145', 'NA', 'STEWARTIA_FSDBDATA_MS04311']
+      ['MS043', 1, 'CENMET', 'AIR327', 350, '1D', 'AIRCEN02', '2014-01-02 00:00:00', 6.966, 'F', 15.6, 'F', '1415', 3.3, 'F', '0715', 'NA', 'STEWARTIA_FSDBDATA_MS04311']
+
 
 SmashControls
 -------------

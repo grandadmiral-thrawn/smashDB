@@ -20,10 +20,10 @@ class MethodControl(object):
         self.stations = ['CENMET','PRIMET','VANMET','UPLMET','VARMET','CS2MET','H15MET']
 
         ## COMMENT THIS IN FOR MS043: look up  table for the daily method
-        # self.lu = {'AIR':'MS04301', 'REL': 'MS04302', 'DEW': 'MS04307', 'VPD': 'MS04308','RAD': 'MS04305', 'SOI': 'MS04321', 'PAR': 'MS04322', 'WND': 'MS04304', 'PPT': 'MS04303', 'SWC': 'MS04323', 'LYS':'MS04309', 'SNO':'MS04310'}
+        self.lu = {'AIR':'MS04301', 'REL': 'MS04302', 'DEW': 'MS04307', 'VPD': 'MS04308','RAD': 'MS04305', 'SOI': 'MS04321', 'PAR': 'MS04322', 'WND': 'MS04304', 'PPT': 'MS04303', 'SWC': 'MS04323', 'LYS':'MS04309', 'SNO':'MS04310'}
 
         # look up  table for the daily method
-        self.lu = {'AIR':'MS00101', 'REL': 'MS00102', 'DEW': 'MS00107', 'VPD': 'MS00108','RAD': 'MS00105', 'SOI': 'MS00121', 'PAR': 'MS00122', 'WND': 'MS00104', 'PPT': 'MS00103', 'SWC': 'MS00123', 'LYS':'MS00109', 'SNO':'MS00110'}
+        #self.lu = {'AIR':'MS00101', 'REL': 'MS00102', 'DEW': 'MS00107', 'VPD': 'MS00108','RAD': 'MS00105', 'SOI': 'MS00121', 'PAR': 'MS00122', 'WND': 'MS00104', 'PPT': 'MS00103', 'SWC': 'MS00123', 'LYS':'MS00109', 'SNO':'MS00110'}
 
         if self.server == "SHELDON":
             self.lu = {'AIR':'MS00101', 'REL': 'MS00102', 'DEW': 'MS00107', 'VPD': 'MS00108','RAD': 'MS00105', 'SOI': 'MS04321', 'PAR': 'MS00122', 'WND': 'MS00104', 'PPT': 'MS00103', 'SWC': 'MS00123', 'LYS':'MS00109', 'SNO':'MS00110'}
@@ -31,12 +31,12 @@ class MethodControl(object):
             pass
 
         ## COMMENT THIS IN FOR MS001:  name of the method column
-        # self.special = {'MS04301': 'AIRTEMP_METHOD', 'MS04302': 'RELHUM_METHOD', 'MS04307':'DEWPT_METHOD', 'MS04308': 'VPD_METHOD','MS04305': 'SOLAR_METHOD', 'MS04325': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS04322':'PAR_METHOD', 'MS04304':'WIND_METHOD', 'MS04303': 'PRECIP_METHOD', 'MS04323': 'SOILWC_METHOD', 'MS04309':'SNOWMELT_METHOD','MS04324': 'WIND_METHOD', 'MS04310':'SNOW_METHOD'}
+        self.special = {'MS04301': 'AIRTEMP_METHOD', 'MS04302': 'RELHUM_METHOD', 'MS04307':'DEWPT_METHOD', 'MS04308': 'VPD_METHOD','MS04305': 'SOLAR_METHOD', 'MS04325': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS04322':'PAR_METHOD', 'MS04304':'WIND_METHOD', 'MS04303': 'PRECIP_METHOD', 'MS04323': 'SOILWC_METHOD', 'MS04309':'SNOWMELT_METHOD','MS04324': 'WIND_METHOD', 'MS04310':'SNOW_METHOD'}
 
-        self.special = {'MS00101': 'AIRTEMP_METHOD', 'MS00102': 'RELHUM_METHOD', 'MS00107':'DEWPT_METHOD', 'MS00108': 'VPD_METHOD','MS00105': 'SOLAR_METHOD', 'MS00125': 'SOLAR_METHOD', 'MS00121': 'SOILTEMP_METHOD', 'MS00122':'PAR_METHOD', 'MS00104':'WIND_METHOD', 'MS00103': 'PRECIP_METHOD', 'MS00123': 'SOILWC_METHOD', 'MS00109':'SNOWMELT_METHOD','MS00124': 'WIND_METHOD', 'MS00110':'SNOW_METHOD'}
+        #self.special = {'MS00101': 'AIRTEMP_METHOD', 'MS00102': 'RELHUM_METHOD', 'MS00107':'DEWPT_METHOD', 'MS00108': 'VPD_METHOD','MS00105': 'SOLAR_METHOD', 'MS00125': 'SOLAR_METHOD', 'MS00121': 'SOILTEMP_METHOD', 'MS00122':'PAR_METHOD', 'MS00104':'WIND_METHOD', 'MS00103': 'PRECIP_METHOD', 'MS00123': 'SOILWC_METHOD', 'MS00109':'SNOWMELT_METHOD','MS00124': 'WIND_METHOD', 'MS00110':'SNOW_METHOD'}
 
-        if self.server == "SHELDON":
-            self.special = {'MS00101': 'AIRTEMP_METHOD', 'MS00102': 'RELHUM_METHOD', 'MS00107':'DEWPT_METHOD', 'MS00108': 'VPD_METHOD','MS00105': 'SOLAR_METHOD', 'MS00125': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS00122':'PAR_METHOD', 'MS00104':'WIND_METHOD', 'MS00103': 'PRECIP_METHOD', 'MS00123': 'SOILWC_METHOD', 'MS00109':'SNOWMELT_METHOD','MS00124': 'WIND_METHOD', 'MS00110':'SNOW_METHOD'}
+        #if self.server == "SHELDON":
+        #    self.special = {'MS00101': 'AIRTEMP_METHOD', 'MS00102': 'RELHUM_METHOD', 'MS00107':'DEWPT_METHOD', 'MS00108': 'VPD_METHOD','MS00105': 'SOLAR_METHOD', 'MS00125': 'SOLAR_METHOD', 'MS04321': 'SOILTEMP_METHOD', 'MS00122':'PAR_METHOD', 'MS00104':'WIND_METHOD', 'MS00103': 'PRECIP_METHOD', 'MS00123': 'SOILWC_METHOD', 'MS00109':'SNOWMELT_METHOD','MS00124': 'WIND_METHOD', 'MS00110':'SNOW_METHOD'}
 
 
 
@@ -56,11 +56,11 @@ class MethodControl(object):
 
             query = "SELECT probe_code, date_bgn, date_end, method_code, height, depth from LTERLogger_new.dbo.method_history_daily" 
             self.cursor.execute(query)
-
+             
             od = {}
 
             for row in self.cursor:
-
+                
                 # probe code in row 0, beginning of type of attribute in probe code, position (tokened from) 0-3
                 probe_code = str(row[0])
                 site_code = probe_code[3:6]
@@ -75,13 +75,13 @@ class MethodControl(object):
 
                 # if the probe code is for the sonic wind go to table 24
                 if probe_code in ['WNDPRI02', 'WNDVAN02', 'WNDCEN02']:
-                    # table = 'MS04324'
-                    table = 'MS00124'
+                    table = 'MS04324'
+                    #table = 'MS00124'
 
                 # if the probe code is for net radiometer, go to table 25
                 elif probe_code in ['RADPRI02', 'RADVAN02']:
-                    # table = 'MS04325'
-                    table = 'MS00125'
+                    table = 'MS04325'
+                    #table = 'MS00125'
 
                 # if the qualifier is soil moisture potential or snow depth we don't know how to do it righ tnow
                 elif qual == 'SMP' or qual == "SNO":
@@ -106,7 +106,7 @@ class MethodControl(object):
                 # for each of the tables, walk over the daily table that corresponds to it, getting the probe codes etc. between the start and end dates. 
                 # added, also get event code
                 for each_item in od[each_key]:
-
+                    print each_key
                     if self.server == 'STEWARTIA':
 
                         newquery = "select probe_code, date, " + special + " from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
@@ -142,14 +142,14 @@ class MethodControl(object):
                         # if each_key == "MS04309":
                         
                         ## COMMENT IN FOR MS00109
-                        if each_key == "MS00109":
+                        if each_key == "MS00109" or each_key == "MS04309":
                             continue
 
                         # if the key word is "height"
                         # if each_key not in ['MS04321', 'MS04323']:
 
                         ## COMMENT IN FOR MS001:
-                        if each_key not in ['MS04321', 'MS00121','MS00123']:
+                        if each_key not in ['MS04321', 'MS00121','MS00123','MS04323']:
                         
                             newquery3 = "select date, height from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
                         
@@ -157,7 +157,7 @@ class MethodControl(object):
                         # elif each_key in ['MS04321', 'MS04323']:
 
                         # COMMENT IN FOR MS001: 
-                        elif each_key in ['MS00121', 'MS04321', 'MS00123']:
+                        elif each_key in ['MS00121', 'MS04321', 'MS00123','MS04323']:
                          
                             newquery3 = "select date, depth from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
@@ -248,15 +248,14 @@ class HRMethodControl(object):
         self.server = server
         
         ## look up  table for the hr method
-        # self.lu = {'AIR':'MS04311', 'REL': 'MS04312', 'DEW': 'MS04317', 'VPD': 'MS04318', 'RAD': 'MS04315', 'SOI': 'MS04331', 'PAR': 'MS04332', 'WND': 'MS04314', 'PPT': 'MS04313', 'SWC': 'MS04333', 'LYS':'MS04319'}
+        self.lu = {'AIR':'MS04311', 'REL': 'MS04312', 'DEW': 'MS04317', 'VPD': 'MS04318', 'RAD': 'MS04315', 'SOI': 'MS04331', 'PAR': 'MS04332', 'WND': 'MS04314', 'PPT': 'MS04313', 'SWC': 'MS04333', 'LYS':'MS04319'}
         ## COMMENT IN FOR MS001: 
-        self.lu = {'AIR':'MS00111', 'REL': 'MS00112', 'DEW': 'MS00117', 'VPD': 'MS00118', 'RAD': 'MS00115', 'SOI': 'MS00131', 'PAR': 'MS00132', 'WND': 'MS00114', 'PPT': 'MS00113', 'SWC': 'MS00133', 'LYS':'MS00119',
-        'ATM': 'MS00136'}
+        #self.lu = {'AIR':'MS00111', 'REL': 'MS00112', 'DEW': 'MS00117', 'VPD': 'MS00118', 'RAD': 'MS00115', 'SOI': 'MS00131', 'PAR': 'MS00132', 'WND': 'MS00114', 'PPT': 'MS00113', 'SWC': 'MS00133', 'LYS':'MS00119','ATM': 'MS00136'}
 
         ##  name of the method column
-        # self.special = {'MS04311': 'AIRTEMP_METHOD', 'MS04312': 'RELHUM_METHOD', 'MS04317':'DEWPT_METHOD', 'MS04318': 'VPD_METHOD','MS04335': 'SOLAR_METHOD', 'MS04315': 'SOLAR_METHOD', 'MS04331': 'SOILTEMP_METHOD', 'MS04332':'PAR_METHOD', 'MS04314':'WIND_METHOD', 'MS04334':'WIND_METHOD', 'MS04313': 'PRECIP_METHOD', 'MS04333': 'SOILWC_METHOD', 'MS04319':'SNOWMELT_METHOD','MS04334': 'WIND_METHOD'}
+        self.special = {'MS04311': 'AIRTEMP_METHOD', 'MS04312': 'RELHUM_METHOD', 'MS04317':'DEWPT_METHOD', 'MS04318': 'VPD_METHOD','MS04335': 'SOLAR_METHOD', 'MS04315': 'SOLAR_METHOD', 'MS04331': 'SOILTEMP_METHOD', 'MS04332':'PAR_METHOD', 'MS04314':'WIND_METHOD', 'MS04334':'WIND_METHOD', 'MS04313': 'PRECIP_METHOD', 'MS04333': 'SOILWC_METHOD', 'MS04319':'SNOWMELT_METHOD','MS04334': 'WIND_METHOD'}
         # name of the method column
-        self.special = {'MS00111': 'AIRTEMP_METHOD', 'MS00112': 'RELHUM_METHOD', 'MS00117':'DEWPT_METHOD', 'MS00118': 'VPD_METHOD','MS00135': 'SOLAR_METHOD', 'MS00115': 'SOLAR_METHOD', 'MS00131': 'SOILTEMP_METHOD', 'MS00132':'PAR_METHOD', 'MS00114':'WIND_METHOD', 'MS00134':'WIND_METHOD', 'MS00113': 'PRECIP_METHOD', 'MS00133': 'SOILWC_METHOD', 'MS00119':'SNOWMELT_METHOD','MS00134': 'WIND_METHOD','MS00136': 'ATMPRESS_METHOD'}
+        #self.special = {'MS00111': 'AIRTEMP_METHOD', 'MS00112': 'RELHUM_METHOD', 'MS00117':'DEWPT_METHOD', 'MS00118': 'VPD_METHOD','MS00135': 'SOLAR_METHOD', 'MS00115': 'SOLAR_METHOD', 'MS00131': 'SOILTEMP_METHOD', 'MS00132':'PAR_METHOD', 'MS00114':'WIND_METHOD', 'MS00134':'WIND_METHOD', 'MS00113': 'PRECIP_METHOD', 'MS00133': 'SOILWC_METHOD', 'MS00119':'SNOWMELT_METHOD','MS00134': 'WIND_METHOD','MS00136': 'ATMPRESS_METHOD'}
 
 
 
@@ -277,13 +276,13 @@ class HRMethodControl(object):
 
             # FIRST TEST IS FOR THE METHOD CODES BEING THE SAME!
             query = "SELECT probe_code, date_time_bgn, date_time_end, method_code, height, depth from LTERLogger_new.dbo.method_history" 
-
+            print query
             self.cursor.execute(query)
 
             od = {}
 
             for row in self.cursor:
-
+                print row
                 # probe code in row 0, beginning of type of attribute in probe code, position (tokened from) 0-3
                 probe_code = str(row[0])
                 qual = probe_code[0:3]
@@ -308,7 +307,7 @@ class HRMethodControl(object):
                     table = 'MS00135'
 
                 # if the qualifier is soil moisture potential or snow depth we don't know how to do it righ tnow
-                elif qual == 'SMP' or qual == "SNO" or qual == "LYS":
+                elif qual == 'SMP' or qual == "SNO" or qual == "LYS" or qual=="ATM":
                     continue
 
                 else:
@@ -331,9 +330,9 @@ class HRMethodControl(object):
 
                 # for each table in the database
                 for each_item in od[each_key]:
-
+                    print each_item
                     if self.server == 'STEWARTIA':
-
+                        print special
                         # find the date times in that range -- and the methods, are the the same as what you want?
                         newquery = "select probe_code, date_time, " + special + " from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
@@ -380,13 +379,13 @@ class HRMethodControl(object):
                         # if each_key not in ['MS04331', 'MS04333']:
                         ## COMMENT IN FOR MS001
                         try:
-                            if each_key not in ['MS00131', 'MS00133']:
+                            if each_key not in ['MS00131', 'MS00133','MS04331','MS04333']:
                                 newquery3 = "select date_time, height from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
                             
                             ## if the key word is depth
                             # elif each_key in ['MS04331', 'MS04333']:
                             ## COMMENT IN FOR MS001
-                            elif each_key in ['MS00131', 'MS00133']:
+                            elif each_key in ['MS00131', 'MS00133','MS04331','MS04333']:
 
                                 newquery3 = "select date_time, depth from fsdbdata.dbo." + each_key + " where probe_code like \'" + each_item[0] + "\' and date_time >= \'" + datetime.datetime.strftime(each_item[1], '%Y-%m-%d %H:%M:%S') + "\' and date_time < \'" + datetime.datetime.strftime(each_item[2], '%Y-%m-%d %H:%M:%S') +  "\'"
 
