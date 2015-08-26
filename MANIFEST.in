@@ -1,0 +1,2 @@
+include MANIFEST.in LICENSE.txt README.rst requirements.txt test_requirements.txt
+recursive-include smasher/data *
