@@ -1053,15 +1053,16 @@ class DewPoint(object):
                 # we only need to count the value-- if it's missing from the mean we aren't going to see a min and max of course
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
-                # if it's not 288, 96, or 24
-                if num_total_obs not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]:
-
+            
+                # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
+                if num_total_obs not in [288, 287, 96, 95, 24, 23, 1] and each_date not in self.daterange.dr:
                     # notify the number of observations is incorrect
                     error_string2 = "Incomplete or overfilled day, %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
                     # print error_string2
                     mylog.write('incompleteday', error_string2)
 
                     newrow = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
+                    my_new_rows.append(new_row)
 
                     continue
 
@@ -1073,9 +1074,9 @@ class DewPoint(object):
                 # default condition
                 df = 'A'
                 
-                if num_total_obs == 24:
+                if num_total_obs == 24 or num_total_obs ==23:
                     df = 'H'
-                elif num_total_obs == 96:
+                elif num_total_obs == 96 or num_total_obs == 95:
                     df = 'F'
                 
                 # if it's some other value we're not going to write it anyway, so be sure the df is dynamically set to A   
@@ -1420,20 +1421,24 @@ class VPD(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24] and each_date != self.daterange.dr[0]:
+                # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
+                if num_total_obs not in [288, 287, 96, 95, 24, 23, 1] and each_date not in self.daterange.dr:
+                    # notify the number of observations is incorrect
+                    error_string2 = "Incomplete or overfilled day, %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
 
-                    # break on missing dates and continue to the next
-
-                    error_string2 = "Incomplete or overfilled day:  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    my_new_rows.append(new_row)
+                    # print error_string2
+                    mylog.write('incompleteday', error_string2)
                     continue
                 else:
                     pass
 
                 # Daily flag naming for accetable-- if the number of obs is 24, 'H', if it's 96, 'F'
                 df = 'A'
-                if num_total_obs == 24:
+                if num_total_obs == 24 or num_total_obs==23:
                     df = 'H'
-                elif num_total_obs == 96:
+                elif num_total_obs == 96 or num_total_obs ==95:
                     df = 'F'
                 else:
                     df = 'A'
@@ -1753,21 +1758,26 @@ class VPD2(object):
                 num_total_obs_rel = len(self.od[probe_code][each_date]['relval'])
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs_air not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]:
-
+                # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
+                if num_total_obs_air not in [288, 287, 96, 95, 24, 23, 1] and each_date not in self.daterange.dr:
                     # break on missing dates and continue to the next
                     error_string2 = "Incomplete or overfilled day-AIRTEMP (called first):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air)
+                    
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
+                    my_new_rows.append(new_row)
 
                     mylog.write('incompleteday', error_string2)
 
                     continue
 
-                elif num_total_obs_rel not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]:
+                elif num_total_obs_rel not in [288, 287, 96, 95, 24, 23, 1] and each_date != self.daterange.dr:
 
                     # break on missing dates and continue to the next
                     error_string2 = "Incomplete or overfilled day- RELHUM (AIRTEMP OK):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air)
-
+                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
+                    my_new_rows.append(new_row)
                     mylog.write('incompleteday', error_string2)
+
                     continue
 
                 else:
@@ -1776,9 +1786,9 @@ class VPD2(object):
                 # Daily flag naming for accetable-- if the number of obs is 24, 'H', if it's 96, 'F'
                 df = 'A'
                 
-                if num_total_obs_air == 24:
+                if num_total_obs_air == 24 or num_total_obs_air ==23:
                     df = 'H'
-                elif num_total_obs_air == 96:
+                elif num_total_obs_air == 96 or num_total_obs_air ==95:
                     df = 'F'
                 else:
                     df = 'A'
@@ -2195,11 +2205,13 @@ class PhotosyntheticRad(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]:
-
-                    # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Fully missed days are ok
-                    error_string = "the total number of observations on %s is %s for probe %s" %(each_date, num_total_obs, probe_code)
-                    mylog.write("missing_observations", error_string)
+                if num_total_obs not in [288, 287, 96, 95, 24, 23, 1] and each_date not in self.daterange.dr:
+                    # notify the number of observations is incorrect
+                    error_string2 = "Incomplete or overfilled day, %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
+                    # print error_string2
+                    mylog.write('incompleteday', error_string2)
+                    new_row = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", source]
+                    my_new_rows.append(new_row)
                     continue
 
                 else:

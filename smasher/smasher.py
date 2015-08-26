@@ -454,7 +454,7 @@ if __name__ == "__main__":
     del nr
     del new_rows
 
-  elif args.crud == "CREATE" and args.attribute in ["RELHUM", "relhum", "MS04302"] and args.startdate == None and args.enddate == None:
+  elif args.crud == "CREATE" and args.attribute in ["RH","rh","RELHUM", "relhum", "MS04302"] and args.startdate == None and args.enddate == None:
 
     if station == None:
       # create a list of last updates
@@ -541,7 +541,7 @@ if __name__ == "__main__":
           writer.writerow(row)
     del C
 
-  elif args.crud == "CREATE" and args.attribute in ["VPD", "vpd"] and args.startdate == None and args.enddate == None:
+  elif args.crud == "CREATE" and args.attribute in ["VPD", "vpd", "VPDOLD"] and args.startdate == None and args.enddate == None:
 
     if station == None:
       # create a list of last updates
@@ -628,7 +628,7 @@ if __name__ == "__main__":
           writer.writerow(row)
     del C
 
-  elif args.crud == "CREATE" and args.attribute in ["DEWPT", "dewpt", "MS04307"] and args.startdate == None and args.enddate == None:
+  elif args.crud == "CREATE" and args.attribute in ["DEWPT", "DEWPOINT", "dewpt", "dewpoint", "MS04307"] and args.startdate == None and args.enddate == None:
 
     if station == None:
       # create a list of last updates
@@ -667,6 +667,50 @@ if __name__ == "__main__":
       with open(csv_filename, 'wb') as writefile:
         writer = csv.writer(writefile)
         output = smashControls.HeaderWriter('DEWPT').write_header_template()
+        writer.writerow(output)
+        for row in new_rows:
+          writer.writerow(row)
+    del C
+
+  elif args.crud == "CREATE" and args.attribute in ["PAR", "par", "MS04322"] and args.startdate == None and args.enddate == None:
+
+    if station == None:
+      # create a list of last updates
+      B = smashControls.DBControl(server)
+      B.build_queries()
+
+    elif station != None:
+      B = smashControls.DBControl(server, station)
+      B.build_queries_station()
+
+    try:
+      sd, ed = B.check_out_one_attribute("PAR")
+    except KeyError:
+      print "PAR is already up to date, please specify a range"
+
+    C = smashWorkers.Solar(sd, ed, server)
+    nr = C.condense_data()
+    new_rows = []
+
+    # prints only the station of interest
+    if station != None:
+    
+      for each_list in nr:
+        if each_list[2] == station:
+          print each_list
+          new_rows.append(each_list)
+        else:
+          pass
+    else:
+      for row in nr:
+        print row
+        new_rows.append(row)
+
+    # if the csv is not none
+    if mycsv != None:
+      with open(csv_filename, 'wb') as writefile:
+        writer = csv.writer(writefile)
+        output = smashControls.HeaderWriter('PAR').write_header_template()
         writer.writerow(output)
         for row in new_rows:
           writer.writerow(row)
@@ -1160,7 +1204,7 @@ if __name__ == "__main__":
       del nr
       del new_rows
 
-    elif args.attribute in ["SOILWC", "SWC", "soiltemp","swc","MS04323"]:
+    elif args.attribute in ["SOILWC", "SWC", "soilwc","swc","MS04323"]:
 
       C = smashWorkers.SoilWaterContent(sd, ed, server)
       nr = C.condense_data()
@@ -1526,6 +1570,40 @@ if __name__ == "__main__":
           writer = csv.writer(writefile)
           try:
             output = smashControls.HeaderWriter('RELHUM').write_header_template()
+            writer.writerow(output)
+          except Exception:
+            pass
+          for row in new_rows:
+            writer.writerow(row)
+      del C
+      del new_rows
+      del nr
+
+    elif args.attribute in ["PAR", "par", "MS04322"]:
+
+      C = smashWorkers.PhotosyntheticRad(sd, ed, server)
+      nr = C.condense_data()
+      new_rows = []
+
+      # perhaps only one station?
+      if station != None:
+        for each_list in nr:
+          if each_list[2] == station:
+            print each_list
+            new_rows.append(each_list)
+          else:
+            pass
+      else:
+        for row in nr:
+          print row
+          new_rows.append(row)
+
+      # if the csv is not none
+      if mycsv != None:
+        with open(csv_filename, 'wb') as writefile:
+          writer = csv.writer(writefile)
+          try:
+            output = smashControls.HeaderWriter('PAR').write_header_template()
             writer.writerow(output)
           except Exception:
             pass
