@@ -3303,6 +3303,7 @@ class SnowLysimeter(object):
                 this_sitecode = str(row[2])
             except Exception:
                 this_sitecode = "ANYMET"
+        
         return this_method, this_sitecode
 
     def attack_data(self):
@@ -3634,14 +3635,17 @@ class Solar(object):
                 num_total_obs = len(self.od[probe_code][each_date]['tot_val'])
                 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24] and each_date != self.daterange.dr[0]:
+                if num_total_obs not in [288, 287, 95, 23, 96, 24] and each_date != self.daterange.dr:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
 
                     error_string3 = "incomplete or overfilled day: the total number of observations on %s is %s for %s" %(each_date, num_total_obs, probe_code)
                     mylog.write("incomplete_day",error_string3)
-                    continue
 
+                    newrow = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", self.server]
+
+                    my_new_rows.append(newrow)
+                    continue
 
                 else:
                     pass
@@ -4208,10 +4212,14 @@ class NetRadiometer(object):
                 
 
                 # if it's not a total of observations on that day that we would expect, then print this-- we expect that since this is counting up the rows, it shouldn't matter which it gets!
-                if num_total_obs not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]: 
+                if num_total_obs not in [288, 287, 95, 23, 96, 24, 1] and each_date != self.daterange.dr: 
                     
                     error_string2 = "incomplete day: the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs, probe_code)
                     mylog.write('incomplete_day', error_string2)
+
+                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None, "M", "NA"]
+
+                    my_new_rows.append(newrow)
                     continue
 
 
@@ -4557,9 +4565,11 @@ class Wind(object):
                 num_total_obs_mag = len(self.od[probe_code][each_date]['dirstd_val'])
 
                 # if it's not a total of observations on that day that we would expect, then print this
-                if num_total_obs_spd not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]: 
+                if num_total_obs_spd not in [288, 287, 95, 96, 24, 23, 1] and each_date != self.daterange.dr: 
                     error_string = "the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs_spd, probe_code)
                     mylog.write('incomplete_day', error_string)
+                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    my_new_rows.append(newrow)
                     continue
                 
                 else:
@@ -4937,9 +4947,13 @@ class Wind2(object):
                 num_total_obs_maxgust = len(self.od[probe_code][each_date]['maxgust_val'])
 
                 # if it's not a total of observations on that day that we would expect, then print this
-                if num_total_obs_spd not in [288, 96, 24] and each_date != self.daterange.dr[0]: 
+                if num_total_obs_spd not in [288, 287, 95, 23, 1, 96, 24] and each_date != self.daterange.dr: 
                     error_string = "the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs_spd, probe_code)
                     mylog.write('incomplete_day', error_string)
+
+                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+
+                    my_new_row.append(newrow)
                     continue
 
                 
@@ -5078,7 +5092,10 @@ class Wind2(object):
                     # daily_dirstd_valid_obs = round(math.degrees(math.atan((float(sum([math.sin(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])/float(sum([math.cos(math.radians(float(x))) for x in self.od[probe_code][each_date]['dir_val'] if x != 'None'])))))),3)
 
                     # get the max of those observations (mean speed)
-                    max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['maxgust_val'] if x != 'None']),3)
+                    try:
+                        max_valid_obs = round(max([float(x) for x in self.od[probe_code][each_date]['maxgust_val'] if x != 'None']),3)
+                    except Exception:
+                        max_valid_obs = None
 
                 elif num_valid_obs_spd == 0:
                     max_valid_obs = None
@@ -5290,6 +5307,13 @@ class Sonic(object):
 
         # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history_daily table.
         cursor_sheldon = fc.form_connection("SHELDON")
+
+        if self.server == "STEWARTIA":
+            source = self.server + "_FSDBDATA_MS04334"
+        elif self.server == "SHELDON":
+            source = self.server + "_LTERLogger_Pro_MS04334"
+        else:
+            pass
             
         # iterate over each probe-code that was collected
         for probe_code in self.od.keys():
@@ -5339,9 +5363,11 @@ class Sonic(object):
                 num_total_obs = len(self.od[probe_code][each_date]['snc_mean_val'])
                 
                 # if it's not a total of observations on that day that we would expect, then log error, continue to a day with the right number
-                if num_total_obs not in [288, 96, 24, 1] and each_date != self.daterange.dr[0]: 
+                if num_total_obs not in [288, 287, 95, 23, 96, 24, 1] and each_date != self.daterange.dr: 
                     error_string = "the total number of observations on %s is %s and probe %s" %(each_date, num_total_obs, probe_code)
                     mylog.write('nullday',error_string)
+                    newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, None, None, None, None, "M", None, "M", None, "M", None, "M", "NA", source]
+                    my_new_rows.append(newrow)
                     continue
 
                 else:
