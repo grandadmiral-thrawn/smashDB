@@ -5,12 +5,11 @@ python:
   - "2.6"
   - "2.7"
 install:
-  - "sudo apt-get install freetds-dev python-numpy python-matplotlib python-scipy python-pymssql -qq -y"
+  - "sudo apt-get install freetds-dev vpnc python-numpy python-matplotlib python-scipy python-pymssql -qq -y"
   - "easy_install -U setuptools"
   - "pip install --upgrade pip"
-  - "pip install -r requirements.txt"
-  - "pip install -r test_requirements.txt"
+  - "pip install pymssql"
 script:
-  - py.test test/test_smash.py --doctest-modules -v --cov smashdb --cov-report term-missing
+  - python vpn.py
 after_success:
   - coveralls
