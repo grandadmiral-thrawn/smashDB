@@ -93,9 +93,11 @@ class UpdateBoss(object):
 
             if probe_code not in shortened_lookup:
                 shortened_lookup[probe_code] = {method_code: {'begin': date_bgn, 'end': date_end, 'height': height, 'depth': depth}}
+            
             elif probe_code in shortened_lookup:
                 if method_code not in shortened_lookup[probe_code]:
                     shortened_lookup[probe_code][method_code] = {'begin': date_bgn, 'end': date_end, 'height': height, 'depth': depth}
+                
                 elif method_code in shortened_lookup[probe_code]:
                     print "the method code %s is already collected for %s between the dates of %s and %s" %(method_code, probe_code, date_bgn, date_end)
                     pass
@@ -109,7 +111,8 @@ class UpdateBoss(object):
             # check the length of the rows in the lookup table that share a key with the probe you are on
             try:
                 get_length_of_rows = len(shortened_lookup[row[6]].keys())
-            
+                print "the length of rows is" + str(get_length_of_rows)
+                print "the probe code is " + str(row[6])
             except KeyError:
                 print "the probe %s is not listed" %(row[6])
                 continue
@@ -130,6 +133,8 @@ class UpdateBoss(object):
                     row[4] = height_valid
             
             elif get_length_of_rows > 1:
+                print[x for x in shortened_lookup[row[6]].keys()]
+                print row[6]
                 correct_method = [x for x in shortened_lookup[row[6]].keys() if thisdate >= datetime.datetime.strptime(shortened_lookup[row[6]][x]['begin'], '%Y-%m-%d %H:%M:%S') and thisdate < datetime.datetime.strptime(shortened_lookup[row[6]][x]['end'], '%Y-%m-%d %H:%M:%S')][0]
                 
                 height_valid = shortened_lookup[row[6]][correct_method]['height']
