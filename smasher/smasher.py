@@ -2050,12 +2050,13 @@ if __name__ == "__main__":
       print "finished creating AIRTEMP from %s to %s" %(sd, ed)
       D = smashBosses.UpdateBoss(C)
       print "checking that the methods are updated"
+      #import pdb; pdb.set_trace()
       #D = smashBosses.UpdateBoss(C, nr)
       if args.station != None:
         D.only_one_station(args.station[0])
       else:
         pass
-      D.update_the_db_methods()
+      #D.update_the_db_methods()
       D.update_the_db()
       print "database updated from %s to %s for AIRTEMP" %(sd, ed)
       del C
@@ -2084,7 +2085,7 @@ if __name__ == "__main__":
       print "finished creating RELHUM from %s to %s" %(sd, ed)
       D = smashBosses.UpdateBoss(C)
       print "checking that the methods are updated"
-      D.update_the_db_methods()
+      #D.update_the_db_methods()
       D.update_the_db()
       print "database updated from %s to %s for RELHUM" %(sd, ed)
       del C
@@ -2142,7 +2143,7 @@ if __name__ == "__main__":
       print "finished creating Dewpoint from %s to %s" %(sd, ed)
       D = smashBosses.UpdateBoss(C)
       print "checking that the methods are updated"
-      D.update_the_db_methods()
+      #D.update_the_db_methods()
       D.update_the_db()
       
       print "database updated from %s to %s for Dewpoint" %(sd, ed)
@@ -2410,7 +2411,7 @@ if __name__ == "__main__":
     sd, ed = B.check_out_one_attribute("LYS")
 
     if sd != ed:
-      C = smashWorkers.Sonic(sd, ed, server)
+      C = smashWorkers.SnowLysimeter(sd, ed, server)
       #nr = C.condense_data()
       print "finished creating Snowmelt from %s to %s" %(sd, ed)
       D = smashBosses.UpdateBoss(C)

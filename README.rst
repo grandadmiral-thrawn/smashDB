@@ -615,6 +615,12 @@ you know where your .exe is, and please DO NOT use the system python. :)
 Recent updates to SMASHER!
 --------------------------
 
+- V. 0.1.2. : For the new CS203 probes we needed a method to avoid failing when checking the method history table. I added this method.
+
+- V. 0.1.2. : On the individual update panel, the smasher was also failing because it was trying to put the sonic form on the snow lysimeter. This was a type o that I fixed, also.
+
+- V 0.1.2. : Soil water content was throwing an error because the date range was not getting called by valid_dates but instead by the keys of the data structure, which needed to be shifted back by one based on wanting to assign the daily value the same way it has been assigned for years. I also fixed this. 
+
 -  V. 0.1.1.: fixed a bug that happens if your start date and time is on
    the 0th hour of the 0th minute that would generate an extra day of
    null output:

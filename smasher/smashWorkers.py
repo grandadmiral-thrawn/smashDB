@@ -204,6 +204,10 @@ class AirTemperature(object):
 
             probe_code = str(row[1])
 
+            # do not use probe CS203
+            if probe_code == "AIRCS203":
+                continue
+
             if probe_code not in od:
 
                 try:
@@ -309,6 +313,14 @@ class AirTemperature(object):
                 # get the TOTAL number of obs, should be 288, 96, or 24 - includes "missing"- 
                 # we only need to count the value-- if it's missing from the mean we aren't going to see a min and max of course
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
+
+
+                if self.server == "SHELDON":
+                    source = "SHELDON_AIRTEMP"
+                elif self.server == "STEWARTIA":
+                    source = "FSDBDATA_AIRTEMP"
+                else:
+                    source = ""
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
                 if num_total_obs not in [288, 287, 96, 95, 24, 23, 1] and each_date not in self.daterange.dr:
@@ -640,8 +652,11 @@ class RelHum(object):
         for probe_code in self.od.keys():
             
             if "RELR" not in probe_code:
-                # get the height, method_code, and sitecode from the height_and_method_getter function  
-                height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                try:
+                    # get the height, method_code, and sitecode from the height_and_method_getter function  
+                    height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                except Exception:
+                    height, method_code, site_code = 100, "REL999", "ANYMET"
 
             elif "RELR" in probe_code:
                 # some default settings in case you add a new probe that doesn't work
@@ -1017,12 +1032,24 @@ class DewPoint(object):
 
         # make a SHELDON cursor if you do not have one to get the LTERLogger_new.dbo.method_history_daily table.
         cursor_sheldon = fc.form_connection("SHELDON")
+
+
+        # set the sources for the output based on the input server
+        if self.server == "STEWARTIA":
+            source = "STEWARTIA_FSDBDATA_MS04317"
+        elif self.server == "SHELDON":
+            source = "SHELDON_LTERLogger_Pro_MS04317"
+        else:
+            print("no server given")
             
         for probe_code in self.od.keys():
 
             if "DEWR" not in probe_code:
-                # get the height, method_code, and sitecode from the height_and_method_getter function  
-                height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                try:
+                    # get the height, method_code, and sitecode from the height_and_method_getter function  
+                    height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                except Exception:
+                    height, method_code, site_code = 150, "DEW999", "ANYMET"
 
             elif "DEWR" in probe_code:
                 # default data
@@ -1061,7 +1088,7 @@ class DewPoint(object):
                     # print error_string2
                     mylog.write('incompleteday', error_string2)
 
-                    newrow = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
+                    new_row = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
                     my_new_rows.append(new_row)
 
                     continue
@@ -1240,13 +1267,7 @@ class DewPoint(object):
                     pass
 
 
-                # set the sources for the output based on the input server
-                if self.server == "STEWARTIA":
-                    source = "STEWARTIA_FSDBDATA_MS04317"
-                elif self.server == "SHELDON":
-                    source = "SHELDON_LTERLogger_Pro_MS04317"
-                else:
-                    print("no server given")
+                
 
                 try:
                     maxt = datetime.datetime.strftime(max_valid_time[0], '%H%M')
@@ -1391,9 +1412,11 @@ class VPD(object):
         for probe_code in self.od.keys():
             
             if "VPDR" not in probe_code:
-
-                # get the height, method_code, and sitecode from the height_and_method_getter function  
-                height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                try: 
+                    # get the height, method_code, and sitecode from the height_and_method_getter function  
+                    height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                except Exception:
+                    height, method_code, site_code = 150, "VPD999", "ANYMET"
 
             elif "VPDR" in probe_code:
                 # height is 150m?, method is AIR999, site is REFS plus last two digits of probe_code
@@ -1431,6 +1454,7 @@ class VPD(object):
                     # print error_string2
                     mylog.write('incompleteday', error_string2)
                     continue
+                
                 else:
                     pass
 
@@ -1725,9 +1749,11 @@ class VPD2(object):
             #print probe_code
             
             if "VPDR" not in probe_code:
-
-                # get the height, method_code, and sitecode from the height_and_method_getter function  
-                height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                try:
+                    # get the height, method_code, and sitecode from the height_and_method_getter function  
+                    height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                except Exception:
+                    height, method_code, site_code = 150, "VPD999", "ANYMET"
 
             elif "VPDR" in probe_code:
                 # height is 150m?, method is AIR999, site is REFS plus last two digits of probe_code
@@ -1770,7 +1796,7 @@ class VPD2(object):
 
                     continue
 
-                elif num_total_obs_rel not in [288, 287, 96, 95, 24, 23, 1] and each_date != self.daterange.dr:
+                elif num_total_obs_rel not in [288, 287, 96, 95, 24, 23, 1] and each_date not in self.daterange.dr:
 
                     # break on missing dates and continue to the next
                     error_string2 = "Incomplete or overfilled day- RELHUM (AIRTEMP OK):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air)
@@ -2119,7 +2145,6 @@ class PhotosyntheticRad(object):
             else:
                 pass
 
-            
             dt = datetime.datetime(dt_old.year, dt_old.month, dt_old.day)
             
             probe_code = str(row[1])
@@ -2127,8 +2152,9 @@ class PhotosyntheticRad(object):
             if probe_code not in od:
                 
                 try:
-                    # if there is par max
+                    # if there is par max and we need to add the probe code
                     od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'mval': [str(row[4])], 'timekeep':[dt_old]}}
+                
                 except Exception:
                     # if the probe code isn't there, get the day, val, fval, and store the time to match to the max and min
                     od[probe_code] = {dt:{'val': [str(row[2])], 'fval': [str(row[3])], 'timekeep':[dt_old]}}
@@ -2140,6 +2166,7 @@ class PhotosyntheticRad(object):
                     try:
                         # if there is PAR MAX
                         od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'mval': [str(row[4])], 'timekeep':[dt_old]}
+                    
                     except Exception:
                         # if the probe code is there, but not that day, then add the day as well as the corresponding val, fval, and method
                         od[probe_code][dt] = {'val': [str(row[2])], 'fval':[str(row[3])], 'timekeep':[dt_old]}
@@ -2180,10 +2207,13 @@ class PhotosyntheticRad(object):
         # iterate over the returns, getting each probe code - if args are passed, include them also!
         for probe_code in self.od.keys():
 
-            # get the height, method_code, and sitecode from the height_and_method_getter function  
-            height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+            try:
+                # get the height, method_code, and sitecode from the height_and_method_getter function  
+                height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+            except Exception:
+                height, method_code, site_code = "625", "PAR999", "ANYMET"
 
-            # valid_dates are the dates we will iterate over to do the computation of the daily airtemperature
+            # valid_dates are the dates we will iterate over to do the computation of the daily par
             valid_dates = sorted(self.od[probe_code].keys())
 
             ## THIS CODE WAS ADDED ON 08/26/2015 -- it appears we could end up over writing one value each time we run this if we don't skip it due to dealing with the 2400 convention!
@@ -2191,11 +2221,14 @@ class PhotosyntheticRad(object):
                 valid_dates = sorted(self.od[probe_code].keys())[1:]
             else:
                 pass
+
             # iterate over each of the dates
-            for each_date in sorted(self.od[probe_code].keys()):
+            # for each_date in sorted(self.od[probe_code].keys()):
+            for each_date in valid_dates:
 
                 # get the number of valid observations - these are observations which are numbers that aren't none
                 num_valid_obs = len([x for x in self.od[probe_code][each_date]['val'] if x != 'None'])
+                
                 # there may be the case that all the numbers are none, and in this case, we want to know about it, but keep on going through that day
                 if num_valid_obs == 0:
                     error_string = "there are only null values on %s for %s" %(each_date, probe_code)
@@ -2210,6 +2243,7 @@ class PhotosyntheticRad(object):
                     error_string2 = "Incomplete or overfilled day, %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs)
                     # print error_string2
                     mylog.write('incompleteday', error_string2)
+                    
                     new_row = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", source]
                     my_new_rows.append(new_row)
                     continue
@@ -2811,7 +2845,7 @@ class SoilWaterContent(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 287, 95, 23, 96, 24] and each_date != self.daterange.dr:
+                if num_total_obs not in [288, 287, 95, 23, 96, 24] and each_date not in self.daterange.dr:
 
                     # break on missing dates and continue to the next
 
@@ -3168,7 +3202,7 @@ class Precipitation(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 287, 23, 95, 24, 1] and each_date != self.daterange.dr[0]:
+                if num_total_obs not in [288, 96, 287, 23, 95, 24, 1] and each_date not in self.daterange.dr[0]:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
 
@@ -3394,7 +3428,7 @@ class SnowLysimeter(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 287, 95, 96, 23, 24, 1] and each_date != self.daterange.dr:
+                if num_total_obs not in [288, 287, 95, 96, 23, 24, 1] and each_date not in self.daterange.dr:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
 
@@ -3635,7 +3669,7 @@ class Solar(object):
                 num_total_obs = len(self.od[probe_code][each_date]['tot_val'])
                 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 287, 95, 23, 96, 24] and each_date != self.daterange.dr:
+                if num_total_obs not in [288, 287, 95, 23, 96, 24] and each_date not in self.daterange.dr:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
 
@@ -3932,7 +3966,7 @@ class SnowDepth(object):
                 num_total_obs = len(self.od[probe_code][each_date]['tot_val'])
                 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 24] and each_date != self.daterange.dr[0]:
+                if num_total_obs not in [288, 96, 24] and each_date not in self.daterange.dr[0]:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
 
@@ -4212,7 +4246,7 @@ class NetRadiometer(object):
                 
 
                 # if it's not a total of observations on that day that we would expect, then print this-- we expect that since this is counting up the rows, it shouldn't matter which it gets!
-                if num_total_obs not in [288, 287, 95, 23, 96, 24, 1] and each_date != self.daterange.dr: 
+                if num_total_obs not in [288, 287, 95, 23, 96, 24, 1] and each_date not in self.daterange.dr: 
                     
                     error_string2 = "incomplete day: the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs, probe_code)
                     mylog.write('incomplete_day', error_string2)
@@ -4565,7 +4599,7 @@ class Wind(object):
                 num_total_obs_mag = len(self.od[probe_code][each_date]['dirstd_val'])
 
                 # if it's not a total of observations on that day that we would expect, then print this
-                if num_total_obs_spd not in [288, 287, 95, 96, 24, 23, 1] and each_date != self.daterange.dr: 
+                if num_total_obs_spd not in [288, 287, 95, 96, 24, 23, 1] and each_date not in self.daterange.dr: 
                     error_string = "the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs_spd, probe_code)
                     mylog.write('incomplete_day', error_string)
                     newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
@@ -4947,7 +4981,7 @@ class Wind2(object):
                 num_total_obs_maxgust = len(self.od[probe_code][each_date]['maxgust_val'])
 
                 # if it's not a total of observations on that day that we would expect, then print this
-                if num_total_obs_spd not in [288, 287, 95, 23, 1, 96, 24] and each_date != self.daterange.dr: 
+                if num_total_obs_spd not in [288, 287, 95, 23, 1, 96, 24] and each_date not in self.daterange.dr: 
                     error_string = "the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs_spd, probe_code)
                     mylog.write('incomplete_day', error_string)
 
@@ -5110,6 +5144,7 @@ class Wind2(object):
                 
                     # get the time of that maximum - it will be controlled re. flags by the control on max_valid_obs
                     max_valid_time = [self.od[probe_code][each_date]['timekeep'][index] for index, j in enumerate(self.od[probe_code][each_date]['maxgust_val']) if j != "None" and round(float(j),3) == max_valid_obs]
+
                     
                     # get the flag of that maximum - which again, is controlled via the max_valid_obs
                     max_flag = [self.od[probe_code][each_date]['spd_fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['maxgust_val']) if j != "None" and round(float(j),3) == max_valid_obs]
@@ -5319,8 +5354,11 @@ class Sonic(object):
         for probe_code in self.od.keys():
             
             if probe_code != "WNDCEN02":
-                # get height, method, and site from table  
-                height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                try:
+                    # get height, method, and site from table  
+                    height, method_code, site_code = self.height_and_method_getter(probe_code, cursor_sheldon)
+                except Exception:
+                    height, method_code, site_code = 1000, "WND999", "ANYMET"
 
             elif probe_code == "WNDCEN02":
                 # missing from db at the moment
@@ -5363,7 +5401,7 @@ class Sonic(object):
                 num_total_obs = len(self.od[probe_code][each_date]['snc_mean_val'])
                 
                 # if it's not a total of observations on that day that we would expect, then log error, continue to a day with the right number
-                if num_total_obs not in [288, 287, 95, 23, 96, 24, 1] and each_date != self.daterange.dr: 
+                if num_total_obs not in [288, 287, 95, 23, 96, 24, 1] and each_date not in self.daterange.dr: 
                     error_string = "the total number of observations on %s is %s and probe %s" %(each_date, num_total_obs, probe_code)
                     mylog.write('nullday',error_string)
                     newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, None, None, None, None, "M", None, "M", None, "M", None, "M", "NA", source]
@@ -5591,7 +5629,9 @@ class Sonic(object):
 
                     daily_mag_from_wux = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wux_val'] if x != 'None']))**2,3)
                     daily_mag_from_wuy = round(float(sum([float(x) for x in self.od[probe_code][each_date]['wuy_val'] if x != 'None']))**2,3)
-                    daily_snc_mag = round(math.sqrt(daily_mag_from_wux + daily_mag_from_wuy),3)
+                    
+                    daily_snc_mag = round(math.sqrt(daily_mag_from_wux + daily_mag_from_wuy)/num_valid_obs,3)
+                    print daily_snc_mag
                     
                     # flag the mag's... if it's from 2 a's, it's A. If a Q is part or an E is part, it's Q. If an "M" is part, it's M, otherwise it's A.
                     if daily_flag_wux == "A" and daily_flag_wuy == "A":
