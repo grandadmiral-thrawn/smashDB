@@ -212,10 +212,7 @@ class UpdateBoss(object):
 
         elif self.table in "MS04305":
             # DBCODE, ENTITY, SITECODE, SOLAR_METHOD, HEIGHT, QC_LEVEL, PROBE_CODE, DATE , SOLAR_TOT_DAY, SOLAR_TOT_FLAG, SOLAR_MEAN_DAY, SOLAR_MEAN_FLAG, SOLAR_MAX_DAY  SOLAR_MAX_FLAG, SOLAR_MAXTIME, EVENT_CODE, DB_TABLE, ID
-            for each_tuple in new_tuples:
-
-                print each_tuple
-
+            #for each_tuple in new_tuples:
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table +" (" + column_string + ")  VALUES (%s, %d, %s, %s, %d, %s, %s, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s)", new_tuples)
             conn.commit()
             
@@ -227,9 +224,14 @@ class UpdateBoss(object):
 
         elif self.table in "MS04309":
 
-           cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ") VALUES( %s, %d, %s, %s, %s, %s, %s, %d, %s, %d , %s, %s, %s)", new_tuples)
+            try:
+                cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ") VALUES( %s, %d, %s, %s, %s, %s, %s, %d, %s, %d , %s, %s, %s)", new_tuples)
+            except Exception:
 
-           conn.commit()
+                #### YOU ARE HERE! 
+                #new_row = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", "NA", source]
+                cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ") VALUES( %s, %d, %s, %s, %s, %s, %s, %d, %s, %s, %s)", new_tuples)
+            conn.commit()
 
         elif self.table in "MS04322":
             
@@ -248,7 +250,7 @@ class UpdateBoss(object):
 
             conn.commit()
         
-        elif self.table in "MS04334":
+        elif self.table in "MS04324":
             cursor.executemany("insert into LTERLogger_Pro.dbo." + self.table + " (" + column_string + ")  VALUES( %s,  %d,  %s, %s,  %d,  %s, %s,  %s,    %d,  %s,  %d,  %s,  %d, %s,  %d, %s,    %d, %s,   %d, %s, %d,   %s,   %d,  %s, %d   %s,  %d, %s,  %s,  %s)",new_tuples)
 
             conn.commit()

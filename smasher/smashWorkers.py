@@ -518,13 +518,13 @@ class AirTemperature(object):
                 # in the best possible case, we print it out just as it is here: 
                 try:
                 #print each_date
-                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time, '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time, '%H%M'), "NA", source]
+                    new_row = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time, '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time, '%H%M'), "NA", source]
 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except Exception:
-                    newrow = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
+                    new_row = ['MS043', 1, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
     
             mylog.dump()
         return my_new_rows
@@ -699,7 +699,7 @@ class RelHum(object):
                     mylog.write('incompleteday', error_string2)
 
                     my_new_rows.append(['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server])
-                    #newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    #new_row = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                     continue
                 else:
@@ -854,14 +854,14 @@ class RelHum(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    new_row = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    new_row = ['MS043',2, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         
             mylog.dump()
         return my_new_rows
@@ -1281,13 +1281,13 @@ class DewPoint(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, maxt, min_valid_obs, min_flag, mint, "NA", source]
+                    new_row = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, maxt, min_valid_obs, min_flag, mint, "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
+                    new_row = ['MS043', 7, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None, "M", "None", "NA", source]
 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
     
         mylog.dump()
         return my_new_rows
@@ -1603,14 +1603,14 @@ class VPD(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag[0], datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         
         return my_new_rows
 
@@ -1789,7 +1789,7 @@ class VPD2(object):
                     # break on missing dates and continue to the next
                     error_string2 = "Incomplete or overfilled day-AIRTEMP (called first):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air)
                     
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
                     my_new_rows.append(new_row)
 
                     mylog.write('incompleteday', error_string2)
@@ -1800,7 +1800,7 @@ class VPD2(object):
 
                     # break on missing dates and continue to the next
                     error_string2 = "Incomplete or overfilled day- RELHUM (AIRTEMP OK):  %s, probe %s, total number of observations: %s" %(each_date, probe_code, num_total_obs_air)
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
                     my_new_rows.append(new_row)
                     mylog.write('incompleteday', error_string2)
 
@@ -2033,17 +2033,17 @@ class VPD2(object):
                 # in the best possible case, we print it out just as it is here: 
                 # right now I am giving the max flags on satvp and regularvp the same as their mean flags
                 try:
-                   # newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, mean_valid_obs_satvp, daily_flag_satvp, max_valid_obs_satvp, max_flag_satvp, min_valid_obs_satvp, min_flag_satvp, "NA", self.server]
+                   # new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, mean_valid_obs_satvp, daily_flag_satvp, max_valid_obs_satvp, max_flag_satvp, min_valid_obs_satvp, min_flag_satvp, "NA", self.server]
 
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, "NA", self.server]
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs_vpd, daily_flag, max_valid_obs_vpd, max_flag_vpd, max_valid_time_vpd, min_valid_obs_vpd, min_flag_vpd, min_valid_time_vpd, mean_valid_obs_regvap, daily_flag_regvap, max_valid_obs_regvap, max_flag_regvap, min_valid_obs_regvap, min_flag_regvap, "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    #newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", None, "M", None, "M", None, "M" "NA", self.server]
-                    newrow = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
+                    #new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", None, "M", None, "M", None, "M" "NA", self.server]
+                    new_row = ['MS043',8, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", None, "M", None, "M", None, "M", "NA", self.server]
 
                 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         
             mylog.dump()
         return my_new_rows
@@ -2347,12 +2347,12 @@ class PhotosyntheticRad(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", source]
+                    new_row = ['MS043',22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", source]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", source]
-                my_new_rows.append(newrow)
+                    new_row = ['MS043', 22, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "NA", source]
+                my_new_rows.append(new_row)
         return my_new_rows
 
 class SoilTemperature(object):
@@ -2668,15 +2668,15 @@ class SoilTemperature(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    new_row = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                    
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    new_row = ['MS043',21, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         
             mylog.dump()
         return my_new_rows
@@ -3018,14 +3018,14 @@ class SoilWaterContent(object):
 
                 # in the best possible case, we print it out just as it is here: 
                 try:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
+                    new_row = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_valid_obs, daily_flag, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), min_valid_obs, min_flag, datetime.datetime.strftime(min_valid_time[0], '%H%M'), "NA", self.server]
                 
                 # in the missing day case, we print out a version with Nones filled in for missing values
                 except IndexError:
-                    newrow = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
+                    new_row = ['MS043',23, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "None", None,"M", "None", "NA", self.server]
 
                 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         
             mylog.dump()
         return my_new_rows
@@ -3202,16 +3202,15 @@ class Precipitation(object):
                 num_total_obs = len(self.od[probe_code][each_date]['val'])
                 
                 # if it's not a total of observations on that day that we would expect, and it's not the first day, then do this:
-                if num_total_obs not in [288, 96, 287, 23, 95, 24, 1] and each_date not in self.daterange.dr[0]:
+                if num_total_obs not in [288, 96, 287, 23, 95, 24, 1] and each_date not in self.daterange.dr:
 
                     # it will break and go on to the next probe if needed when the number of total observations is not 288, 96, or 24. Note that on fully missing days we don't have a problem because we have 288 missing observations!
 
                     error_string3 = "incomplete or overfilled day: the total number of observations on %s is %s for %s" %(each_date, num_total_obs, probe_code)
                     mylog.write("incomplete_day",error_string3)
-                    newrow = ['MS043',3, site_code, method_code, int(height), "2D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
-                    my_new_rows.append(newrow)
+                    new_row = ['MS043',3, site_code, method_code, int(height), "2D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
+                    my_new_rows.append(new_row)
                     continue
-
 
                 else:
                     pass
@@ -3261,10 +3260,10 @@ class Precipitation(object):
                 else:
                     pass
 
-                newrow = ['MS043',3, site_code, method_code, int(height), "2D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
+                new_row = ['MS043',3, site_code, method_code, int(height), "2D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
 
 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
     
         return my_new_rows
 
@@ -3435,8 +3434,8 @@ class SnowLysimeter(object):
                     error_string3 = "incomplete or overfilled day: the total number of observations on %s is %s for %s" %(each_date, num_total_obs, probe_code)
                     mylog.write("incomplete_day",error_string3)
 
-                    newrow = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", "NA", source]
-                    my_new_rows.append(newrow)
+                    new_row = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", "NA", source]
+                    my_new_rows.append(new_row)
                     
                     continue
 
@@ -3478,11 +3477,9 @@ class SnowLysimeter(object):
                 else:
                     print("no server given")
                 
-                newrow = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
-
-                print newrow
+                new_row = ['MS043',9, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag, "NA", source]
                 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         mylog.dump()
         return my_new_rows
 
@@ -3676,9 +3673,9 @@ class Solar(object):
                     error_string3 = "incomplete or overfilled day: the total number of observations on %s is %s for %s" %(each_date, num_total_obs, probe_code)
                     mylog.write("incomplete_day",error_string3)
 
-                    newrow = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", self.server]
+                    new_row = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", self.server]
 
-                    my_new_rows.append(newrow)
+                    my_new_rows.append(new_row)
                     continue
 
                 else:
@@ -3776,11 +3773,13 @@ class Solar(object):
                             mylog.write("max_valid_time_error",error_string4)
                 
                 if mean_valid_obs is not None:
-                    # get the flag of that maximum - which again, is controlled via the max_valid_obs
-                    max_flag = [self.od[probe_code][each_date]['mean_fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['mean_val']) if j != "None" and round(float(j),3) == max_valid_obs][0]
-                   
-                    # if there is definitely a max observation, the max flag is ok
-                    if max_flag == "None":
+                    try:
+                        # get the flag of that maximum - which again, is controlled via the max_valid_obs
+                        max_flag = [self.od[probe_code][each_date]['mean_fval'][index] for index, j in enumerate(self.od[probe_code][each_date]['mean_val']) if j != "None" and round(float(j),3) == max_valid_obs][0]
+                        # if there is definitely a max observation, the max flag is ok
+                        if max_flag == "None" or max_flag == None:
+                            max_flag = "A"
+                    except Exception:
                         max_flag = "A"
                 else:
                     # check to see if the whole day was missing, if so, set to "M"
@@ -3801,13 +3800,13 @@ class Solar(object):
                     print("no server given")
 
                 try:
-                    newrow = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", self.server]
+                    new_row = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), total_valid_obs, daily_flag_tot, mean_valid_obs, daily_flag_mean, max_valid_obs, max_flag, datetime.datetime.strftime(max_valid_time[0], '%H%M'), "NA", self.server]
                 
                 except Exception:
 
-                    newrow = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", self.server]
+                    new_row = ['MS043',5, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", "None", "NA", self.server]
 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         mylog.dump()
         return my_new_rows
 
@@ -4044,13 +4043,13 @@ class SnowDepth(object):
                     print("no server given")
 
                 try:
-                    newrow = ['MS043', 10, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), swe_valid_obs, daily_flag_swe, median_valid_obs, daily_flag_sno, "NA", self.server]
+                    new_row = ['MS043', 10, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), swe_valid_obs, daily_flag_swe, median_valid_obs, daily_flag_sno, "NA", self.server]
                 
                 except Exception:
 
-                    newrow = ['MS043', 10, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "NA", self.server]
+                    new_row = ['MS043', 10, site_code, method_code, "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", "NA", self.server]
                 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         mylog.dump()
         return my_new_rows
 
@@ -4102,9 +4101,17 @@ class NetRadiometer(object):
         # use the human readable date
         humanrange = self.daterange.human_readable()
 
+        ## NOTE THIS IS A HACKY HACK because the date is off for RADVAN02 -- should be 09-15-2013 but is instead 09-13-2015
+        assign_date = humanrange[0]
+
+        if probe_code == 'RADVAN02':
+            assign_date = "2013-09-16 00:00:00"
+        else:
+            pass
+
         # query the DB for the right height and method
         #query = "SELECT height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] + "\' and date_end > \'" + humanrange[1] + "\' and probe_code like \'" + probe_code + "\'"
-        query = "SELECT top 1 height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + humanrange[0] +"\' and probe_code like \'" + probe_code + "\' order by date_bgn desc" 
+        query = "SELECT top 1 height, method_code, sitecode FROM LTERLogger_new.dbo.method_history_daily where date_bgn <= \'" + assign_date +"\' and probe_code like \'" + probe_code + "\' order by date_bgn desc" 
         
         cursor_sheldon.execute(query)
             
@@ -4113,12 +4120,12 @@ class NetRadiometer(object):
             try:
                 this_height = int(row[0])
             except Exception:
-                this_height = 100
+                this_height = 600
 
             try:
                 this_method = str(row[1])
             except Exception:
-                this_method = "RAD999"
+                this_method = "RAD114"
 
             try:
                 this_sitecode = str(row[2])
@@ -4251,9 +4258,9 @@ class NetRadiometer(object):
                     error_string2 = "incomplete day: the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs, probe_code)
                     mylog.write('incomplete_day', error_string2)
 
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None, "M", "NA"]
+                    new_row = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None, "M", "NA"]
 
-                    my_new_rows.append(newrow)
+                    my_new_rows.append(new_row)
                     continue
 
 
@@ -4425,14 +4432,14 @@ class NetRadiometer(object):
 
 
                 try:
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA"]
+                    new_row = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), mean_swin, daily_flag_swin, mean_swout, daily_flag_swout, mean_lwin, daily_flag_lwin, mean_lwout, daily_flag_lwout, mean_nr, daily_flag_nr, mean_temp, daily_flag_temp,"NA"]
                 
                 except Exception:
                     # which might happen if a day is just missing
 
-                    newrow = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None, "M", "NA"]
+                    new_row = ['MS043', 25, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, "M", None, "M", None, "M", "NA"]
 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         mylog.dump()
         return my_new_rows
 
@@ -4602,8 +4609,8 @@ class Wind(object):
                 if num_total_obs_spd not in [288, 287, 95, 96, 24, 23, 1] and each_date not in self.daterange.dr: 
                     error_string = "the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs_spd, probe_code)
                     mylog.write('incomplete_day', error_string)
-                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
-                    my_new_rows.append(newrow)
+                    new_row = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    my_new_rows.append(new_row)
                     continue
                 
                 else:
@@ -4801,12 +4808,12 @@ class Wind(object):
                     pass
 
                 try:
-                    newrow = ['MS043',4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    new_row = ['MS043',4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
                 
                 except TypeError:
-                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    new_row = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         mylog.dump()
         return my_new_rows
 
@@ -4985,9 +4992,9 @@ class Wind2(object):
                     error_string = "the total number of observations on %s is %s on probe %s" %(each_date, num_total_obs_spd, probe_code)
                     mylog.write('incomplete_day', error_string)
 
-                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    new_row = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
 
-                    my_new_row.append(newrow)
+                    my_new_row.append(new_row)
                     continue
 
                 
@@ -5185,12 +5192,12 @@ class Wind2(object):
                     pass
 
                 try:
-                    newrow = ['MS043',4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    new_row = ['MS043',4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_spd_valid_obs, daily_flag_spd, max_valid_obs, max_flag[0], datetime.datetime.strftime(max_valid_time[0], '%H%M'), round(daily_mag_results,3) ,daily_flag_mag, round(daily_dir_valid_obs,3), daily_flag_dir, round(daily_sigma_theta,3), daily_flag_dirstd, None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
                 
                 except TypeError:
-                    newrow = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
+                    new_row = ['MS043', 4, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None,  None,"M", None, "M", None, "M", None,  None, None, None, None, None, None, None, None, None,None, None, None, None, None, None, "NA", source]
 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         mylog.dump()
         return my_new_rows
 
@@ -5404,8 +5411,8 @@ class Sonic(object):
                 if num_total_obs not in [288, 287, 95, 23, 96, 24, 1] and each_date not in self.daterange.dr: 
                     error_string = "the total number of observations on %s is %s and probe %s" %(each_date, num_total_obs, probe_code)
                     mylog.write('nullday',error_string)
-                    newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, None, None, None, None, "M", None, "M", None, "M", None, "M", "NA", source]
-                    my_new_rows.append(newrow)
+                    new_row = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), None, "M", None, "M", None, "M", None, None, None, None, None, "M", None, "M", None, "M", None, "M", "NA", source]
+                    my_new_rows.append(new_row)
                     continue
 
                 else:
@@ -5733,8 +5740,8 @@ class Sonic(object):
                 else:
                     pass
 
-                newrow = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "NA", source]
+                new_row = ['MS043',24, site_code, method_code, int(height), "1D", probe_code, datetime.datetime.strftime(each_date,'%Y-%m-%d %H:%M:%S'), daily_snc_mean, daily_flag_snc_mean, daily_snc_max, daily_flag_snc_max, daily_snc_mag, daily_flag_snc_mag, daily_dir_valid_obs, daily_flag_dir, daily_sigma_theta, daily_flag_dirstd, daily_wux, daily_flag_wux, daily_wux_std, daily_flag_wuxstd, daily_wuy_std, daily_flag_wuystd, daily_wair_std, daily_flag_wairstd, "NA", source]
 
-                my_new_rows.append(newrow)
+                my_new_rows.append(new_row)
         mylog.dump()
         return my_new_rows
