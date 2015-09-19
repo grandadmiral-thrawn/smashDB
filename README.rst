@@ -1,7 +1,6 @@
 SMASHER
 =======
 
-|Build Status| |Coverage Status| v 0.1.1
 
 SMASHER is a command line tool for updating LTERLogger\_pro, our MSSQL
 1st QC level provisional server. It can also get updates from MS043, the
